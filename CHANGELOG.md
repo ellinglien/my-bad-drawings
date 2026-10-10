@@ -6,6 +6,10 @@ with each change; when cutting a release, turn that section into
 
 ## Unreleased (since 0.97)
 
+- Both brush pens now touch down at the top of the brush, like the pencil:
+  the pen tip sits at the top end of the mark, and tilting lays the rest of
+  the brush down under the pen instead of growing evenly around the tip.
+
 ## 0.97
 
 - Layer names show again in the Layers panel on the Nomad.

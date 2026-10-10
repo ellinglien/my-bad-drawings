@@ -25,6 +25,8 @@ final class PressureStroke implements DrawingStroke {
     private final RectF footprint = new RectF();
     /** The brush's running-out paint, or null when it never runs out. */
     private final PaintLoad load;
+    /** Which end of a brush pen's head, along its heading, its shaft leans toward: +1 or -1. */
+    private float shaftSide = 1;
     private float previousX, previousY, previousRadius, previousAngle, previousPull;
     /** Which side of a crescent head leads the stroke: +1, -1, or 0 until the pen first moves. */
     private float lead;
@@ -89,6 +91,14 @@ final class PressureStroke implements DrawingStroke {
         float angle = settings.followsTilt()
                 ? BrushDirection.resolve(tiltX,tiltY,settings.tool.water ? -90 : settings.angle,started?previousAngle:settings.angle) : settings.angle;
         float turn = started ? BrushDirection.delta(previousAngle,angle) : 0;
+        if (settings.tool.water) {
+            // Like a tilted pencil, the tip touches at the head's top end and the rest lies under the leaning shaft.
+            float heading = started ? previousAngle + turn : angle;
+            shaftSide = BrushDirection.shaftSide(tiltX, tiltY, heading, shaftSide);
+            float reach = shaftSide * (radius - BrushStamp.minor(settings, radius));
+            x += reach * (float)Math.cos(Math.toRadians(heading));
+            y += reach * (float)Math.sin(Math.toRadians(heading));
+        }
         // Tilt supplies heading only; pressure alone selects the head size.
         if (!started) {
             previousX = x; previousY = y; previousRadius = radius; previousAngle = angle; previousPull = pull;

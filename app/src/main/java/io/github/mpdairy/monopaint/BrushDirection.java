@@ -23,6 +23,17 @@ final class BrushDirection {
         // Keep signed lean here: a head has 180-degree symmetry, a push does not.
         return (float)Math.max(0,Math.min(1,-(x*dx+y*dy)/(lean*distance)));
     }
+    /**
+     * Which end of a head lying along {@code angle} degrees the pen's shaft leans toward:
+     * +1 along the angle, -1 against it, or {@code fallback} without a dependable lean.
+     */
+    static float shaftSide(float tiltX, float tiltY, float angle, float fallback) {
+        if (!Float.isFinite(tiltX) || !Float.isFinite(tiltY) || Math.abs(tiltX) > 90 || Math.abs(tiltY) > 90) return fallback;
+        double x=Math.tan(Math.toRadians(Math.max(-89.9,Math.min(89.9,tiltX))));
+        double y=Math.tan(Math.toRadians(Math.max(-89.9,Math.min(89.9,tiltY))));
+        if (Math.hypot(x,y) < MIN_LEAN) return fallback;
+        return x*Math.cos(Math.toRadians(angle)) + y*Math.sin(Math.toRadians(angle)) >= 0 ? 1 : -1;
+    }
     /** Degrees the pen leans from upright; 0 without a reading. */
     static float inclination(float tiltX, float tiltY) {
         if (!Float.isFinite(tiltX) || !Float.isFinite(tiltY) || Math.abs(tiltX) > 90 || Math.abs(tiltY) > 90) return 0;
