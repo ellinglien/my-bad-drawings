@@ -12,4 +12,8 @@ final class PaintState {
     int wetness = 65;
     /** Brushes leave existing marks visible beneath the new paint. */
     boolean transparentPaint;
+    /** Ink the wet brush pen has soaked up, kept between strokes until it is cleaned. */
+    final BrushInk brushInk = new BrushInk();
+    /** Ink in brushes whose transparent paint flows, tinted with the last shade tapped and kept between strokes. */
+    final BrushInk brushLoad = new BrushInk(true);
 }

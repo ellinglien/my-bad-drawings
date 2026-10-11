@@ -74,6 +74,9 @@ final class DrawingPad extends View {
     private final android.os.MessageQueue.IdleHandler wetIdle = () -> { advanceWet(); return false; };
     private final Runnable wetStep = () -> wetQueue.addIdleHandler(wetIdle);
     private long lastWetComputeNanos, lastWetRenderNanos, lastWetPresentNanos, wetMaxSliceNanos;
+    /** When running wet paint last reached the panel; flowing water shows itself at most every {@link #WET_SHOW_MS}. */
+    private long lastWetShown;
+    private static final int WET_SHOW_MS = 120;
     private int wetSliceCount;
 
     // Shapes
@@ -560,9 +563,10 @@ final class DrawingPad extends View {
                 || (event.getButtonState() & MotionEvent.BUTTON_STYLUS_PRIMARY) != 0;
         ToolSettings settings = penEraser ? app.library.builtin(ToolSettings.Tool.ERASER) : app.library.current();
         boolean erasing = paint.eraseMode && settings.supportsEraseMode();
-        // Brushes paint into a wet canvas; the brush pen brings its own water, which on a
-        // dry canvas wets only where it lands.
-        boolean wets = !erasing && (settings.tool.water || settings.isBrush() && paint.wetCanvas);
+        // Brushes paint into a wet canvas; the brush pens, and brushes whose transparent
+        // paint flows, bring their own water, which on a dry canvas wets only where it lands.
+        boolean wets = !erasing && (settings.tool.water
+                || settings.isBrush() && (paint.wetCanvas || paint.transparentPaint && settings.flows));
         if (!wets || wet != null && wet.coversCanvas() != paint.wetCanvas) dryWet();
         if (wets && wet == null) wet = paint.wetCanvas ? new WetWatercolor(document, paint.wetness) : new WetWatercolor(document);
         pointer = event.getPointerId(index);
@@ -571,7 +575,8 @@ final class DrawingPad extends View {
         if (settings.tool == ToolSettings.Tool.SHAPES) { beginShape(settings, shade); return true; }
         if (settings.tool == ToolSettings.Tool.FILL) { beginFill(settings, shade); return true; }
         cancelWetCallback();
-        stroke = ToolStrokes.create(document, settings, paint.gray, wet, paint.transparentPaint, erasing, app.prefs.smoothEdges());
+        stroke = ToolStrokes.create(document, settings, paint.gray, wet, paint.transparentPaint, erasing, app.prefs.smoothEdges(),
+                settings.tool.flowing ? paint.brushInk : paint.brushLoad);
         // Supernote encodes signed X degrees in ORIENTATION, Y in TILT.
         sampleEvent(event, index, -1);
         return true;
@@ -912,8 +917,9 @@ final class DrawingPad extends View {
 
     private void scheduleWet() {
         // Yield between slices; input queued during the last slice runs
-        // before the next idle callback. Only completed sweeps wait a frame.
-        scheduleWet(wet != null && wet.framePending() ? 1 : WetWatercolor.FRAME_MS);
+        // before the next idle callback. Only completed sweeps wait a frame,
+        // except flowing water, which runs ahead to its settled look.
+        scheduleWet(wet != null && (wet.framePending() || wet.flowing()) ? 1 : WetWatercolor.FRAME_MS);
     }
     private void scheduleWet(int delayMillis) {
         if (wet != null && wet.isAnimating() && app.resumed && hasWindowFocus() && !app.loading && !navigating) {
@@ -938,9 +944,14 @@ final class DrawingPad extends View {
         app.canvasGravity.apply(wet);
         wetChanged |= wet.advance(drawing, wetBudget.tiles(budget, drawing), budget / 2, drawing ? 96 : 192);
         long computed = System.nanoTime();
-        renderDirty();
+        // Presenting every slice of fast-running water would cost more than working it out.
+        // While drawing, each slice still shows its own changes, or the pen's next event
+        // would have to render all the water's held-back ones.
+        long now = SystemClock.uptimeMillis();
+        boolean show = drawing || !wet.flowing() || now - lastWetShown >= WET_SHOW_MS;
+        if (show) { renderDirty(); lastWetShown = now; }
         long rendered = System.nanoTime();
-        flush(true);
+        if (show) flush(true);
         long finished = System.nanoTime();
         lastWetComputeNanos = computed - start;
         lastWetRenderNanos = rendered - computed;
@@ -957,6 +968,8 @@ final class DrawingPad extends View {
     /** Stops wet blending, leaving the paint as it is. */
     void dryWet() {
         cancelWetCallback();
+        // Running water's last changes may not have reached the panel yet.
+        if (wet != null && wet.flowing()) { renderDirty(); flush(true); }
         app.canvasGravity.listen(false);
         wet = null;
         if (wetChanged) { wetChanged = false; app.recovery(); }

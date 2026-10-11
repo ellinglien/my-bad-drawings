@@ -84,6 +84,8 @@ final class ToolSettings {
     final int loadingSpeed;
     /** Paint a tap in the palette loads, 0–100, before any rubbing adds more; 0 is a tiny dab. */
     final int minimumLoad;
+    /** A brush's transparent paint lays flowing water, like the wet brush pen's, carrying its shade as pigment; white is clear water. */
+    final boolean flows;
     final Gradient gradient;
     final Tool tool;
     final Head head;
@@ -94,9 +96,10 @@ final class ToolSettings {
 
     ToolSettings(Tool tool, int maximum, int tip, int softness, boolean tilt, int hardness) {
         this(tool, tool == Tool.PENCIL ? 1 : 2, maximum, tip, softness, tilt, hardness, 0, DEFAULT_STRENGTH,
-                DEFAULT_PRESSURE_RESPONSE, Head.ROUND, 0, 0, DEFAULT_HEAD_THICKNESS, Gradient.LINEAR, Shape.LINE, false, 3, 0, UNLIMITED_PAINT, DEFAULT_LOADING_SPEED, DEFAULT_MINIMUM_LOAD);
+                DEFAULT_PRESSURE_RESPONSE, Head.ROUND, 0, 0, DEFAULT_HEAD_THICKNESS, Gradient.LINEAR, Shape.LINE, false, 3, 0, UNLIMITED_PAINT, DEFAULT_LOADING_SPEED, DEFAULT_MINIMUM_LOAD, false);
     }
-    ToolSettings(Tool tool, int minimum, int maximum, int tip, int softness, boolean tilt, int hardness, int tolerance, int strength, int pressureResponse, Head head, int angle, int bristles, int headThickness, Gradient gradient, Shape shape, boolean filled, int outlineWidth, int carry, int paintLoad, int loadingSpeed, int minimumLoad) {
+    ToolSettings(Tool tool, int minimum, int maximum, int tip, int softness, boolean tilt, int hardness, int tolerance, int strength, int pressureResponse, Head head, int angle, int bristles, int headThickness, Gradient gradient, Shape shape, boolean filled, int outlineWidth, int carry, int paintLoad, int loadingSpeed, int minimumLoad, boolean flows) {
+        this.flows=flows;
         if(shape==null || outlineWidth<1 || outlineWidth>128) throw new IllegalArgumentException("Invalid shape settings");
         this.shape=shape; this.filled=filled; this.outlineWidth=outlineWidth; this.carry=carry; this.paintLoad=paintLoad; this.loadingSpeed=loadingSpeed; this.minimumLoad=minimumLoad;
         if (gradient == null || headThickness < 0 || headThickness > 100 || bristles < 0 || bristles > 100 || tool == null || head == null || angle < 0 || angle > 180
@@ -112,7 +115,7 @@ final class ToolSettings {
     }
     private ToolSettings(Values v) {
         this(v.tool, v.minimum, v.maximum, v.tip, v.softness, v.tilt, v.hardness, v.tolerance, v.strength, v.pressureResponse,
-                v.head, v.angle, v.bristles, v.headThickness, v.gradient, v.shape, v.filled, v.outlineWidth, v.carry, v.paintLoad, v.loadingSpeed, v.minimumLoad);
+                v.head, v.angle, v.bristles, v.headThickness, v.gradient, v.shape, v.filled, v.outlineWidth, v.carry, v.paintLoad, v.loadingSpeed, v.minimumLoad, v.flows);
     }
     /** First-install settings; the toolbar's tools were tuned by hand on a Manta. */
     static ToolSettings defaults(Tool tool) {
@@ -140,7 +143,7 @@ final class ToolSettings {
     private static final class Values {
         Tool tool; Head head; Gradient gradient; Shape shape;
         int minimum, maximum, tip, softness, hardness, tolerance, strength, pressureResponse, angle, bristles, headThickness, outlineWidth, carry, paintLoad, loadingSpeed, minimumLoad;
-        boolean tilt, filled;
+        boolean tilt, filled, flows;
     }
     private interface Change { void apply(Values values); }
     private ToolSettings with(Change change) {
@@ -149,7 +152,7 @@ final class ToolSettings {
         v.minimum = minimum; v.maximum = maximum; v.tip = tip; v.softness = softness; v.hardness = hardness;
         v.tolerance = tolerance; v.strength = strength; v.pressureResponse = pressureResponse; v.angle = angle;
         v.bristles = bristles; v.headThickness = headThickness; v.outlineWidth = outlineWidth;
-        v.tilt = tilt; v.filled = filled; v.carry = carry; v.paintLoad = paintLoad; v.loadingSpeed = loadingSpeed; v.minimumLoad = minimumLoad;
+        v.tilt = tilt; v.filled = filled; v.carry = carry; v.paintLoad = paintLoad; v.loadingSpeed = loadingSpeed; v.minimumLoad = minimumLoad; v.flows = flows;
         change.apply(v);
         return new ToolSettings(v);
     }
@@ -194,6 +197,7 @@ final class ToolSettings {
     ToolSettings paintLoad(int value) { return with(v -> v.paintLoad = value); }
     ToolSettings loadingSpeed(int value) { return with(v -> v.loadingSpeed = value); }
     ToolSettings minimumLoad(int value) { return with(v -> v.minimumLoad = value); }
+    ToolSettings flows(boolean value) { return with(v -> v.flows = value); }
     /** Turns limited paint on with a moderate load, or off. */
     ToolSettings oilPaint(boolean on) {
         return on == limitsPaint() ? this : paintLoad(on ? DEFAULT_PAINT_LOAD : UNLIMITED_PAINT);
@@ -258,7 +262,7 @@ final class ToolSettings {
     @Override public boolean equals(Object other) {
         if (!(other instanceof ToolSettings)) return false;
         ToolSettings s = (ToolSettings)other;
-        return tool == s.tool && minimum == s.minimum && maximum == s.maximum && tip == s.tip && softness == s.softness && tilt == s.tilt && hardness == s.hardness && tolerance == s.tolerance && strength == s.strength && pressureResponse == s.pressureResponse && head == s.head && angle == s.angle && bristles == s.bristles && headThickness == s.headThickness && gradient == s.gradient && shape == s.shape && filled == s.filled && outlineWidth == s.outlineWidth && carry == s.carry && paintLoad == s.paintLoad && loadingSpeed == s.loadingSpeed && minimumLoad == s.minimumLoad;
+        return tool == s.tool && minimum == s.minimum && maximum == s.maximum && tip == s.tip && softness == s.softness && tilt == s.tilt && hardness == s.hardness && tolerance == s.tolerance && strength == s.strength && pressureResponse == s.pressureResponse && head == s.head && angle == s.angle && bristles == s.bristles && headThickness == s.headThickness && gradient == s.gradient && shape == s.shape && filled == s.filled && outlineWidth == s.outlineWidth && carry == s.carry && paintLoad == s.paintLoad && loadingSpeed == s.loadingSpeed && minimumLoad == s.minimumLoad && flows == s.flows;
     }
-    @Override public int hashCode() { return java.util.Objects.hash(tool, minimum, maximum, tip, softness, tilt, hardness, tolerance, strength, pressureResponse, head, angle, bristles, headThickness, gradient, shape, filled, outlineWidth, carry, paintLoad, loadingSpeed, minimumLoad); }
+    @Override public int hashCode() { return java.util.Objects.hash(tool, minimum, maximum, tip, softness, tilt, hardness, tolerance, strength, pressureResponse, head, angle, bristles, headThickness, gradient, shape, filled, outlineWidth, carry, paintLoad, loadingSpeed, minimumLoad, flows); }
 }

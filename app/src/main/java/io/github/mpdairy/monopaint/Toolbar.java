@@ -63,7 +63,23 @@ final class Toolbar {
     }
 
     String selectedKey() {
-        return library().activeId().isEmpty() ? "tool:" + library().current().tool : library().activeId();
+        return library().activeId().isEmpty() ? "tool:" + shownAs(library().current().tool) : library().activeId();
+    }
+    /** The toolbar button a tool shows under: the dry and wet brush pens share the Brush pen's. */
+    static ToolSettings.Tool shownAs(ToolSettings.Tool tool) { return tool.water ? ToolSettings.Tool.BRUSH_PEN : tool; }
+    /** The tool a toolbar button selects: for the brush pens, the one chosen last, dry at first. */
+    private ToolSettings.Tool chosen(ToolSettings.Tool tool) {
+        return tool != ToolSettings.Tool.BRUSH_PEN ? tool : app.prefs.wetBrushPen() ? ToolSettings.Tool.WET_BRUSH_PEN : tool;
+    }
+    /** The brush, built-in or favorite, selected most recently, for {@link #returnToBrush}. */
+    private String lastBrush = "tool:" + ToolSettings.Tool.BRUSH;
+    /** Selects the brush last in use again, or the built-in Brush if that favorite is gone. */
+    void returnToBrush() {
+        ToolLibrary library = library();
+        boolean preset = false;
+        for (ToolLibrary.Preset each : library.presets()) preset |= each.id.equals(lastBrush);
+        if (preset) library.recall(lastBrush); else library.select(ToolSettings.Tool.BRUSH);
+        refreshToolSelection(); app.saveToolState();
     }
     boolean shapeChosen() {
         return app.prefs.shapeChosen(!library().builtin(ToolSettings.Tool.SHAPES).equals(ToolSettings.defaults(ToolSettings.Tool.SHAPES)));
@@ -76,7 +92,9 @@ final class Toolbar {
         for (ToolSettings.Tool tool : TOOLS) defaults.add(tool.name());
         defaults.add(LAYERS); defaults.add(ZOOM); defaults.add(PALETTE);
         for (String key : app.prefs.toolbarOrder()) if (defaults.contains(key) && !order.contains(key)) order.add(key);
-        for (String key : defaults) if (!order.contains(key)) order.add(key);
+        // A newly offered entry joins beside the one it follows by default, not at the end.
+        for (int i = 0; i < defaults.size(); i++) if (!order.contains(defaults.get(i)))
+            order.add(i == 0 ? 0 : order.indexOf(defaults.get(i - 1)) + 1, defaults.get(i));
         return order;
     }
     void move(String key, int direction) {
@@ -85,8 +103,9 @@ final class Toolbar {
         java.util.Collections.swap(order, from, to);
         app.prefs.setToolbarOrder(order); rebuildTools();
     }
-    /** Tools left out of {@link #TOOLS}, such as the unfinished wet brush pen, are never shown or kept selected. */
+    /** Tools left out of {@link #TOOLS} are never shown or kept selected. */
     boolean toolVisible(ToolSettings.Tool tool) {
+        tool = shownAs(tool);
         return java.util.Arrays.asList(TOOLS).contains(tool) && app.prefs.toolbarItemVisible(tool.name());
     }
     /** Shows or hides an entry. At least one tool stays visible; returns false if refused. */
@@ -166,15 +185,15 @@ final class Toolbar {
     }
     private void addTool(ToolSettings.Tool tool) {
         String key = "tool:" + tool;
-        ToolSettings remembered = library().builtin(tool);
+        ToolSettings remembered = library().builtin(chosen(tool));
         ToolButton button = selectable(key, remembered.label(), ToolIcons.of(remembered), () -> {
-            library().select(tool); refreshToolSelection(); app.saveToolState();
+            library().select(chosen(tool)); refreshToolSelection(); app.saveToolState();
         });
         presentTool(button, remembered, null);
         button.setOnLongClickListener(v -> {
             if (!app.busy()) {
                 app.setPickingShade(false); app.pad.finishStroke();
-                if (!selectedKey().equals(key)) { library().select(tool); refreshToolSelection(); app.saveToolState(); }
+                if (!selectedKey().equals(key)) { library().select(chosen(tool)); refreshToolSelection(); app.saveToolState(); }
                 app.showToolSettings();
             }
             return true;
@@ -198,15 +217,18 @@ final class Toolbar {
     /** Updates icons, descriptions and the selection marker after a tool or setting change. */
     void refreshToolSelection() {
         app.refreshEraseControl();
+        ToolSettings.Tool current = library().current().tool;
+        if (library().activeId().isEmpty() && current.water) app.prefs.setWetBrushPen(current.flowing);
         for (ToolSettings.Tool tool : ToolSettings.Tool.values()) {
             ToolButton button = selectionButtons.get("tool:" + tool);
-            if (button != null) presentTool(button, library().builtin(tool), null);
+            if (button != null) presentTool(button, library().builtin(chosen(tool)), null);
         }
         for (ToolLibrary.Preset preset : library().presets()) {
             ToolButton button = selectionButtons.get(preset.id);
             if (button != null) presentTool(button, preset.settings, preset);
         }
         String selected = selectedKey();
+        if (library().current().isBrush()) lastBrush = selected;
         for (Map.Entry<String, ToolButton> entry : selectionButtons.entrySet())
             entry.getValue().mark(entry.getKey().equals(selected));
     }

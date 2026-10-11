@@ -7,7 +7,7 @@ Tap a tool to select it. Tap it again to open its settings.
 | Tool | What it does |
 |:-:|---|
 | <img src="icons/brush.svg" width="24"><br>**Brush** | Pressure-sensitive paintbrush. |
-| <img src="icons/brush_pen.svg" width="24"><br>**Brush pen** | Clear water that drags paint around. |
+| <img src="icons/brush_pen.svg" width="24"><br>**Brush pen** | Clear water that drags paint around. Choose Dry or Wet in its settings: the wet one's ink keeps running through its water. |
 | <img src="icons/pencil.svg" width="24"><br>**Pencil** | Textured pencil. Lean it for broader strokes. |
 | <img src="icons/airbrush.svg" width="24"><br>**Airbrush** | Soft spray. Go over an area again to build up color. |
 | <img src="icons/fill.svg" width="24"><br>**Fill** | Flat or gradient flood fill. |
@@ -23,8 +23,19 @@ Tap a tool to select it. Tap it again to open its settings.
 | <img src="icons/brush_flat.svg" width="24"><br>**Flat** | Square edge that follows pen tilt. |
 | <img src="icons/brush_filbert.svg" width="24"><br>**Filbert** | Rounded oval that follows pen tilt. |
 
-**Oil paint** (a brush option): the brush runs out of paint along the stroke and
-then just smudges. Rub the pen on the color bar or a swatch to reload it.
+**Oil paint mode when opaque** (a brush option): with opaque paint, the brush
+runs out of paint along the stroke and then just smudges. Rub the pen on the
+color bar or a swatch to reload it.
+
+**Watercolor mode when transparent** (a brush option): with transparent paint,
+the brush paints like the wet brush pen: it lifts paint, soaks up ink and keeps it between
+strokes, and its ink runs and pools downhill when **Watercolor uses gravity** is
+on. The selected color is the lightest shade it lays; darker colors soak up less.
+Tap a color to reset the ink the brush has picked up. On a dry canvas, dried
+paint stays stuck under the wash. Each dab over it soaks it a little: a couple
+of passes leave it, more scrubbing lets the brush lift it. It never runs into the
+wash by itself. On a wet canvas it lifts at
+once.
 
 ### Fill types
 
@@ -95,7 +106,7 @@ Existing saved drawings also support these options.
 ## Settings
 
 **Menu → Settings** has the drawing hand, rotation, settings text size,
-**Wet canvas uses gravity** (wet paint runs downhill), **Smooth brush edges**
+**Watercolor uses gravity** (wet paint runs downhill), **Smooth brush edges**
 (anti-aliased dry brush and hard eraser strokes; better for PNG exports; adds a tiny bit of lag), Nomad Simulation Mode,
 and which tools appear on the toolbar.
 

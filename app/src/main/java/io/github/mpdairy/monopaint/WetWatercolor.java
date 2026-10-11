@@ -6,21 +6,38 @@ import java.util.Arrays;
 import java.util.BitSet;
 
 /** Transient water and pigment, separate from the dry drawing beneath it.
- * All calls run on the document owner thread. Only painted tiles allocate storage.
+ * All calls run on the document owner thread; only the pixel work of a batch is shared
+ * with spare cores, inside the call. Only painted tiles allocate storage.
  * Drying drops this state; the composited tones remain ordinary saved pixels. */
 final class WetWatercolor {
     static final int FRAME_MS = 150;
+    /** Spare cores that share each batch's pixel work with the calling thread, or none on one core. */
+    private static final int HELPERS = Math.max(0, Math.min(3, Runtime.getRuntime().availableProcessors() - 1));
+    private static final java.util.concurrent.ExecutorService WORKERS = HELPERS == 0 ? null
+            : java.util.concurrent.Executors.newFixedThreadPool(HELPERS, work -> {
+                Thread thread = new Thread(work, "Wet paint"); thread.setDaemon(true); return thread;
+            });
     private static final int SIDE = 16, PIXELS = SIDE * SIDE, FRAMES = 20;
     private static final int TILES_PER_FRAME = 96;
     /** Brush pen water stays wet longer and evens out quickly with the wet paint around it. */
     private static final int WATER_FRAMES = 40;
     /**
-     * Flowing water dries by this factor each frame. Once this damp it barely moves ink
-     * (mobility under 3%), so it rests and stops holding its tile open.
+     * Flowing water dries by this factor each frame. Once {@link #STILL} it rests and stops
+     * holding its tile open: the ink it would still move, by {@link #DAMP} (mobility under
+     * 3%), changes a stroke's look by only a shade or two, and stopping first saves a
+     * quarter of the frames. Below DAMP water also stops joining tile-scale spreading.
      */
-    private static final float DRYING = .985f, DAMP = .3f;
+    private static final float DRYING = .985f, STILL = .4f, DAMP = .3f;
+    /**
+     * Share of the soaking still to come each dab of a watercolor brush soaks into the stuck
+     * paint under it. A single pass is several overlapping dabs, so this stays small: it
+     * takes a good deal of scrubbing before the brush can lift much.
+     */
+    private static final float SCRUB = .027f;
     /** Dry paint that flowing water lifts holds this many times its own shade in pigment, and dissolves this fast when fresh. */
     private static final float DEPTH = 2, DISSOLVE = .8f;
+    /** Share of the ink a brush soaks from lifted paint that comes from what shows, while its reserve lasts. */
+    private static final float SHOWS = .4f;
     /** How readily water of this freshness lets ink through: drying water quickly becomes sluggish. */
     private static float mobility(float fresh) { return fresh * fresh * fresh; }
     /** Share of the ink difference that tiles joined by a full edge of fresh flowing water trade each step; at most 1/4 stays stable. */
@@ -28,8 +45,13 @@ final class WetWatercolor {
     /** Tile-scale steps per frame, so ink runs quickly through fresh water without evening it all out. */
     private static final int SPREAD_STEPS = 8;
     private final ArrayList<Tile> spreading = new ArrayList<>();
-    private float[] spreadInk = new float[16], spreadChange = new float[16], links = new float[16];
+    private float[] spreadInk = new float[16], spreadChange = new float[16], links = new float[16], downhill = new float[16];
+    /** Share of a straight-downhill tile pair's trade that falls instead of evening out, on an upright tablet. */
+    private static final float POOL = .7f;
     private int[] linked = new int[32];
+    /** The gathered tile's planned spread and its neighbors', row by row, for work on this thread; and the current frame. */
+    private final float[] spreadNear = new float[9];
+    private int frame;
     // Spread planning shares the animation deadline, including the first frame.
     // Snapshot queue membership because pen input may wake more tiles between slices.
     private Tile[] spreadCandidates;
@@ -49,7 +71,7 @@ final class WetWatercolor {
     private int strokePixels, frameRemaining, advancedTiles;
     /** Pigment the brush pen carries along the current stroke. */
     private float load;
-    private boolean loaded, hasFlowing;
+    private boolean loaded, hasFlowing, flowingFrame;
 
     WetWatercolor(ToneDocument document) {
         this(document, false, 100);
@@ -150,6 +172,13 @@ final class WetWatercolor {
      * at 1 the pen keeps its first load for the whole stroke.
      */
     void waterMask(int[] mask, int stride, int x, int y, int w, int h, float pull, boolean flowing, float carry) {
+        waterMask(mask, stride, x, y, w, h, pull, flowing, carry, null);
+    }
+    /**
+     * @param ink the ink a flowing brush holds between strokes, traded with every wet pixel
+     *            it covers; or null. Its water is at least its {@link BrushInk#tint}.
+     */
+    void waterMask(int[] mask, int stride, int x, int y, int w, int h, float pull, boolean flowing, float carry, BrushInk ink) {
         int marginLeft = margin(-gravityX), marginTop = margin(-gravityY);
         int marginRight = margin(gravityX), marginBottom = margin(gravityY);
         if (wholeCanvas) hydrate(x - marginLeft, y - marginTop, x + w + marginRight, y + h + marginBottom);
@@ -176,9 +205,20 @@ final class WetWatercolor {
                     || px >= document.width || py >= document.height) continue;
             Tile tile = tileAt(px, py);
             int index = (py % SIDE) * SIDE + px % SIDE;
-            // Each dab adds water only where the pen is newly arriving.
-            if (tile.touched.get(index)) continue;
-            if (!tile.wet.get(index)) lift(tile, index, px, py);
+            float coverage = (mask[row * stride + col] >>> 24) / 255f;
+            // Each dab adds water only where the pen is newly arriving, but rubbing keeps trading ink.
+            if (tile.touched.get(index)) {
+                if (ink != null && tile.flowing.get(index)) {
+                    if (ink.dryPaintSticks) scrub(tile, index, coverage);
+                    soak(tile, index, px, py, ink, pull * coverage);
+                }
+                continue;
+            }
+            // A watercolor brush on a dry canvas leaves dry paint stuck; anything else lifts it all.
+            boolean sticky = ink != null && ink.dryPaintSticks && !wholeCanvas;
+            if (sticky) { settleDried(tile, index, px, py); scrub(tile, index, coverage); }
+            else if (!tile.wet.get(index)) lift(tile, index, px, py);
+            else loosen(tile, index, 1);
             tile.touched.set(index);
             strokePixels++;
             boolean newWater = !tile.water.get(index);
@@ -196,11 +236,62 @@ final class WetWatercolor {
             }
             tile.water.set(index);
             if (flowing) { tile.flowing.set(index); hasFlowing = true; } else tile.flowing.clear(index);
-            composite(tile, index, px, py);
+            // A tinted brush's water is never lighter than its tint; darker paint it lifts stays.
+            // Over stuck paint the tint fills only the light left, glazing like transparent paint.
+            if (ink != null && flowing) {
+                float tint = 255 * ink.tint() * (1 - (tile.stuck == null ? 0 : tile.stuck[index]) / 255f);
+                if (tile.pigment[index] < tint) tile.pigment[index] += (tint - tile.pigment[index]) * coverage;
+            }
+            if (ink != null && flowing) soak(tile, index, px, py, ink, pull * coverage);
+            else composite(tile, index, px, py);
             wake(tile, WATER_FRAMES);
         }
         if (!flowing) load += (under - load) * PICKUP * (1 - carry) * (1 - carry);
         wakeAround(x - marginLeft, y - marginTop, x + w + marginRight, y + h + marginBottom);
+    }
+    /**
+     * Trades ink between the brush and a pixel of flowing water. Ink the brush soaks up
+     * leaves the pixel's dissolving reserve and lifted shade in step, so the spot stays
+     * lighter instead of refilling from paint the brush already took.
+     */
+    private void soak(Tile tile, int index, int px, int py, BrushInk ink, float share) {
+        // Soaked stuck paint is within the brush's reach too, but never flows by itself.
+        float pigment = tile.pigment[index], reachable = reachable(tile, index);
+        float moved = ink.trade(pigment + reachable, share);
+        // Even with nothing to trade, the pixel shows the water just laid on it.
+        if (moved == 0) { composite(tile, index, px, py); return; }
+        if (moved > 0) {
+            // Lifted paint holds more ink than shows: the brush drinks mostly from that reserve,
+            // so touching a dark line fills it with gray while the line only lightens a little.
+            // The rest is loose ink, and last the soaked paint beneath.
+            float hidden = tile.reserve == null ? 0 : Math.min(moved * (1 - SHOWS), tile.reserve[index]);
+            if (hidden > 0) tile.reserve[index] -= hidden;
+            float rest = moved - hidden, loose = Math.min(rest, pigment);
+            rest -= loose;
+            if (loose > 0) {
+                float kept = 1 - loose / pigment;
+                if (tile.reserve != null) tile.reserve[index] *= kept;
+                tile.target[index] *= kept;
+            }
+            tile.pigment[index] = pigment - loose;
+            if (rest > 0 && tile.stuck != null) tile.stuck[index] = Math.max(0, tile.stuck[index] - rest);
+        } else tile.pigment[index] = Math.min(255, pigment - moved);
+        composite(tile, index, px, py);
+    }
+    /** How much of a pixel's stuck paint the brush can take: the square of how soaked it is. */
+    private static float reachable(Tile tile, int index) {
+        if (tile.stuck == null || tile.stuck[index] <= 0) return 0;
+        float soaked = tile.soaked[index];
+        return tile.stuck[index] * soaked * soaked;
+    }
+    /**
+     * One dab of a watercolor brush soaks a little into the stuck paint under it, which then
+     * stays soaked while its water is wet. Soaked paint does not run into the wash; only the
+     * brush, coming back over it, can take some: see {@link #reachable}.
+     */
+    private static void scrub(Tile tile, int index, float coverage) {
+        if (tile.stuck == null || tile.stuck[index] <= 0) return;
+        tile.soaked[index] += (1 - tile.soaked[index]) * SCRUB * coverage;
     }
     private Tile tileAt(int x, int y) {
         int key = (y / SIDE) * columns + x / SIDE;
@@ -238,6 +329,29 @@ final class WetWatercolor {
             }
     }
     /** Wets a dry pixel, taking its drawn tone up as pigment over white. */
+    /**
+     * Where a watercolor brush's water lands on a dry canvas: water still wet from an
+     * earlier stroke keeps its loose ink, but dry paint, and water that has dried, stays
+     * stuck to the paper beneath fresh water.
+     */
+    private void settleDried(Tile tile, int index, int x, int y) {
+        boolean wet = tile.wet.get(index);
+        if (wet && tile.flowing.get(index) && tile.pull != null && tile.pull[index] > STILL) return;
+        int tone = document.tone(x, y);
+        if (!wet) markWet(tile, index);
+        tile.base[index] = (byte)255;
+        tile.pigment[index] = tile.target[index] = 0;
+        if (tile.reserve != null) tile.reserve[index] = 0;
+        if (tile.stuck == null) { tile.stuck = new float[PIXELS]; tile.soaked = new float[PIXELS]; }
+        tile.stuck[index] = 255 - tone; tile.soaked[index] = 0;
+        tile.water.clear(index); tile.flowing.clear(index);
+    }
+    /** Frees {@code share} of a pixel's stuck paint into its water as loose ink; its shade stays the same. */
+    private static void loosen(Tile tile, int index, float share) {
+        if (tile.stuck == null || tile.stuck[index] <= 0 || share <= 0) return;
+        float freed = tile.stuck[index] * Math.min(1, share);
+        tile.stuck[index] -= freed; tile.pigment[index] += freed;
+    }
     private void lift(Tile tile, int index, int x, int y) {
         markWet(tile, index); tile.base[index] = (byte)255;
         tile.pigment[index] = tile.target[index] = 255 - document.tone(x, y);
@@ -264,6 +378,11 @@ final class WetWatercolor {
     int strokePixels() { return strokePixels; }
     int advancedTiles() { return advancedTiles; }
     boolean framePending() { return frameRemaining > 0; }
+    /**
+     * Whether flowing water is moving. Its frames need not keep pace with the clock: shown
+     * as fast as they can be worked out, the ink settles almost as soon as the pen lifts.
+     */
+    boolean flowing() { return flowingFrame && !active.isEmpty(); }
     /** Unpaced advancement for model checks. The UI supplies a small work budget. */
     boolean advance(boolean strokeActive) {
         return advance(strokeActive, TILES_PER_FRAME, Long.MAX_VALUE, Integer.MAX_VALUE);
@@ -275,7 +394,9 @@ final class WetWatercolor {
         if (active.isEmpty() || maxTiles <= 0 || budgetNanos <= 0) return false;
         long start = System.nanoTime();
         if (frameRemaining == 0) {
-            frameRemaining = active.size();
+            frameRemaining = active.size(); frame++;
+            flowingFrame = false;
+            for (Tile tile : active) if (!tile.flowing.isEmpty()) { flowingFrame = true; break; }
             spreadCandidates = hasFlowing ? active.toArray(new Tile[0]) : null;
             spreading.clear();
             spreadPhase = spreadCursor = spreadPairs = spreadStep = 0;
@@ -300,28 +421,8 @@ final class WetWatercolor {
             if (t > 0 && (r - l > maxSpan || b - u > maxSpan || System.nanoTime() - start >= budgetNanos)) break;
             left = l; top = u; right = r; bottom = b;
             batch.add(active.removeFirst());
-            // This frame's tile-scale ink change: fresher water takes more of a gain, and a
-            // loss comes from where the ink is, so no pixel goes below clear water.
-            boolean gaining = tile.spread > 0;
-            float spread = tile.spread / Math.max(gaining ? DAMP : 1, gaining ? tile.meanFresh : tile.meanInk);
-            tile.spread = 0;
-            for (int i = tile.wet.nextSetBit(0); i >= 0; i = tile.wet.nextSetBit(i + 1)) {
-                float value = tile.pigment[i];
-                if (tile.flowing.get(i)) {
-                    if (tile.pull[i] <= DAMP) { tile.next[i] = value; continue; }
-                    float fresh = tile.mobility[i];
-                    tile.next[i] = value + (fromLeft * exchange(tile, i, -1, 0, value, fresh) + fromRight * exchange(tile, i, 1, 0, value, fresh)
-                            + fromAbove * exchange(tile, i, 0, -1, value, fresh) + fromBelow * exchange(tile, i, 0, 1, value, fresh)) / 12 + spread * (gaining ? tile.pull[i] : value);
-                    continue;
-                }
-                float neighbors = fromLeft * neighbor(tile, i, -1, 0, value) + fromRight * neighbor(tile, i, 1, 0, value)
-                        + fromAbove * neighbor(tile, i, 0, -1, value) + fromBelow * neighbor(tile, i, 0, 1, value);
-                // Water has no settled pigment to return to: it only evens out.
-                if (tile.water.get(i)) { tile.next[i] = value + (neighbors / 12 - value) * tile.pull[i]; continue; }
-                float flow = wholeCanvas ? wetness : 1;
-                tile.next[i] = value * (1 - .55f * flow) + neighbors * (flow / 30f) + tile.target[i] * (.15f * flow);
-            }
         }
+        computeBatch(fromLeft, fromRight, fromAbove, fromBelow);
         for (Tile tile : batch) {
             for (int i = tile.wet.nextSetBit(0); i >= 0; i = tile.wet.nextSetBit(i + 1)) {
                 tile.pigment[i] = tile.next[i];
@@ -334,7 +435,7 @@ final class WetWatercolor {
                     float dissolved = Math.min(tile.reserve[i], Math.max(0, tile.target[i] - tile.pigment[i]) * tile.pull[i] * DISSOLVE);
                     tile.reserve[i] -= dissolved; tile.pigment[i] += dissolved;
                 }
-                damp |= (tile.pull[i] *= DRYING) > DAMP;
+                damp |= (tile.pull[i] *= DRYING) > STILL;
                 tile.mobility[i] = mobility(tile.pull[i]);
             }
             if (damp) tile.frames = Math.max(tile.frames, 2);
@@ -346,6 +447,56 @@ final class WetWatercolor {
         boolean changed = canContinue ? document.finishContinuation() : document.finish();
         canContinue |= changed;
         return changed;
+    }
+    /**
+     * Works out the next pigment of every tile in {@link #batch}. Each tile reads only the
+     * current pigment around it and writes only its own {@link Tile#next}, so the spare
+     * cores share the batch and the result does not depend on how it is shared.
+     */
+    private void computeBatch(float fromLeft, float fromRight, float fromAbove, float fromBelow) {
+        int count = batch.size();
+        if (count < 2 || WORKERS == null) {
+            for (int t = 0; t < count; t++) computeTile(batch.get(t), spreadNear, fromLeft, fromRight, fromAbove, fromBelow);
+            return;
+        }
+        java.util.concurrent.atomic.AtomicInteger next = new java.util.concurrent.atomic.AtomicInteger();
+        Runnable share = () -> {
+            float[] near = new float[9];
+            for (int t; (t = next.getAndIncrement()) < count; ) computeTile(batch.get(t), near, fromLeft, fromRight, fromAbove, fromBelow);
+        };
+        int helpers = Math.min(HELPERS, count - 1);
+        java.util.concurrent.Future<?>[] helping = new java.util.concurrent.Future<?>[helpers];
+        for (int h = 0; h < helpers; h++) helping[h] = WORKERS.submit(share);
+        share.run();
+        try { for (java.util.concurrent.Future<?> help : helping) help.get(); }
+        catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); throw new IllegalStateException(interrupted); }
+        catch (java.util.concurrent.ExecutionException failed) { throw new IllegalStateException(failed.getCause()); }
+    }
+    private void computeTile(Tile tile, float[] near, float fromLeft, float fromRight, float fromAbove, float fromBelow) {
+        // This frame's tile-scale ink change: fresher water takes more of a gain, and a
+        // loss comes from where the ink is, so no pixel goes below clear water.
+        boolean spreads = gatherSpread(tile, near);
+        for (int i = tile.wet.nextSetBit(0); i >= 0; i = tile.wet.nextSetBit(i + 1)) {
+            float value = tile.pigment[i];
+            if (tile.flowing.get(i)) {
+                if (tile.pull[i] <= STILL) { tile.next[i] = value; continue; }
+                float fresh = tile.mobility[i];
+                float next = value + (fromLeft * exchange(tile, i, -1, 0, value, fresh) + fromRight * exchange(tile, i, 1, 0, value, fresh)
+                        + fromAbove * exchange(tile, i, 0, -1, value, fresh) + fromBelow * exchange(tile, i, 0, 1, value, fresh)) / 12;
+                if (spreads) {
+                    float spread = spreadAt(i, near);
+                    next += spread * (spread > 0 ? tile.pull[i] : value);
+                }
+                tile.next[i] = next;
+                continue;
+            }
+            float neighbors = fromLeft * neighbor(tile, i, -1, 0, value) + fromRight * neighbor(tile, i, 1, 0, value)
+                    + fromAbove * neighbor(tile, i, 0, -1, value) + fromBelow * neighbor(tile, i, 0, 1, value);
+            // Water has no settled pigment to return to: it only evens out.
+            if (tile.water.get(i)) { tile.next[i] = value + (neighbors / 12 - value) * tile.pull[i]; continue; }
+            float flow = wholeCanvas ? wetness : 1;
+            tile.next[i] = value * (1 - .55f * flow) + neighbors * (flow / 30f) + tile.target[i] * (.15f * flow);
+        }
     }
     /**
      * Pixel exchange alone spreads ink only a few pixels a frame. Once per frame, tiles
@@ -388,10 +539,13 @@ final class WetWatercolor {
                         if (joined == 0) continue;
                         if (links.length <= spreadPairs) {
                             links = Arrays.copyOf(links, spreadPairs * 2);
+                            downhill = Arrays.copyOf(downhill, spreadPairs * 2);
                             linked = Arrays.copyOf(linked, spreadPairs * 4);
                         }
                         links[spreadPairs] = SPREAD * joined / SIDE * mobility(Math.min(tile.meanFresh, other.meanFresh))
                                 * Math.min(tile.flowingPixels, other.flowingPixels);
+                        // How steeply the pair runs downhill, from this tile to the other.
+                        downhill[spreadPairs] = side == 0 ? gravityX : gravityY;
                         linked[spreadPairs * 2] = a; linked[spreadPairs * 2 + 1] = other.spreadSlot; spreadPairs++;
                     }
                 } else { spreadPhase = spreadPairs == 0 ? 5 : 2; spreadCursor = 0; }
@@ -404,7 +558,12 @@ final class WetWatercolor {
                 int end = Math.min(spreadPairs, spreadCursor + 64);
                 for (; spreadCursor < end; spreadCursor++) {
                     int a = linked[spreadCursor * 2], b = linked[spreadCursor * 2 + 1];
-                    float moved = links[spreadCursor] * (spreadInk[b] - spreadInk[a]);
+                    // Downhill, part of the trade becomes a fall: ink runs from the upper tile to
+                    // the lower one whatever the lower holds, so it pools at the wet area's low edge.
+                    // Each tile still sends no more than evening out could, which stays stable.
+                    float link = links[spreadCursor], slope = downhill[spreadCursor], fall = POOL * Math.abs(slope);
+                    float moved = link * (1 - fall) * (spreadInk[b] - spreadInk[a])
+                            + link * fall * (slope > 0 ? -spreadInk[a] : spreadInk[b]);
                     spreadChange[a] += moved; spreadChange[b] -= moved;
                 }
                 if (end == spreadPairs) { spreadPhase = 4; spreadCursor = 0; }
@@ -416,11 +575,40 @@ final class WetWatercolor {
             } else {
                 if (spreadCursor < count) {
                     Tile tile = spreading.get(spreadCursor);
-                    tile.spread = spreadInk[spreadCursor++] - tile.meanInk; tile.spreadSlot = -1;
+                    // A gain goes mostly to fresher water, a loss comes from where the ink is.
+                    float change = spreadInk[spreadCursor++] - tile.meanInk;
+                    tile.spread = change / Math.max(change > 0 ? DAMP : 1, change > 0 ? tile.meanFresh : tile.meanInk);
+                    tile.spreadFrame = frame; tile.spreadSlot = -1;
                 } else { spreadCandidates = null; return true; }
             }
         } while (System.nanoTime() - start < budgetNanos);
         return false;
+    }
+    /**
+     * Loads this frame's planned spread of a tile and its eight neighbors, so {@link #spreadAt}
+     * can blend them: applied to whole tiles, neighboring tiles' different changes leave
+     * square steps where ink runs quickly. A neighbor without a plan takes the tile's own.
+     * False when nothing nearby spreads.
+     */
+    private boolean gatherSpread(Tile tile, float[] spreadNear) {
+        float own = tile.spreadFrame == frame ? tile.spread : 0;
+        boolean any = own != 0;
+        for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+            int x = tile.x + dx * SIDE, y = tile.y + dy * SIDE;
+            Tile other = x >= 0 && y >= 0 && x < document.width && y < document.height ? tiles[y / SIDE * columns + x / SIDE] : null;
+            float value = other != null && other.spreadFrame == frame ? other.spread : own;
+            spreadNear[(dy + 1) * 3 + dx + 1] = value;
+            any |= value != 0;
+        }
+        return any;
+    }
+    /** The planned spread at a pixel of the gathered tile, blended between tile centers. */
+    private static float spreadAt(int index, float[] spreadNear) {
+        float u = (index % SIDE + .5f) / SIDE - .5f, v = (index / SIDE + .5f) / SIDE - .5f;
+        int sx = u < 0 ? 0 : 2, sy = v < 0 ? 0 : 6;
+        float a = Math.abs(u), b = Math.abs(v);
+        return (1 - a) * (1 - b) * spreadNear[4] + a * (1 - b) * spreadNear[3 + sx]
+                + (1 - a) * b * spreadNear[sy + 1] + a * b * spreadNear[sy + sx];
     }
     /** Updates the mean ink, mean freshness and count of a tile's flowing pixels. */
     private static void measure(Tile tile) {
@@ -496,7 +684,9 @@ final class WetWatercolor {
     private void composite(Tile tile, int index, int x, int y) {
         // Legacy washes retain a dry base. Canvas mode imports old paint as pigment
         // over white, so it participates in the same diffusion as each new stroke.
-        int tone = Math.round((tile.base[index] & 255) * (1 - tile.pigment[index] / 255f));
+        // Stuck paint and the loose ink over it add up, so freeing one into the other keeps the shade.
+        float ink = tile.pigment[index] + (tile.stuck == null ? 0 : tile.stuck[index]);
+        int tone = Math.round((tile.base[index] & 255) * (1 - Math.min(255, ink) / 255f));
         document.setTone(x, y, Math.max(0, Math.min(255, tone)));
     }
     private static final class Tile {
@@ -511,11 +701,14 @@ final class WetWatercolor {
         float[] mobility;
         /** Lifted paint not yet dissolved into flowing water, allocated when there is some. */
         float[] reserve;
+        /** Dry paint, out of 255, held stuck beneath a watercolor brush's water until it soaks loose, and how soaked it is, 0 to 1; allocated when there is some. */
+        float[] stuck, soaked;
         int frames, wetPixels, flowingPixels;
         float meanInk, meanFresh;
-        /** Planned change to this tile's mean flowing ink this frame. */
+        /** Planned change to this tile's mean flowing ink, per unit of freshness (a gain) or of ink (a loss), during {@link #spreadFrame}. */
         float spread;
-        int spreadSlot = -1;
+        int spreadSlot = -1, spreadFrame = -1;
+
         Tile(int x, int y) { this.x = x; this.y = y; }
     }
 }

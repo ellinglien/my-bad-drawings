@@ -26,7 +26,7 @@ final class PaintPreferences {
     boolean simulateSmallerPanel() { return flag("nomad_mode", false); }
     void setSimulateSmallerPanel(boolean value) { setFlag("nomad_mode", value); }
     /** Wet paint runs toward whichever page edge the tablet tilts down. */
-    boolean wetGravity() { return flag("wet_gravity", false); }
+    boolean wetGravity() { return flag("wet_gravity", true); }
     void setWetGravity(boolean value) { setFlag("wet_gravity", value); }
     /** Dry brush strokes anti-alias their edges, for cleaner exports. */
     boolean smoothEdges() { return flag("smooth_edges", false); }
@@ -50,6 +50,9 @@ final class PaintPreferences {
     void setNavigationLocked(boolean value) { setFlag("navigation_locked", value); }
     /** Whether the user has picked a shape, so Shapes shows that shape's icon. */
     boolean shapeChosen(boolean fallback) { return flag("shape_chosen", fallback); }
+    /** Whether the toolbar's Brush pen selects the wet brush pen; the dry one at first. */
+    boolean wetBrushPen() { return flag("wet_brush_pen", false); }
+    void setWetBrushPen(boolean value) { setFlag("wet_brush_pen", value); }
     void setShapeChosen() { setFlag("shape_chosen", true); }
 
     /** Toolbar entries are tool names plus {@code LAYERS}, {@code ZOOM} and {@code PALETTE}. */
@@ -88,6 +91,8 @@ final class PaintPreferences {
         state.wetness = Math.max(0, Math.min(100, store.getInt("canvas_wetness", 65)));
         if (state.wetness == 0) state.wetCanvas = false;
         state.gray = Math.max(0, Math.min(255, store.getInt("gray", 0)));
+        state.brushInk.restore(store.getFloat("brush_ink", 0), 0);
+        state.brushLoad.restore(store.getFloat("brush_load_ink", 0), store.getFloat("brush_load_tint", 1 - state.gray / 255f));
     }
 
     /** Saved tools and favorites, or a fresh library. Unreadable data is kept in a backup key. */
@@ -108,7 +113,8 @@ final class PaintPreferences {
         // "diameter" also seeds the brush size if the tool library is ever missing.
         store.edit().putInt("gray", state.gray).putInt("diameter", library.current().maximum)
                 .putBoolean("wet_canvas", state.wetCanvas).putBoolean("transparent_paint", state.transparentPaint)
-                .putBoolean("erase_mode", state.eraseMode).putInt("canvas_wetness", state.wetness)
+                .putBoolean("erase_mode", state.eraseMode).putFloat("brush_ink", state.brushInk.fullness())
+                .putFloat("brush_load_ink", state.brushLoad.fullness()).putFloat("brush_load_tint", state.brushLoad.tint()).putInt("canvas_wetness", state.wetness)
                 .putString("tools", java.util.Base64.getEncoder().encodeToString(library.encode())).apply();
     }
 }

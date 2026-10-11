@@ -6,7 +6,7 @@ import java.util.Arrays;
 public final class WetWatercolorChecks {
     public static void main(String[] args) throws Exception {
         blendingAndHistory(); dryPaperAndLinework(); dryGaps(); drying(); pausedStrokes(false); pausedStrokes(true);
-        liveStroke(); boundedSlices(); adaptiveBudget(); presets(); gravity(); brushPen(false); brushPen(true); carriedPaint(255); carriedPaint(128); wetBrushPen(); flowingSlices();
+        liveStroke(); boundedSlices(); adaptiveBudget(); presets(); gravity(); brushPen(false); brushPen(true); carriedPaint(255); carriedPaint(128); wetBrushPen(); brushInk(); smoothFlow(); flowingGravity(); flowingGlaze(); stuckPaint(); flowingSlices();
         System.out.println("PASS: live wet blending, gravity drift, brush pen seeping and sharp dry edges, wet brush pen ink flow by freshness, adaptive work limits, bounded spatial/time slices, pause/resume, retained water, dry boundaries/linework, drying, exact undo/redo, saved tones and TSP9 migration");
     }
     private static void check(boolean pass, String message) { if (!pass) throw new AssertionError(message); }
@@ -86,7 +86,7 @@ public final class WetWatercolorChecks {
         int[] spot = new int[40 * 24]; Arrays.fill(spot, 0xff000000);
         doc.begin(); wet.beginStroke(); wet.waterMask(spot, 40, 130, 12, 40, 24, 1, true); wet.finishStroke();
         for (int frame = 0; frame < 60; frame++) wet.advance(false);
-        check(wet.isAnimating(), "Flowing water is still wet after nine seconds");
+        check(wet.isAnimating(), "Flowing water is still wet after sixty frames");
         int[] bridge = new int[8 * 8]; Arrays.fill(bridge, 0xff000000);
         doc.begin(); wet.beginStroke();
         for (int x = 2; x <= 128; x += 3) wet.waterMask(bridge, 8, x, 20, 8, 8, 1, true);
@@ -115,6 +115,176 @@ public final class WetWatercolorChecks {
         rub.finishStroke(); settle(rub);
         int darkest = 255; for (int y = 0; y < 64; y++) for (int x = 0; x < 64; x++) darkest = Math.min(darkest, faded.tone(x, y));
         check(during >= 159 && darkest >= 159, "Wetting gray ink leaves it gray (" + during + " while rubbing, darkest " + darkest + ")");
+    }
+    /**
+     * The wet brush pen keeps ink between strokes: a clean brush soaks it up, less once it
+     * is fuller, and lets it out over clean paper elsewhere until it is cleaned.
+     */
+    private static void brushInk() {
+        ToneDocument doc = new ToneDocument(256, 64);
+        doc.begin(); for (int y = 0; y < 64; y++) for (int x = 0; x < 64; x++) doc.paintTone(x, y, 0); doc.finish();
+        BrushInk ink = new BrushInk();
+        int[] mask = new int[16 * 16]; Arrays.fill(mask, 0xff000000);
+        float[] soaked = new float[2];
+        for (int pass = 0; pass < 2; pass++) {
+            float before = ink.fullness();
+            rub(doc, ink, mask, 8, 40, 24);
+            soaked[pass] = ink.fullness() - before;
+        }
+        String held = " (first rub " + soaked[0] + ", second " + soaked[1] + ")";
+        check(soaked[0] > 0 && soaked[1] < soaked[0], "A clean brush soaks up black, and less once it holds some" + held);
+        check(soaked[0] > .15f && doc.tone(30, 32) > 10 && doc.tone(30, 32) < 80, "Lifted paint holds more ink than shows: the brush fills with it while the black only lightens a little ("
+                + doc.tone(30, 32) + held + ")");
+        float full = ink.fullness();
+        rub(doc, ink, mask, 150, 230, 24);
+        check(doc.tone(190, 32) < 250 && ink.fullness() < full, "The brush lets its ink out over clean paper in a later stroke (" + doc.tone(190, 32) + ")");
+        ink.clean();
+        check(ink.fullness() == 0, "Cleaning empties the brush");
+        rub(doc, ink, mask, 150, 230, 0);
+        check(doc.tone(190, 8) == 255, "A clean brush leaves clean paper clean (" + doc.tone(190, 8) + ")");
+        ink.restore(1, 2); check(ink.fullness() == 1, "A brush holds no more than full");
+    }
+    /** One flowing stroke back and forth from {@code from} to {@code to} at row {@code top}, settled. */
+    private static void rub(ToneDocument doc, BrushInk ink, int[] mask, int from, int to, int top) {
+        WetWatercolor wet = new WetWatercolor(doc);
+        doc.begin(); wet.beginStroke();
+        for (int pass = 0; pass < 3; pass++) for (int x = from; x <= to; x += 3)
+            wet.waterMask(mask, 16, pass % 2 == 0 ? x : from + to - x, top, 16, 16, 1, true, 0, ink);
+        wet.finishStroke(); settle(wet);
+    }
+    /**
+     * A brush's flowing transparent paint is the wet brush pen's water tinted with the selected
+     * shade: never lighter than it, it soaks up less ink the darker it is, and pools with gravity.
+     */
+    private static void flowingGlaze() {
+        ToneDocument doc = new ToneDocument(128, 128);
+        doc.begin(); for (int y = 0; y < 128; y++) for (int x = 96; x < 128; x++) doc.paintTone(x, y, 40); doc.finish();
+        byte[] dry = doc.snapshot();
+        WetWatercolor wet = new WetWatercolor(doc); wet.setGravity(0, .3f);
+        int[] mask = new int[16 * 16]; Arrays.fill(mask, 0xff000000);
+        BrushInk brush = new BrushInk(true); brush.tint(128);
+        doc.begin(); wet.beginStroke();
+        for (int y = 0; y <= 112; y += 6) for (int x = 0; x <= 112; x += 6) wet.waterMask(mask, 16, x, y, 16, 16, 1, true, 0, brush);
+        String laid = " (paper " + doc.tone(40, 64) + ", over dark paint " + doc.tone(110, 64) + ")";
+        check(doc.tone(40, 64) <= 130 && doc.tone(40, 64) > 90 && Math.abs(doc.tone(110, 64) - 40 * 128 / 255) <= 6,
+                "The tint is the lightest the brush lays, and glazes over dry paint like transparent paint" + laid);
+        wet.finishStroke(); settle(wet);
+        String pooled = " (top " + doc.tone(40, 8) + ", bottom " + doc.tone(40, 120) + ")";
+        check(doc.tone(40, 120) + 30 < doc.tone(40, 8), "Its ink runs downhill and pools at the wash's low edge" + pooled);
+        check(doc.undo() && Arrays.equals(dry, doc.snapshot()), "One undo removes the flowing paint");
+        // A gray brush soaks up less from black than clear water does, and a tap resets what it took.
+        float clear = soaked(255), gray = soaked(128);
+        check(gray > 0 && gray < clear * .7f, "A darker tint soaks up less ink (clear " + clear + ", gray " + gray + ")");
+        brush.trade(255, 1); brush.tint(128);
+        check(Math.abs(brush.fullness() - 127 / 255f) < .001f, "Tapping a shade resets the brush's ink to it");
+        for (int i = 0; i < 50; i++) brush.trade(0, 1);
+        check(Math.abs(brush.fullness() - 127 / 255f) < .001f, "Over clear water the brush never gives out its tint");
+    }
+    /** How much ink a brush tinted {@code gray} soaks up from one stroke over black. */
+    private static float soaked(int gray) {
+        ToneDocument doc = new ToneDocument(96, 64);
+        doc.begin(); for (int y = 0; y < 64; y++) for (int x = 0; x < 96; x++) doc.paintTone(x, y, 0); doc.finish();
+        WetWatercolor wet = new WetWatercolor(doc);
+        int[] mask = new int[16 * 16]; Arrays.fill(mask, 0xff000000);
+        BrushInk brush = new BrushInk(); brush.tint(gray);
+        float before = brush.fullness();
+        doc.begin(); wet.beginStroke();
+        for (int x = 8; x <= 72; x += 3) wet.waterMask(mask, 16, x, 24, 16, 16, 1, true, 0, brush);
+        wet.finishStroke();
+        return brush.fullness() - before;
+    }
+    /**
+     * Under a watercolor brush, dry paint stays stuck: each dab soaks it a little, so a couple
+     * of passes over black line art leave it while scrubbing it more lifts it.
+     * Soaked paint never drains into the wash by itself.
+     */
+    private static void stuckPaint() {
+        int[] pen = grazed(false, 255, 1, 0), two = grazed(true, 220, 2, 0), clearTwo = grazed(true, 255, 2, 0),
+                rubbed = grazed(true, 220, 8, 0), clearRubbed = grazed(true, 255, 8, 0), slow = grazed(true, 255, 8, 4);
+        StringBuilder curve = new StringBuilder();
+        for (int passes = 1; passes <= 8; passes++) curve.append(grazed(true, 255, passes, 0)[0]).append(' ');
+        String tones = " (spot, downstream: pen " + pen[0] + ", " + pen[1] + "; wash twice " + two[0] + ", " + two[1]
+                + "; clear twice " + clearTwo[0] + "; wash rubbed " + rubbed[0] + ", " + rubbed[1]
+                + "; clear rubbed " + clearRubbed[0] + ", slowly " + slow[0] + "; clear by rubs " + curve + ")";
+        check(pen[0] > 200, "The wet brush pen lifts dry paint at once" + tones);
+        check(two[0] < 30 && clearTwo[0] < 30 && Math.abs(two[1] - 220) <= 6,
+                "A couple of passes over a black line leave it, and the wash keeps its own tint" + tones);
+        check(rubbed[0] > two[0] + 60 && clearRubbed[0] > clearTwo[0] + 60, "Rubbing several times lifts the soaked paint" + tones);
+        check(Math.abs(slow[0] - clearRubbed[0]) <= 30, "Pausing between passes does not soak the paint by itself" + tones);
+        // Lifted ink the brush put down nearby may run back over the spot; the spot's own paint never drains away.
+        check(rubbed[0] <= rubbed[2] + 6, "Once the brush leaves, soaked paint stays put instead of draining into the wash (at pen-up "
+                + rubbed[2] + ", settled " + rubbed[0] + ")");
+    }
+    /**
+     * Tones of a black spot, the wash beyond it, and the spot at pen-up, after a stroke tinted
+     * {@code gray} crosses it {@code passes} times, with {@code frames} of wet animation between passes.
+     */
+    private static int[] grazed(boolean watercolor, int gray, int passes, int frames) {
+        ToneDocument doc = new ToneDocument(160, 64);
+        doc.begin(); for (int y = 0; y < 64; y++) for (int x = 40; x < 52; x++) doc.paintTone(x, y, 0); doc.finish();
+        WetWatercolor wet = new WetWatercolor(doc);
+        int[] mask = new int[16 * 16]; Arrays.fill(mask, 0xff000000);
+        BrushInk brush = new BrushInk(watercolor); brush.tint(gray);
+        doc.begin(); wet.beginStroke();
+        for (int pass = 0; pass < passes; pass++) {
+            for (int x = 0; x <= 64; x += 3) wet.waterMask(mask, 16, pass % 2 == 0 ? x : 64 - x, 24, 16, 16, 1, true, 0, brush);
+            for (int frame = 0; frame < frames; frame++) { wet.advance(true); while (wet.framePending()) wet.advance(true); }
+        }
+        for (int x = 64; x <= 140; x += 3) wet.waterMask(mask, 16, x, 24, 16, 16, 1, true, 0, brush);
+        wet.finishStroke(); int lifted = doc.tone(46, 32); settle(wet);
+        return new int[]{doc.tone(46, 32), doc.tone(120, 32), lifted};
+    }
+    /** Ink running through a wide wash of flowing water pools at its downhill edge on a tilted tablet. */
+    private static void flowingGravity() {
+        float level = inkCenter(0, 0), down = inkCenter(0, .3f), right = inkCenter(.3f, 0);
+        String centers = " (level " + level + ", tilted down " + down + ", tilted right " + right + ")";
+        check(Math.abs(level - 64) < 4, "On a level tablet the ink spreads evenly around its band" + centers);
+        check(down > level + 15, "Tilted, the ink runs down through the water and pools at its low edge" + centers);
+        check(right > level + 15 && Math.abs(inkCenterY - 64) < 4, "Sideways tilt runs the ink sideways only" + centers);
+    }
+    private static float inkCenterY;
+    /** Where a dark band's ink settles in a wide wash of flowing water: along the tilt's axis, and across it in {@link #inkCenterY}. */
+    private static float inkCenter(float gx, float gy) {
+        ToneDocument doc = new ToneDocument(128, 128);
+        boolean sideways = gx != 0;
+        doc.begin();
+        for (int a = 0; a < 128; a++) for (int b = 52; b < 76; b++) doc.paintTone(sideways ? b : a, sideways ? a : b, 0);
+        doc.finish();
+        WetWatercolor wet = new WetWatercolor(doc); wet.setGravity(gx, gy);
+        int[] mask = new int[16 * 16]; Arrays.fill(mask, 0xff000000);
+        doc.begin(); wet.beginStroke();
+        for (int y = 0; y <= 112; y += 6) for (int x = 0; x <= 112; x += 6) wet.waterMask(mask, 16, x, y, 16, 16, 1, true);
+        wet.finishStroke(); settle(wet);
+        double ink = 0, along = 0, across = 0;
+        for (int y = 0; y < 128; y++) for (int x = 0; x < 128; x++) {
+            double k = 255 - doc.tone(x, y); ink += k; along += k * (sideways ? x : y); across += k * (sideways ? y : x);
+        }
+        inkCenterY = (float)(across / ink);
+        return (float)(along / ink);
+    }
+    /**
+     * A broad, fast flowing stroke from a black block across white: ink running between
+     * tiles must not leave square steps on the 16 px tile grid.
+     */
+    private static void smoothFlow() {
+        ToneDocument doc = new ToneDocument(256, 128);
+        doc.begin(); for (int y = 0; y < 128; y++) for (int x = 0; x < 48; x++) doc.paintTone(x, y, 0); doc.finish();
+        WetWatercolor wet = new WetWatercolor(doc);
+        int[] mask = new int[40 * 80]; Arrays.fill(mask, 0xff000000);
+        doc.begin(); wet.beginStroke();
+        for (int x = 20; x <= 200; x += 12) wet.waterMask(mask, 40, x, 24, 40, 80, 1, true);
+        wet.finishStroke();
+        float seams = 0, inside = 0; int seamCount = 0, insideCount = 0;
+        for (int frame = 0; frame < 12; frame++) {
+            wet.advance(false);
+            // Steps between neighboring pixels across tile edges, against steps within tiles, inside the wet stroke.
+            for (int y = 32; y < 96; y++) for (int x = 60; x < 230; x++) {
+                float step = Math.abs(doc.tone(x, y) - doc.tone(x - 1, y)) + Math.abs(doc.tone(x, y) - doc.tone(x, y - 1));
+                if (x % 16 == 0 || y % 16 == 0) { seams += step; seamCount++; } else { inside += step; insideCount++; }
+            }
+        }
+        seams /= seamCount; inside /= insideCount;
+        check(seams < inside * 1.5f + .5f, "Running ink leaves no steps on the tile grid (tile edges " + seams + ", within tiles " + inside + ")");
     }
     /** Even spread planning must yield; splitting it must not change the fluid result. */
     private static void flowingSlices() {

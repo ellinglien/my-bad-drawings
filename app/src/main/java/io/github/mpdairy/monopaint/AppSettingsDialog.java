@@ -39,7 +39,7 @@ final class AppSettingsDialog {
         textSizes.getChildAt(1).setContentDescription("Large settings text");
         content.addView(textSizes);
         CheckBox gravity = new CheckBox(app);
-        gravity.setText("Wet canvas uses gravity"); gravity.setContentDescription("Wet canvas uses gravity");
+        gravity.setText("Watercolor uses gravity"); gravity.setContentDescription("Watercolor uses gravity");
         gravity.setChecked(prefs.wetGravity());
         gravity.setOnCheckedChangeListener((button, checked) -> prefs.setWetGravity(checked));
         content.addView(gravity);

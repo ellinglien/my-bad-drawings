@@ -40,7 +40,8 @@ final class BrushPerformanceChecks {
     }
     private static void wetReplay(StringBuilder report) throws Exception {
         for (int size : new int[]{48, 128}) {
-            long[] input = new long[3], animation = new long[3], worst = new long[3];
+            long[] input = new long[3], animation = new long[3], worst = new long[3], settle = new long[3];
+            int frames = 0;
             String fingerprint = "";
             for (int run = -1; run < 3; run++) {
                 ToneDocument doc = new ToneDocument(768, 512);
@@ -65,15 +66,23 @@ final class BrushPerformanceChecks {
                         max = Math.max(max, System.nanoTime() - slice);
                     }
                 }
-                if (run >= 0) { input[run] = inputTime; animation[run] = System.nanoTime() - start; worst[run] = max; }
+                long twelve = System.nanoTime() - start;
+                // Then run on to the settled look, as flowing water does once the pen lifts.
+                frames = 12;
+                while (wet.isAnimating()) {
+                    wet.advance(false, 64, 5_000_000, 192);
+                    while (wet.framePending()) wet.advance(false, 64, 5_000_000, 192);
+                    frames++;
+                }
+                if (run >= 0) { input[run] = inputTime; animation[run] = twelve; worst[run] = max; settle[run] = System.nanoTime() - start; }
                 byte[] hash = MessageDigest.getInstance("SHA-256").digest(doc.snapshot());
                 StringBuilder hex = new StringBuilder();
                 for (byte value : hash) hex.append(String.format(Locale.US, "%02x", value & 255));
                 fingerprint = hex.toString();
             }
-            Arrays.sort(input); Arrays.sort(animation); Arrays.sort(worst);
-            report.append(String.format(Locale.US, "wet_pen size=%d input_ms=%.2f animation_ms=%.2f max_slice_ms=%.2f sha256=%s%n",
-                    size, input[1]/1e6, animation[1]/1e6, worst[1]/1e6, fingerprint));
+            Arrays.sort(input); Arrays.sort(animation); Arrays.sort(worst); Arrays.sort(settle);
+            report.append(String.format(Locale.US, "wet_pen size=%d input_ms=%.2f animation_ms=%.2f max_slice_ms=%.2f settle_ms=%.0f frames=%d sha256=%s%n",
+                    size, input[1]/1e6, animation[1]/1e6, worst[1]/1e6, settle[1]/1e6, frames, fingerprint));
         }
     }
     private static void toolReplay(StringBuilder report) {

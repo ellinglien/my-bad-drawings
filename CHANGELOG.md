@@ -6,9 +6,43 @@ with each change; when cutting a release, turn that section into
 
 ## Unreleased (since 0.97)
 
-- Both brush pens now touch down at the top of the brush, like the pencil:
-  the pen tip sits at the top end of the mark, and tilting lays the rest of
-  the brush down under the pen instead of growing evenly around the tip.
+- The **Wet brush pen** is back, as a choice on the Brush pen: open the Brush
+  pen's settings and pick Dry or Wet, and the toolbar button keeps your
+  choice (Dry at first). The wet one's water stays wet and lets ink run
+  through it like ink in water, faster where the water is fresher, and it
+  runs smoothly instead of in square chunks when you move fast.
+- Wet brush pen ink settles much faster: a big stroke now looks finished a
+  few seconds after you lift the pen instead of around 20, and the ink keeps
+  running while you're still drawing. Wet paint uses all of the tablet's
+  processor cores.
+- The Wet brush pen now holds ink between strokes. A clean brush soaks up ink
+  it rubs over, lightening that spot a little, since dried paint holds more
+  ink than shows: touch a black line and the brush fills with gray while the
+  line stays dark. It soaks up less as it fills, until it
+  only smears. Put it down somewhere else and the ink it collected comes out
+  over lighter paint. With the Wet brush pen selected, the eraser in the color
+  bar cleans the brush; its dot shows for a moment when you tap it.
+- The **Wet canvas uses gravity** setting is now **Watercolor uses gravity**,
+  and it's on by default.
+- With **Watercolor uses gravity** on, Wet brush pen ink now runs downhill
+  through its water and pools at the low edge of the wet area. Tilt the
+  tablet a little for a soft gradient, more to pool it hard.
+- New brush option, **Watercolor mode when transparent**: with transparent
+  paint the brush paints like the Wet brush pen, on a dry or wet canvas. It lifts the
+  paint it touches, soaks up ink and carries it between strokes, and its ink
+  runs and pools with gravity. The selected color is the lightest shade the
+  brush lays; it never runs out of it, and darker colors soak up less. White
+  makes it work just like the Wet brush pen. Tap a color to reset the ink the
+  brush has picked up. On a dry canvas, dried paint stays put under a wash:
+  each brush dab over it soaks it a little, so a couple of passes over line
+  art leave it alone, but keep scrubbing a spot and the brush lifts it. It never
+  drains into the wash by itself. Paint that's still wet mixes
+  freely, and on a wet canvas everything lifts at once. With the option off,
+  transparent paint works as before.
+- The brush's **Oil paint** option is now **Oil paint mode when opaque**: it
+  only applies to opaque paint, so transparent paint never runs out.
+- Choosing a color while a brush pen is selected switches back to the brush
+  you were using before, built-in or favorite, in that color.
 
 ## 0.97
 

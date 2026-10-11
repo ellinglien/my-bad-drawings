@@ -12,12 +12,13 @@ final class ToolStrokes {
      * @param transparent brushes leave existing marks visible beneath the paint
      * @param erasing the tool erases with its own footprint instead of applying {@code gray}
      * @param smooth dry brush and hard eraser stamps anti-alias their edges
+     * @param ink the water and ink the wet brush pen, or a brush whose transparent paint flows, holds between strokes
      */
     static DrawingStroke create(ToneDocument document, ToolSettings settings, int gray,
-                                WetWatercolor wet, boolean transparent, boolean erasing, boolean smooth) {
+                                WetWatercolor wet, boolean transparent, boolean erasing, boolean smooth, BrushInk ink) {
         switch (settings.tool) {
             case BRUSH: case WATERCOLOR: case WET_WATERCOLOR: case FLAT_WASH: case BRUSH_PEN: case WET_BRUSH_PEN:
-                return new PressureStroke(document, settings, gray, wet, transparent, erasing, smooth);
+                return new PressureStroke(document, settings, gray, wet, transparent, erasing, smooth, ink);
             case ERASER:
                 // A hard eraser is a solid round stamp; softness needs per-dab fading.
                 if (settings.softness == 0) return new PressureStroke(document, settings, 255, wet, false, erasing, smooth);

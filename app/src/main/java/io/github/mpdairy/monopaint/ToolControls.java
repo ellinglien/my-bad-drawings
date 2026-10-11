@@ -42,10 +42,11 @@ final class ToolControls {
             form.hint("1 px minimum; up to 20% of the pressure-sized width.");
         }
         form.percent("Pressure response", "Pressure", s -> s.pressureResponse, ToolSettings::pressureResponse);
-        form.check("Oil paint", ToolSettings::limitsPaint, ToolSettings::oilPaint);
+        form.check("Oil paint mode when opaque", ToolSettings::limitsPaint, ToolSettings::oilPaint);
         form.visibleWhen((View)form.percent("Loading speed", s -> s.loadingSpeed, ToolSettings::loadingSpeed).getParent(), ToolSettings::limitsPaint);
         form.visibleWhen((View)form.percent("Minimum load", s -> s.minimumLoad, ToolSettings::minimumLoad).getParent(), ToolSettings::limitsPaint);
-        form.hint("Paint runs out along the stroke, then smudges. Rub the pen around in a color to load more.");
+        form.hint("Rub your pen in the color selector to pick up more paint.");
+        form.check("Watercolor mode when transparent", s -> s.flows, ToolSettings::flows);
         if (current.tool == ToolSettings.Tool.WATERCOLOR) form.hint("Black dots; white adds no ink.");
         else if (current.tool == ToolSettings.Tool.FLAT_WASH) form.hint("Even gray; darker marks stay.");
         else if (current.tool == ToolSettings.Tool.WET_WATERCOLOR)
@@ -125,9 +126,16 @@ final class ToolControls {
 
     /** The variant row above a tool's controls, or null for tools without variants. */
     static LinearLayout variants(Context context, ToolSettings current, boolean shapeChosen, Consumer<ToolSettings.Head> head,
-                                 Consumer<ToolSettings.Gradient> fill, Consumer<ToolSettings.Shape> shape) {
+                                 Consumer<ToolSettings.Tool> pen, Consumer<ToolSettings.Gradient> fill, Consumer<ToolSettings.Shape> shape) {
         LinearLayout row = new LinearLayout(context);
-        if (current.isBrush()) {
+        if (current.tool.water) {
+            row.setContentDescription("Brush pens");
+            for (ToolSettings.Tool choice : new ToolSettings.Tool[]{ToolSettings.Tool.BRUSH_PEN, ToolSettings.Tool.WET_BRUSH_PEN}) {
+                String label = choice.flowing ? "Wet" : "Dry";
+                Button button = SettingsForm.choice(context, label, ToolIcons.of(choice), current.tool == choice, () -> pen.accept(choice));
+                button.setContentDescription(label + " brush pen"); SettingsForm.addChoice(row, button, 84);
+            }
+        } else if (current.isBrush()) {
             row.setContentDescription("Brush tips");
             for (ToolSettings.Head choice : ToolSettings.Head.values()) {
                 Button button = SettingsForm.choice(context, choice.label, ToolIcons.tip(choice), current.head == choice, () -> head.accept(choice));

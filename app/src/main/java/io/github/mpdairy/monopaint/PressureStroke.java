@@ -25,6 +25,10 @@ final class PressureStroke implements DrawingStroke {
     private final RectF footprint = new RectF();
     /** The brush's running-out paint, or null when it never runs out. */
     private final PaintLoad load;
+    /** The water and ink a flowing brush keeps between strokes; null for other strokes. */
+    private final BrushInk ink;
+    /** A brush's transparent paint flows through the water it holds, carrying its mix. */
+    private final boolean flowingGlaze;
     /** Which end of a brush pen's head, along its heading, its shaft leans toward: +1 or -1. */
     private float shaftSide = 1;
     private float previousX, previousY, previousRadius, previousAngle, previousPull;
@@ -45,26 +49,34 @@ final class PressureStroke implements DrawingStroke {
         this(document,settings,gray,textureSeed,null);
     }
     private PressureStroke(ToneDocument document, ToolSettings settings, int gray, int textureSeed, WetWatercolor wet) {
-        this(document, settings, gray, wet, false, false, false, false);
+        this(document, settings, gray, wet, false, false, false, false, null);
     }
     PressureStroke(ToneDocument document, ToolSettings settings, int gray, WetWatercolor wet, boolean transparent) {
-        this(document, settings, gray, wet, transparent, true, false, false);
+        this(document, settings, gray, wet, transparent, true, false, false, null);
     }
     PressureStroke(ToneDocument document, ToolSettings settings, int gray, WetWatercolor wet, boolean transparent, boolean erasing) {
         this(document, settings, gray, wet, transparent, erasing, false);
     }
     /** @param smooth anti-alias dry brush and eraser edges instead of laying whole pixels */
     PressureStroke(ToneDocument document, ToolSettings settings, int gray, WetWatercolor wet, boolean transparent, boolean erasing, boolean smooth) {
-        this(document, settings, gray, erasing ? null : wet, transparent, true, erasing, smooth);
+        this(document, settings, gray, wet, transparent, erasing, smooth, null);
+    }
+    /** @param ink the water and ink the wet brush pen, or a brush whose transparent paint flows, holds between strokes; or null */
+    PressureStroke(ToneDocument document, ToolSettings settings, int gray, WetWatercolor wet, boolean transparent, boolean erasing, boolean smooth, BrushInk ink) {
+        this(document, settings, gray, erasing ? null : wet, transparent, true, erasing, smooth, ink);
     }
     private PressureStroke(ToneDocument document, ToolSettings settings, int gray, WetWatercolor wet,
-                           boolean transparent, boolean canvasControls, boolean erasing, boolean smooth) {
+                           boolean transparent, boolean canvasControls, boolean erasing, boolean smooth, BrushInk ink) {
+        // Oil paint mode is for opaque paint; transparent paint never runs out.
+        if (canvasControls && transparent && settings.limitsPaint()) settings = settings.oilPaint(false);
         this.erasing = erasing;
+        flowingGlaze = canvasControls && transparent && !erasing && settings.isBrush() && settings.flows;
+        this.ink = settings.tool.flowing || flowingGlaze ? ink : null;
         this.transparent = transparent;
         this.document = document; this.settings = canvasControls && settings.isBrush() ? settings.asBrush() : settings; this.maximum = settings.maximum; this.gray = gray;
         this.wet = canvasControls ? wet : settings.tool == ToolSettings.Tool.WET_WATERCOLOR
                 ? (wet == null ? new WetWatercolor(document) : wet) : null;
-        load = canvasControls && !erasing && settings.limitsPaint()
+        load = canvasControls && !erasing && !flowingGlaze && settings.limitsPaint()
                 ? new PaintLoad(document, gray, settings.paintLength()) : null;
         // Wet paint softens its own edges, and washes deposit whole dots.
         sweep = smooth && this.wet == null
@@ -199,7 +211,10 @@ final class PressureStroke implements DrawingStroke {
     private void applyMask(int left,int top,int cropX,int cropY,int w,int h,float pull) {
         mask.getPixels(pixels, 0, w, cropX, cropY, w, h);
         if(erasing || settings.tool==ToolSettings.Tool.ERASER) document.eraseMask(pixels,w,left,top,w,h);
-        else if (wet != null && settings.tool.water) wet.waterMask(pixels, w, left, top, w, h, pull, settings.tool.flowing, settings.carry / 100f);
+        else if (wet != null && settings.tool.water) wet.waterMask(pixels, w, left, top, w, h, pull, settings.tool.flowing, settings.carry / 100f, ink);
+        // Fully fresh water, which pressure does not thin: it sizes the brush instead.
+        // The brush's ink is tinted with the selected shade, the lightest it lays.
+        else if (wet != null && flowingGlaze) wet.waterMask(pixels, w, left, top, w, h, 1, true, 0, ink);
         else if (wet != null) {
             if (load == null) wet.paintMask(pixels, w, left, top, w, h, gray, transparent);
             else {

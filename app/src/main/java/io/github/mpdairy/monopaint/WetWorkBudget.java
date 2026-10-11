@@ -21,7 +21,7 @@ final class WetWorkBudget {
 
     int tiles(long budgetNanos, boolean drawing) {
         if (budgetNanos <= 0) return 0;
-        return Math.max(1, Math.min(drawing ? 8 : 16, (int)(budgetNanos / nanosPerTile)));
+        return Math.max(1, Math.min(drawing ? 16 : 64, (int)(budgetNanos / nanosPerTile)));
     }
 
     void completed(long elapsedNanos, int tiles, boolean drawing, long nowMillis) {

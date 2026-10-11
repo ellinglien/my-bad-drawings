@@ -34,6 +34,7 @@ final class ToolSettingsPanel extends SidePanel {
         ToolSettings current = library().current();
         LinearLayout variants = ToolControls.variants(app, current, shapeChosen(),
                 head -> { library().selectHead(head); variantChosen(); },
+                pen -> { library().select(pen); variantChosen(); },
                 type -> { library().edit(library().current().gradient(type)); variantChosen(); },
                 shape -> {
                     library().edit(library().current().shape(shape));
