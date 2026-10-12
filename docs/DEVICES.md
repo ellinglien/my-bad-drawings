@@ -26,7 +26,7 @@ Neither place trusts Android's model property. The Manta reports itself as
 | `testedFirmware`: builds the device checks passed on | `Chauvet.E103.2606141001.2389_release` | `Chauvet.E103.2606141001.2389_release` | none |
 | Driver buffer | 1920×2560 portrait | 1872×1404 landscape | none (Android drawing only) |
 | `fastBinaryPlane()`: fast binary controls (mode 9), before build 2610091001 | none (gray mode 7) | plane 1 | none |
-| `fastBinaryPlane()`, from build 2610091001 (3.30.45) on | plane 0 (confirmed by hand 2026-10-12) | plane 0 (not yet tried) | none |
+| `fastBinaryPlane()`, from build 2610091001 (3.30.45) on | plane 0 (confirmed by hand 2026-10-12) | plane 0 (plane 1 leaves black boxes; see DIRECT_GRAY.md) | none |
 
 ## Firmware
 

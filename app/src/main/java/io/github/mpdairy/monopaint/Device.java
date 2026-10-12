@@ -12,13 +12,13 @@ import android.view.Display;
  */
 final class Device {
     /** The smaller Supernote. */
-    static final Device NOMAD = new Device("Nomad", 1404, 1872, true, true, 6, null, 1,
+    static final Device NOMAD = new Device("Nomad", 1404, 1872, true, true, 6, null, 1, 0,
             "Chauvet.E103.2606141001.2389_release");
     /** The larger Supernote, which can also preview the Nomad's layout at physical size. */
-    static final Device MANTA = new Device("Manta", 1920, 2560, false, false, 24, NOMAD, -1,
+    static final Device MANTA = new Device("Manta", 1920, 2560, false, false, 24, NOMAD, -1, 0,
             "Chauvet.E103.2606141001.2389_release");
     /** Any other tablet, or a Supernote panel no profile matches. */
-    static final Device OTHER = new Device("Android", 0, 0, false, false, 24, null, -1);
+    static final Device OTHER = new Device("Android", 0, 0, false, false, 24, null, -1, -1);
     static final Device[] SUPERNOTES = {MANTA, NOMAD};
 
     final String name;
@@ -37,10 +37,10 @@ final class Device {
     /** A smaller tablet whose layout this one can preview at physical size, or null. */
     final Device simulates;
     /**
-     * The driver plane for fast binary control pixels (mode 9/flags 1) on firmware before
-     * {@link #PEN_MAIN_PLANE_SINCE}, or -1 when controls stay on the gray path (mode 7).
+     * The driver plane for fast binary control pixels (mode 9/flags 1) on firmware before and
+     * from {@link #PEN_MAIN_PLANE_SINCE}, or -1 when controls stay on the gray path (mode 7).
      */
-    private final int olderFastBinaryPlane;
+    private final int olderFastBinaryPlane, newerFastBinaryPlane;
     /**
      * The first build whose libeinkutils.so sends the firmware's own pen requests (mode 9) to
      * the main plane rather than the plane after it. Its gray frames also queue behind the pen
@@ -56,11 +56,11 @@ final class Device {
 
     private Device(String name, int panelWidth, int panelHeight, boolean landscapeTilt,
                    boolean compactControls, int edgeSwipeSlopDp, Device simulates,
-                   int olderFastBinaryPlane, String... testedFirmware) {
+                   int olderFastBinaryPlane, int newerFastBinaryPlane, String... testedFirmware) {
         this.name = name; this.panelWidth = panelWidth; this.panelHeight = panelHeight;
         this.landscapeTilt = landscapeTilt; this.compactControls = compactControls;
         this.edgeSwipeSlopDp = edgeSwipeSlopDp; this.simulates = simulates;
-        this.olderFastBinaryPlane = olderFastBinaryPlane;
+        this.olderFastBinaryPlane = olderFastBinaryPlane; this.newerFastBinaryPlane = newerFastBinaryPlane;
         this.testedFirmware = testedFirmware;
     }
 
@@ -71,8 +71,7 @@ final class Device {
 
     /** The driver plane fast binary controls use on the installed firmware, or -1 for none. */
     int fastBinaryPlane() {
-        if (this == OTHER) return -1;
-        return buildStamp(firmware()) >= PEN_MAIN_PLANE_SINCE ? 0 : olderFastBinaryPlane;
+        return buildStamp(firmware()) >= PEN_MAIN_PLANE_SINCE ? newerFastBinaryPlane : olderFastBinaryPlane;
     }
     /** The yyMMddHHmm stamp in a build like "Chauvet.E103.2606141001.2389_release"; 0 when absent. */
     static long buildStamp(String firmware) {

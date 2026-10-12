@@ -243,7 +243,19 @@ plane. Mode 9 is otherwise unchanged.
 and the Manta keeps gray controls. `DirectEink.useFastBinaryPlane` receives
 the choice, and JNI accepts only plane 0 or 1 for mode 9 and plane 0 for
 mode 7. The user confirmed on the physical Manta that the marker now follows
-the pen. The Nomad on 3.30.45 is untested.
+the pen.
+
+On the Nomad, plane 1 on 3.30.45 left black boxes where the Layers panel and
+the page popout had been, which a system screen refresh did not clear. Dumping
+the driver planes from adb showed the black in the main plane itself. The
+kernel logged `UIConfict: UIbuf[0]:[0,0-1872,1404]mode=4,pwrect:[...],chk=1`
+about 500 ms after the panel closed: a mode 9 request at the plane-1 offset
+records a pen-write rectangle, and the next full UI update fills it from
+Android's framebuffer, which is black over the firmware-managed canvas view.
+Older firmware sent that clean-up to the overlay plane, where the white erase
+hid it. Mode 9 at offset 0, which the firmware's own pen JNI now selects with
+`set_pw_fsb(ctx, 0)`, records no such rectangle: no conflict was logged and
+the main plane stayed clean after the same Layers and page-popout closes.
 
 ## Interface provenance
 
