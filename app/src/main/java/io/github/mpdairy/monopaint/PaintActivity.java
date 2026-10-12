@@ -673,8 +673,8 @@ public final class PaintActivity extends Activity implements ControlHost {
         try { action.run(); pad.renderDirty(); pad.present(); recovery(); }
         catch (IllegalStateException | IllegalArgumentException error) { message(error.getMessage()); }
     }
-    private interface HistoryStep { boolean apply(); }
-    private void history(HistoryStep step) {
+    interface HistoryStep { boolean apply(); }
+    void history(HistoryStep step) {
         pad.finishStroke(); pad.dryWet();
         int width=pad.document.width, height=pad.document.height;
         if (step.apply()) {

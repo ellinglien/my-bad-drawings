@@ -57,25 +57,17 @@ final class EdgeBarChecks {
                     check(app.hasWindowFocus(),"System toolbar stays closed on the physical edge swipe");
                     near(mark,point(app,200,200),"Bar toggles keep artwork stationary");
                     check(fastDisplay(app),"Fast pen display resumes after toggling");
-                    if(app.fullscreen.mode==1 || app.fullscreen.mode==3) {
-                        FullscreenChecks.chord(test,app,2);FullscreenChecks.chord(test,app,2);idle(test);
-                        check(app.fullscreen.mode==before,"Mixed layout double tap undoes last bar action");
-                        swipe(test,app,edge,app.dp(160),1);idle(test);
-                    }
                     check(Arrays.equals(artwork,DrawingBook.encode(app.pad.document)),"Swipes never change kept page or artwork");
                 }
                 check(app.fullscreen.mode==0,"All bars restored after toggle cycle");
-                FullscreenChecks.chord(test,app,2);FullscreenChecks.chord(test,app,2);idle(test);
-                check(app.fullscreen.mode==2,"Two-finger double tap hides both bars");
-                FullscreenChecks.chord(test,app,2);FullscreenChecks.chord(test,app,2);idle(test);
-                check(app.fullscreen.mode==0,"Two-finger double tap shows both bars");
-                FullscreenChecks.chord(test,app,3);FullscreenChecks.chord(test,app,3);idle(test);
-                check(app.fullscreen.mode==0,"Three-finger double tap has no toolbar action");
+                FullscreenChecks.chord(test,app,2);FullscreenChecks.chord(test,app,3);idle(test);
+                check(app.fullscreen.mode==0,"Finger taps never toggle the bars");
+                check(Arrays.equals(artwork,DrawingBook.encode(app.pad.document)),"Undo then redo leaves the artwork as it was");
                 ZoomButtonChecks.verify(test,app);
                 report.append("PASS edge toggles and Zoom double tap rotation ").append(turn).append(" hand ").append(right).append("; four layouts, finger footprints, slow/fast input, OS toolbar stays closed.\n");
                 android.os.Bundle progress=new android.os.Bundle();progress.putString("stream","Passed edge swipes: rotation "+turn+", toolbar right="+right+"\n");test.sendStatus(0,progress);
             }
-            report.append("PASS: edge-only completion, fast exits, short-swipe rejection, stationary artwork, first-swipe margins, all bar layouts, double-tap toggles and system-menu avoidance.\n");
+            report.append("PASS: edge-only completion, fast exits, short-swipe rejection, stationary artwork, first-swipe margins, all bar layouts, finger taps leave bars alone and system-menu avoidance.\n");
         } finally {
             main(test,() -> {app.edgeBars.reset();app.fullscreen.dismiss();app.fullscreen.setMode(0);});idle(test);
             main(test,() -> {

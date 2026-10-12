@@ -22,7 +22,7 @@ final class EdgeBars {
         }
         if(app.pad==null || app.busy() || app.fullscreen.dialog!=null) {reset();return false;}
         boolean finger=e.getPointerCount()==1 && e.getToolType(0)==MotionEvent.TOOL_TYPE_FINGER;
-        if(!finger || app.pad.blocksFullscreenGesture()) {reset();return false;}
+        if(!finger || app.pad.blocksFingerGesture()) {reset();return false;}
         Matrix inverse=new Matrix();PanelCoordinates.fromView(app.root).invert(inverse);
         float[] p={e.getRawX(),e.getRawY()};inverse.mapPoints(p);
         if(action==MotionEvent.ACTION_DOWN) {

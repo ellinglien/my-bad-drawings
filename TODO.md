@@ -212,14 +212,16 @@ the backlog. Tentative ideas and suggestions below still need a design decision.
   `Documents/MonoPaint`. Drawings are `.mpaint`; older `.tsm` files are renamed
   in place, never copied or deleted.
 
-- [ ] **Multi-finger taps for undo and redo, like Procreate.** Requested
-  2026-10-11. A two-finger double tap undoes and a three-finger double tap
-  redoes. The two-finger double tap currently toggles Canvas only fullscreen
-  (`FullscreenController` via `MultiFingerTap`, also named in the Fullscreen
-  menu); drop that, since the edge swipes work better for fullscreen. Extend
-  `MultiFingerTap` to count fingers rather than adding a second detector, keep
-  it clear of two-finger pinch/pan when Zoom is unlocked, and check that the
-  Supernote firmware doesn't claim the three-finger tap.
+- [x] **Multi-finger taps for undo and redo, like Procreate — implemented; hands-on acceptance pending.** Requested
+  2026-10-11. A single two-finger tap undoes and a single three-finger tap
+  redoes; no double taps, so they fire as soon as the fingers lift. Remove the
+  fullscreen tap gestures entirely: the two-finger double tap that toggles Canvas
+  only (`FullscreenController.gesture` via `MultiFingerTap`) and its "Two-finger
+  double tap" hint in the Fullscreen menu. Swiping the bars away is easier.
+  Change `MultiFingerTap` from matching two chords to reporting one stationary
+  2- or 3-finger tap (no second detector), keep it clear of two-finger
+  pinch/pan when Zoom is unlocked, and check that the Supernote firmware doesn't
+  claim the three-finger tap.
 
 ## Design opinions to revisit
 

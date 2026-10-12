@@ -78,7 +78,7 @@ once.
 | Control | What it does |
 |:-:|---|
 | <img src="icons/menu.svg" width="24"><br>**Menu** | New, open, save and settings. |
-| <img src="icons/undo.svg" width="24"> <img src="icons/redo.svg" width="24"><br>**Undo / Redo** | Undo or redo the last change. |
+| <img src="icons/undo.svg" width="24"> <img src="icons/redo.svg" width="24"><br>**Undo / Redo** | Undo or redo the last change. Tap the canvas with **two fingers** to undo, or **three fingers** to redo. |
 | <img src="icons/clear.svg" width="24"><br>**Clear** | Clears one layer or all layers. |
 | <img src="icons/pages.svg" width="24"> <img src="icons/new.svg" width="24"><br>**Pages** | Change pages or add a page. |
 | <img src="icons/rotate.svg" width="24"><br>**Rotate** | Appears when you turn the tablet. Tap it to rotate. |
@@ -93,12 +93,10 @@ from the bezel remains available. The touch screen often loses a finger just
 before the bezel, so a finger lifted while still heading off the edge counts;
 pausing first, or lifting farther inside the canvas, does nothing.
 
-Double-tap with **two fingers** to hide both bars when both are showing, or show
-both when neither is showing. With one bar showing, it undoes the last bar change.
-**Back** brings all controls back. These gestures work while Zoom is locked.
+**Back** brings all controls back. Swipes work while Zoom is locked.
 **Menu → Fullscreen** offers all four layouts without gestures.
 
-The first time a swipe or double tap hides controls on **each page**, large
+The first time you hide controls on **each page**, large
 illustrated buttons offer **Keep canvas size** or **Expand canvas**. Expansion adds blank margins, keeps the
 artwork at the same size, and can be undone. Each page remembers its own choice;
 other pages are unaffected. Showing the bars again never crops an expanded page.

@@ -7,7 +7,6 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -17,24 +16,10 @@ import android.widget.TextView;
 final class FullscreenController {
     final PaintActivity app;
     int mode; // 0: all controls; 1: colors only; 2: canvas only; 3: tools only
-    private int previousMode;
     AlertDialog dialog;
     private boolean changing;
-    private final MultiFingerTap taps=new MultiFingerTap();
     FullscreenController(PaintActivity app) { this.app=app; }
 
-    boolean gesture(MotionEvent event,boolean blocked) {
-        int count=event.getPointerCount();
-        boolean fingers=true;
-        for(int i=0;i<count;i++)fingers &= event.getToolType(i)==MotionEvent.TOOL_TYPE_FINGER;
-        if(blocked || !fingers || app.busy() || changing) { taps.reset(); return false; }
-        float[] x=new float[count],y=new float[count]; int[] ids=new int[count];
-        for(int i=0;i<count;i++) { x[i]=event.getX(i); y[i]=event.getY(i); ids[i]=event.getPointerId(i); }
-        int result=taps.event(event.getActionMasked(),event.getEventTime(),ids,x,y,app.dp(18),app.dp(90));
-        if(result==0)return false;
-        setMode(mode==0?2:mode==2?0:previousMode);
-        return true;
-    }
     boolean toolsVisible() { return mode==0 || mode==3; }
     boolean colorsVisible() { return mode==0 || mode==1; }
     void toggleBar(int bar) {
@@ -55,7 +40,7 @@ final class FullscreenController {
         final ToneDocument page=app.pad.document;
         RectF old=Popups.bounds(app.root,app.pad);
         float scale=app.pad.viewport.scale(),x=app.pad.viewport.x,y=app.pad.viewport.y;
-        previousMode=mode; mode=next; changing=true; taps.reset();
+        mode=next; changing=true;
         app.pad.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
             @Override public void onLayoutChange(View v,int l,int t,int r,int b,int ol,int ot,int or,int ob) {
                 app.pad.removeOnLayoutChangeListener(this);
@@ -80,7 +65,7 @@ final class FullscreenController {
         addChoice(panel,0,"All controls","Show tools and colors",() -> setMode(0));
         addChoice(panel,1,"Colors only","Hide the tools",() -> setMode(1));
         addChoice(panel,5,"Tools only","Hide the color bar",() -> setMode(3));
-        addChoice(panel,2,"Canvas only","Two-finger double tap",() -> setMode(2));
+        addChoice(panel,2,"Canvas only","Hide the tools and colors",() -> setMode(2));
         show("Fullscreen",panel);
     }
     void showCanvasChoice() {

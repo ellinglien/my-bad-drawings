@@ -108,7 +108,8 @@ final class DrawingPad extends View {
     private final Runnable gradientStep = this::advanceGradient;
     private final Runnable fillStep = this::advanceFill;
 
-    // Pinch and pan
+    // Finger taps and pinch/pan
+    private final MultiFingerTap fingerTaps = new MultiFingerTap();
     private int fingerA = -1, fingerB = -1;
     boolean navigating, touchBlocked;
     private boolean navigationFrameScheduled;
@@ -273,7 +274,7 @@ final class DrawingPad extends View {
     void canvasResized() {
         disconnectDisplay(); ensureDisplay(); updateViewport(); renderAll(); invalidate(); post(this::connectDisplay);
     }
-    boolean blocksFullscreenGesture() {
+    boolean blocksFingerGesture() {
         return pointer!=-1 || pickPointer!=-1 || fillGesture || hasGradient()
                 || SystemClock.uptimeMillis()<penGuardUntil;
     }
@@ -515,7 +516,7 @@ final class DrawingPad extends View {
     @Override public boolean onTouchEvent(MotionEvent event) {
         if (app.paletteEditor != null || app.loading || document == null || fill != null || gradientCommit
                 || !app.resumed || !hasWindowFocus()) return true;
-        if (app.fullscreen.gesture(event, blocksFullscreenGesture())) { endNavigation(); return true; }
+        if (historyTap(event)) return true;
         if (navigationGesture(event)) return true;
         if (app.pickingShade || pickPointer != -1) { sampleShadeGesture(event); return true; }
         if (hasGradient()) return true;
@@ -833,6 +834,21 @@ final class DrawingPad extends View {
             pickPointer = -1; getParent().requestDisallowInterceptTouchEvent(false);
             if (app.pickedShade) { app.setEraseMode(false); app.setPickingShade(false); applyGradient(); app.saveToolState(); }
         }
+    }
+
+    // Finger taps
+
+    /** A two-finger tap undoes and a three-finger tap redoes, like the header buttons. */
+    private boolean historyTap(MotionEvent event) {
+        if (blocksFingerGesture() || !Ui.fingersOnly(event) || app.busy()) { fingerTaps.reset(); return false; }
+        int count = event.getPointerCount();
+        float[] x = new float[count], y = new float[count]; int[] ids = new int[count];
+        for (int i = 0; i < count; i++) { x[i] = event.getX(i); y[i] = event.getY(i); ids[i] = event.getPointerId(i); }
+        int fingers = fingerTaps.event(event.getActionMasked(), event.getEventTime(), ids, x, y, dp(18));
+        if (fingers == 0) return false;
+        endNavigation();
+        app.history(fingers == 2 ? document::undo : document::redo);
+        return true;
     }
 
     // Pinch and pan

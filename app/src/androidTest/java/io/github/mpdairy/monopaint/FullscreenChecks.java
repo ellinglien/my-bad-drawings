@@ -43,8 +43,8 @@ final class FullscreenChecks {
                 });idle(test);
                 ToneDocument page=app.pad.document;int width=page.width,height=page.height;
                 byte[] initial=DrawingBook.encode(page);float[] mark=point(app,160,200);
-                chord(test,app,2);chord(test,app,2);idle(test);
-                check(app.fullscreen.mode==2 && app.fullscreen.dialog!=null,"Two fingers hide both and offer page choice");
+                main(test,() -> app.fullscreen.setMode(2));idle(test);
+                check(app.fullscreen.mode==2 && app.fullscreen.dialog!=null,"Canvas only hides both and offers page choice");
                 check(app.paletteFrame.getVisibility()==View.GONE,"Color bar hidden");
                 check((app.landscape?app.toolbar.landscapeTools:app.toolbar.toolScroll).getVisibility()==View.GONE,"Tools hidden");
                 near(mark,point(app,160,200),"Hide preserves mark on physical screen");
@@ -52,17 +52,14 @@ final class FullscreenChecks {
                 if(turn==0 && !right) screenshot(test,app,"fullscreen-choice.png");
                 main(test,() -> click(app.fullscreen.dialog.getWindow().getDecorView(),"Keep canvas size."));idle(test);
                 check(app.book.canvasChoice()==1,"Keep remembered on page");
-                main(test,() -> app.fullscreen.setMode(1));idle(test);
-                chord(test,app,2);chord(test,app,2);idle(test);
-                check(app.fullscreen.mode==2,"Mixed layout undoes the last bar action");
-                chord(test,app,2);chord(test,app,2);idle(test);
-                check(app.fullscreen.mode==0,"Two fingers restore both controls");near(mark,point(app,160,200),"Return preserves mark");
+                main(test,() -> app.fullscreen.setMode(0));idle(test);
+                check(app.fullscreen.mode==0,"All controls restored");near(mark,point(app,160,200),"Return preserves mark");
                 for(int bars:new int[]{3,0}) {
                     main(test,() -> app.fullscreen.setMode(bars));idle(test);
                     actualSize(test,app);near(mark,point(app,160,200),"100% returns a kept page to where it started, mode "+bars);
                 }
-                chord(test,app,2);chord(test,app,2);idle(test);
-                check(app.fullscreen.mode==2 && app.fullscreen.dialog==null,"Two fingers hide both without repeat prompt");
+                main(test,() -> app.fullscreen.setMode(2));idle(test);
+                check(app.fullscreen.mode==2 && app.fullscreen.dialog==null,"Canvas only hides both without repeat prompt");
                 check(app.paletteFrame.getVisibility()==View.GONE,"Color bar hidden");
                 check(Arrays.equals(initial,DrawingBook.encode(page)),"Keep never changes artwork or dimensions");
                 // Expanding while zoomed out and panned must still add paper only under the bars.
@@ -93,6 +90,11 @@ final class FullscreenChecks {
                 check(page.width==width && page.height==height && Arrays.equals(initial,DrawingBook.encode(page)),"UI Undo restores original canvas and pixels");
                 main(test,() -> app.menuControls.getChildAt(app.menuControls.indexOfChild(app.menuButton)==0?2:app.menuControls.getChildCount()-3).performClick());idle(test);
                 check(page.width==expandedWidth && page.height==expandedHeight,"UI Redo restores expansion");
+                chord(test,app,2);idle(test);
+                check(page.width==width && page.height==height && Arrays.equals(initial,DrawingBook.encode(page)),"Two-finger tap undoes");
+                chord(test,app,3);idle(test);
+                check(page.width==expandedWidth && page.height==expandedHeight,"Three-finger tap redoes");
+                check(app.fullscreen.mode==0,"Finger taps never change the bars");
                 main(test,() -> {
                     app.book.addPage();app.pad.showPage(app.book.current());app.updatePages();app.fullscreen.setMode(1);
                 });idle(test);
@@ -106,7 +108,7 @@ final class FullscreenChecks {
             main(test,() -> replace(app,new DrawingBook(new ToneDocument(320,480))));idle(test);
             check(app.fullscreen.dialog!=null && app.book.canvasChoice()==0,"Opening another book while hidden offers its own choice");
             main(test,() -> click(app.fullscreen.dialog.getWindow().getDecorView(),"Keep canvas size."));idle(test);
-            report.append("PASS: dispatched finger double taps, zoom-lock independence, illustrated per-page choices, keep/expand, stationary artwork, UI undo/redo, separate new pages and Back escape.\n");
+            report.append("PASS: dispatched two-finger undo and three-finger redo taps, zoom-lock independence, illustrated per-page choices, keep/expand, stationary artwork, UI undo/redo, separate new pages and Back escape.\n");
         } finally {
             main(test,() -> {app.fullscreen.dismiss();app.fullscreen.setMode(0);});idle(test);
             main(test,() -> {

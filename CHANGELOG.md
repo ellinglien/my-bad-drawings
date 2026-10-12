@@ -6,6 +6,11 @@ with each change; when cutting a release, turn that section into
 
 ## Unreleased (since 0.97)
 
+- Tap the canvas with two fingers to undo, or with three fingers to redo, like
+  Procreate. Each tap acts as soon as your fingers lift, so tap again to undo
+  more. A pinch or pan never counts as a tap. The two-finger double tap that hid
+  both bars is gone; swipe the bars away instead, or use Menu → Fullscreen.
+
 - Paintings save themselves. Once a painting has a name, MonoPaint keeps its
   file up to date as you work: within a minute of drawing, whenever you leave
   the app, and before you open or start another painting, so switching
