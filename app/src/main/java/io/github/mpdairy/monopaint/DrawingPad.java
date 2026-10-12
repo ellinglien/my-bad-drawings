@@ -965,6 +965,7 @@ final class DrawingPad extends View {
             if (wetChanged && stroke == null) { wetChanged = false; app.recovery(); }
         }
     }
+    boolean stroking() { return stroke != null; }
     /** Stops wet blending, leaving the paint as it is. */
     void dryWet() {
         cancelWetCallback();

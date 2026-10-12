@@ -116,7 +116,12 @@ Each painting saves as one `.mpaint` file holding every page, and your work is
 recovered after a restart. Once MonoPaint has file access, which it asks for at
 every launch until allowed, paintings live in `Document/MonoPaint` on a Supernote
 (where Files shows them) or `Documents/MonoPaint` on other tablets, and survive
-uninstalling the app. **New painting** and **Open painting** offer to save
-unsaved changes first. **Export PNG** saves to `EXPORT/MonoPaint` on a Supernote
+uninstalling the app. There is no Save button. A **New painting** is kept inside
+the app until you name it with **Save painting as…**; starting or opening
+another painting first asks whether to name it. Once a painting has a name, it
+saves itself to that file as you work: within a minute of drawing, whenever you
+leave MonoPaint, and before you open or start another painting. Save painting
+as… on a named painting copies it to a new name and continues in the copy, so
+the original keeps how it looked at that moment. **Export PNG** saves to `EXPORT/MonoPaint` on a Supernote
 with file access, otherwise `Pictures/MonoPaint`. To convert a painting to PNG
 on a computer, see [BUILDING.md](BUILDING.md#png-conversion).

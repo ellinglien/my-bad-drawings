@@ -183,6 +183,7 @@ public final class PaintActivity extends Activity implements ControlHost {
             } else {
                 drawingName = recovered == null ? "" : recovered.path;
                 replaceBook(recovered == null ? null : recovered.book);
+                scheduleAutosave();
             }
         }));
     }
@@ -608,10 +609,10 @@ public final class PaintActivity extends Activity implements ControlHost {
 
     private void fileMenu(View anchor) {
         closePagePanel();
-        String[] names = {"New painting", "Open painting", "Save painting", "Save painting as…", "Export PNG…", "Fullscreen…", "Settings"};
-        int[] icons = {R.drawable.ic_new, R.drawable.ic_open, R.drawable.ic_save, R.drawable.ic_save, R.drawable.ic_export, R.drawable.ic_zoom, R.drawable.ic_settings};
+        String[] names = {"New painting", "Open painting", "Save painting as…", "Export PNG…", "Fullscreen…", "Settings"};
+        int[] icons = {R.drawable.ic_new, R.drawable.ic_open, R.drawable.ic_save, R.drawable.ic_export, R.drawable.ic_zoom, R.drawable.ic_settings};
         Runnable[] actions = {() -> settleChanges("starting a new painting", this::startNewDrawing),
-                () -> settleChanges("opening another painting", this::openDrawing), this::saveDrawing, this::saveDrawingAs, this::exportPng, () -> fullscreen.showModes(), this::appSettings};
+                () -> settleChanges("opening another painting", this::openDrawing), this::saveDrawingAs, this::exportPng, () -> fullscreen.showModes(), this::appSettings};
         dismiss(filePopup); dismiss(layersPopup);
         LinearLayout rows = new LinearLayout(this); rows.setOrientation(LinearLayout.VERTICAL);
         ScrollView scroll = new ScrollView(this); scroll.addView(rows);
@@ -847,7 +848,7 @@ public final class PaintActivity extends Activity implements ControlHost {
 
     // Files
 
-    /** Queues an autosave of the whole book to the recovery file. */
+    /** Queues an autosave of the whole book to the recovery file, and to the painting's own file soon after. */
     void recovery() {
         if (loading || pad.document == null) return;
         store.recoverLater(new DocumentStore.Snapshot(book, drawingName), (unused, error) -> {
@@ -856,6 +857,35 @@ public final class PaintActivity extends Activity implements ControlHost {
                 runOnUiThread(() -> saveError = error.getMessage());
             }
         });
+        scheduleAutosave();
+    }
+    /**
+     * How long a named painting's own file may lag its recovery file while drawing. Supernote
+     * Cloud syncs the library, and rewriting a file there every few seconds broke the sync.
+     */
+    private static final long AUTOSAVE_MS = 60_000;
+    private final Runnable autosave = this::autosave;
+    private boolean autosaveScheduled;
+    private void scheduleAutosave() {
+        if (autosaveScheduled || drawingName.isEmpty() || book == null || !book.unsaved()) return;
+        autosaveScheduled = true; pad.postDelayed(autosave, AUTOSAVE_MS);
+    }
+    private void autosaveNow() { pad.removeCallbacks(autosave); autosave(); }
+    /** Writes a named painting to its own file without interrupting drawing. */
+    private void autosave() {
+        autosaveScheduled = false;
+        if (destroyed || drawingName.isEmpty() || book == null || !book.unsaved()) return;
+        if (busy() || pad.stroking()) { autosaveScheduled = true; pad.postDelayed(autosave, 1000); return; }
+        DrawingBook savedBook = book; String path = drawingName;
+        DocumentStore.Snapshot snapshot = new DocumentStore.Snapshot(book);
+        store.save(path, snapshot, (unused, error) -> runOnUiThread(() -> {
+            if (destroyed) return;
+            if (error != null) {
+                Log.e(ProbeActivity.TAG, "Drawing autosave failed", error);
+                saveError = error.getMessage(); showSaveError(); return;
+            }
+            if (path.equals(drawingName)) saved(savedBook, snapshot, path);
+        }));
     }
     private void showSaveError() {
         if (saveError != null) { message("Autosave failed: " + saveError); saveError = null; }
@@ -886,23 +916,19 @@ public final class PaintActivity extends Activity implements ControlHost {
         if (request == SHARED_STORAGE) loadDrawing();
     }
     private void startNewDrawing() { loading = false; pad.replace(null); drawingName = ""; recovery(); }
-    /** Runs {@code then}, which replaces the open drawing, once its unsaved changes are saved or knowingly dropped. */
+    /**
+     * Runs {@code then}, which replaces the open drawing, once its changes are saved: a named
+     * painting saves to its own file, and an unnamed one, kept only in the recovery file, asks
+     * for a name or to drop it.
+     */
     private void settleChanges(String replacing, Runnable then) {
         if (loading || book == null || !book.unsaved()) { then.run(); return; }
-        String drawing = drawingName.isEmpty() ? "This painting has never been saved"
-                : "\"" + DrawingFiles.name(drawingName) + "\" has unsaved changes";
-        showDialog(new AlertDialog.Builder(this).setTitle("Save changes?")
-                .setMessage(drawing + ". Save it before " + replacing + "?")
-                .setPositiveButton("Save", (d, w) -> saveDrawing(then))
+        if (!drawingName.isEmpty()) { saveDrawingTo(drawingName, true, then); return; }
+        showDialog(new AlertDialog.Builder(this).setTitle("Save this painting?")
+                .setMessage("This painting doesn't have a name yet. Save it before " + replacing + "?")
+                .setPositiveButton("Save as…", (d, w) -> saveDrawingAs(then))
                 .setNeutralButton("Don't save", (d, w) -> then.run())
                 .setNegativeButton("Cancel", null));
-    }
-    private void saveDrawing() { saveDrawing(() -> { }); }
-    /** Saves to the open drawing's file, or asks for one; {@code saved} runs once that save succeeds. */
-    private void saveDrawing(Runnable saved) {
-        showSaveError();
-        if (drawingName.isEmpty()) saveDrawingAs(saved);
-        else saveDrawingTo(drawingName, true, saved);
     }
     private void saveDrawingAs() { saveDrawingAs(() -> { }); }
     private void saveDrawingAs(Runnable saved) {
@@ -919,11 +945,15 @@ public final class PaintActivity extends Activity implements ControlHost {
             saving = false;
             if (destroyed) return;
             if (error != null) { message("Save failed: " + error.getMessage()); return; }
-            // A failed save must never change the destination of subsequent saves.
-            if (book == savedBook) { savedBook.markSaved(snapshot.book); drawingName = path; recovery(); }
+            saved(savedBook, snapshot, path);
             message("Saved " + path);
             if (book == savedBook) saved.run();
         }));
+    }
+    /** Records that {@code snapshot} of {@code savedBook} reached {@code path}, which becomes its file if it is still open. */
+    private void saved(DrawingBook savedBook, DocumentStore.Snapshot snapshot, String path) {
+        // A failed save must never change the destination of subsequent saves.
+        if (book == savedBook) { savedBook.markSaved(snapshot.book); drawingName = path; recovery(); }
     }
     private static final int PICK_FOLDER = 1;
     private Consumer<Uri> folderPicked;
@@ -995,7 +1025,7 @@ public final class PaintActivity extends Activity implements ControlHost {
         rotationPrompt.hide();
         toolbar.presetDrag.reset();
         if (pad != null) pad.suspend();
-        if (!loading && book != null) { saveToolState(); recovery(); }
+        if (!loading && book != null) { saveToolState(); recovery(); autosaveNow(); }
         super.onPause();
     }
     @Override public void onWindowFocusChanged(boolean focus) {

@@ -46,8 +46,10 @@ Do not uninstall first: uninstalling deletes paintings still kept in the app's p
 
 ## Saving
 
-**Menu → Save painting** asks for a name and folder the first time, and later
-saves update that same painting. Once you allow file access, which MonoPaint asks
+There is no Save button: MonoPaint saves as you work. A **New painting** is kept
+inside the app until you name it with **Menu → Save painting as…**; from then on
+it saves to that file by itself, and Save painting as… again makes a copy under
+a new name and keeps working in the copy. Once you allow file access, which MonoPaint asks
 for at launch, paintings are `.mpaint` files in `Document/MonoPaint` on a
 Supernote (`Documents/MonoPaint` on other tablets), where they survive
 uninstalling the app. Until then they stay in the app's private storage, and

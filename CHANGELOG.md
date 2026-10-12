@@ -6,6 +6,15 @@ with each change; when cutting a release, turn that section into
 
 ## Unreleased (since 0.97)
 
+- Paintings save themselves. Once a painting has a name, MonoPaint keeps its
+  file up to date as you work: within a minute of drawing, whenever you leave
+  the app, and before you open or start another painting, so switching
+  paintings no longer asks "Save changes?". The **Save painting** button is
+  gone. A **New painting** is kept inside the app until you give it a name with
+  **Save painting as…**, and starting or opening another painting first asks
+  whether to name it. On a named painting, Save painting as… makes a copy under
+  a new name.
+
 - The **Wet brush pen** is back, as a choice on the Brush pen: open the Brush
   pen's settings and pick Dry or Wet, and the toolbar button keeps your
   choice (Dry at first). The wet one's water stays wet and lets ink run
