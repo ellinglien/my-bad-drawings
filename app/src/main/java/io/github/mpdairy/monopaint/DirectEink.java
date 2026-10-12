@@ -12,7 +12,7 @@ final class DirectEink {
     static { System.loadLibrary("monopaint_display"); }
     static native String probe();
     private static native int[] nativeLayout();
-    private static native long nativeOpen(Bitmap background, int x, int y, int requestFlags, int displayMode);
+    private static native long nativeOpen(Bitmap background, int x, int y, int requestFlags, int displayMode, int plane);
     private static native int nativePresent(long handle, Bitmap bitmap, int left, int top,
                                             int right, int bottom, int x, int y, boolean force);
     private static native void nativeClose(long handle);
@@ -55,7 +55,7 @@ final class DirectEink {
         // Page and panel orientation cancel. Normal landscape pages take this zero-copy path.
         if (sourceToBuffer.isIdentity()) {
             sourceToBuffer=null;
-            handle=nativeOpen(background,x,y,requestFlags,displayMode);
+            handle=nativeOpen(background,x,y,requestFlags,displayMode,planeFor(displayMode));
             return;
         }
         buffer=Bitmap.createBitmap(pixels.width(),pixels.height(),Bitmap.Config.ARGB_8888);
@@ -63,24 +63,28 @@ final class DirectEink {
         bufferCanvas.drawColor(android.graphics.Color.WHITE);
         bufferTurn=quarterTurn(sourceToBuffer,sourceWidth,sourceHeight);
         copyToBuffer(background,new Rect(0,0,buffer.getWidth(),buffer.getHeight()));
-        try { handle=nativeOpen(buffer,x,y,requestFlags,displayMode); }
+        try { handle=nativeOpen(buffer,x,y,requestFlags,displayMode,planeFor(displayMode)); }
         catch (RuntimeException | LinkageError error) { buffer.recycle(); throw error; }
     }
     /** The panel offers the binary pen path (mode 9) for exact black/white controls. */
-    static boolean fastBinaryControls() { return layout()[2]!=0; }
+    static boolean fastBinaryControls() { return fastBinaryPlane>=0 && layout()[0]!=0; }
     private static int[] layout;
-    private static final int[] NONE = new int[3];
+    private static final int[] NONE = new int[2];
     private static volatile boolean androidDrawing;
+    private static volatile int fastBinaryPlane = -1;
+    /** The driver plane for mode 9 control pixels, from {@link Device#fastBinaryPlane}; -1 for none. */
+    static void useFastBinaryPlane(int plane) { fastBinaryPlane = plane; }
+    private static int planeFor(int displayMode) { return displayMode==9 ? fastBinaryPlane : 0; }
     /**
      * Settings' Standard Android drawing: report no driver, so every caller takes its Android
      * fallback and the firmware's e-ink interfaces are left alone.
      */
     static void useAndroidDrawing(boolean value) { androidDrawing = value; }
     static boolean androidDrawing() { return androidDrawing; }
-    /** The driver buffer as {width, height, fast binary}; zeros when unsupported. Known buffers are listed in direct_eink.c. */
+    /** The driver buffer as {width, height}; zeros when unsupported. Known buffers are listed in direct_eink.c. */
     static synchronized int[] layout() {
         if (androidDrawing) return NONE;
-        if (layout==null) { layout=nativeLayout(); if (layout==null) layout=new int[3]; }
+        if (layout==null) { layout=nativeLayout(); if (layout==null) layout=new int[2]; }
         return layout;
     }
     /**

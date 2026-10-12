@@ -6,6 +6,11 @@ with each change; when cutting a release, turn that section into
 
 ## Unreleased (since 0.97)
 
+- On Supernote firmware 3.30.45, the marker under the color bar follows the pen
+  again on the Manta instead of trailing behind it like a snake. Buttons there
+  are now drawn in black and white dots, as on the Nomad, so their press
+  feedback is fast too. Older firmware behaves as before.
+
 - The flat brush keeps up with the pen in transparent watercolor paint, as fast
   as the round and filbert brushes, and lays its watercolor the same as before.
 

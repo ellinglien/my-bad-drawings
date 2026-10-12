@@ -121,6 +121,7 @@ public final class PaintActivity extends Activity implements ControlHost {
         preferences = getSharedPreferences(PaintPreferences.FILE, MODE_PRIVATE);
         prefs = new PaintPreferences(preferences);
         DirectEink.useAndroidDrawing(prefs.androidDrawing());
+        DirectEink.useFastBinaryPlane(device.fastBinaryPlane());
         noticeUntestedFirmware();
         navigationLocked = prefs.navigationLocked();
         prefs.loadPaint(paint);

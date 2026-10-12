@@ -37,17 +37,18 @@ static void fail(JNIEnv *env, const char *message) {
 
 // Restrict the experiment to queried layouts, never guess an ABI from Android's
 // model property (the Manta incorrectly says Nomad). Supporting another panel
-// means adding a row here, observed on the device itself.
+// means adding a row here, observed on the device itself. Which plane the
+// firmware's binary pen path (mode 9/flags 1) uses is a firmware fact the
+// caller passes in; see Device.fastBinaryPlane.
 typedef struct {
     int width, height, stride, size;
-    int fast_binary; // plane 1, mode 9/flags 1 binary pen path for controls
 } Layout;
 static const Layout LAYOUTS[]={
     // Manta: the buffer matches the portrait screen.
-    {1920,2560,1920,4915200,0},
+    {1920,2560,1920,4915200},
     // Nomad: the panel's landscape scan order (firmware hwrota=270), observed
     // from the shared plane on 2026-10-05.
-    {1872,1404,1872,2628288,1},
+    {1872,1404,1872,2628288},
 };
 
 static const Layout *supported_layout(const int32_t *info) {
@@ -59,7 +60,7 @@ static const Layout *supported_layout(const int32_t *info) {
     return NULL;
 }
 
-// The supported driver buffer as {width, height, fast binary}, or null when unsupported.
+// The supported driver buffer as {width, height}, or null when unsupported.
 JNIEXPORT jintArray JNICALL
 Java_io_github_mpdairy_monopaint_DirectEink_nativeLayout(JNIEnv *env, jclass clazz) {
     (void)clazz;
@@ -69,24 +70,28 @@ Java_io_github_mpdairy_monopaint_DirectEink_nativeLayout(JNIEnv *env, jclass cla
     const Layout *l=ioctl(fd,0x48545201UL,info)==0 ? supported_layout(info) : NULL;
     close(fd);
     if (!l) return NULL;
-    jint values[3]={l->width,l->height,l->fast_binary};
-    jintArray result=(*env)->NewIntArray(env,3);
-    if (result) (*env)->SetIntArrayRegion(env,result,0,3,values);
+    jint values[2]={l->width,l->height};
+    jintArray result=(*env)->NewIntArray(env,2);
+    if (result) (*env)->SetIntArrayRegion(env,result,0,2,values);
     return result;
 }
 
 JNIEXPORT jlong JNICALL
 Java_io_github_mpdairy_monopaint_DirectEink_nativeOpen(JNIEnv *env, jclass clazz,
-        jobject background,jint x,jint y,jint request_flags,jint display_mode) {
+        jobject background,jint x,jint y,jint request_flags,jint display_mode,jint plane) {
     (void)clazz;
     // Compare only the two settings observed in installed display clients.
     if (request_flags!=0 && request_flags!=1) {
         fail(env,"Unsupported display request flags"); return 0;
     }
-    // The pen presenter uses plane 1, mode 9/flags 1. Only exact binary
-    // control pixels are supported on that path; mode 7 retains gray drawing.
+    // The pen presenter uses mode 9/flags 1 on plane 0 or 1, depending on the
+    // firmware. Only exact binary control pixels are supported on that path;
+    // mode 7 retains gray drawing on plane 0.
     if (display_mode!=7 && !(display_mode==9 && request_flags==1)) {
         fail(env,"Unsupported display mode"); return 0;
+    }
+    if (display_mode==7 ? plane!=0 : plane!=0 && plane!=1) {
+        fail(env,"Fast binary controls are not supported on this firmware"); return 0;
     }
     int fd=open("/dev/ebc",O_RDWR|O_CLOEXEC);
     if (fd<0) { fail(env,strerror(errno)); return 0; }
@@ -97,9 +102,6 @@ Java_io_github_mpdairy_monopaint_DirectEink_nativeOpen(JNIEnv *env, jclass clazz
     const Layout *layout=supported_layout(info);
     if (!layout) {
         close(fd); fail(env,"Unsupported display buffer layout"); return 0;
-    }
-    if (display_mode==9 && !layout->fast_binary) {
-        close(fd); fail(env,"Fast binary controls are not supported on this panel"); return 0;
     }
     int width=layout->width,height=layout->height;
     AndroidBitmapInfo bitmap_info;
@@ -119,7 +121,7 @@ Java_io_github_mpdairy_monopaint_DirectEink_nativeOpen(JNIEnv *env, jclass clazz
     if (!d) { munmap(pixels,length); close(fd); fail(env,"Display allocation failed"); return 0; }
     d->fd=fd; d->pixels=pixels; d->length=length;
     d->width=width; d->height=height; d->stride=info[2];
-    d->offset=display_mode==9 ? info[3] : 0;
+    d->offset=plane*info[3];
     d->canvas_width=bitmap_info.width; d->canvas_height=bitmap_info.height; d->x=x; d->y=y;
     d->request_flags=(uint8_t)request_flags;
     d->display_mode=(uint8_t)display_mode;

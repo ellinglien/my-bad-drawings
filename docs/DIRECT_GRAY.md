@@ -226,6 +226,25 @@ The retained fix copies the full brush region's border on each submission.
 Normal UI gray conversion also differs from our direct conversion; this is
 additional evidence that live/final shade calibration remains unfinished.
 
+## Firmware 3.30.45 pen plane (2026-10-12)
+
+On Chauvet 3.30.45 (`Chauvet.E103.2610091001.2545_release`) the Manta color
+bar marker trailed the pen and caught up when it stopped, as the Nomad's did
+before mode 9: gray mode 7 frames now queue on the Manta too. The new
+`libeinkutils.so` (lib64 SHA-256
+`1c83741b47657fd0d751a29c83a0efc61ef1cd1076cad645dad61f8073cf37ad`) differs
+from the reference in one place that matters: `initEbc` now stores the base
+mapping, not base plus one plane, in the field `postEinkPWRectFast` reads, so
+the firmware's own mode 9/flags 1 requests write and submit offset 0, the main
+plane. Mode 9 is otherwise unchanged.
+
+`Device.fastBinaryPlane()` therefore chooses the plane by build: from stamp
+2610091001 on, both models use plane 0; before it, the Nomad keeps plane 1
+and the Manta keeps gray controls. `DirectEink.useFastBinaryPlane` receives
+the choice, and JNI accepts only plane 0 or 1 for mode 9 and plane 0 for
+mode 7. The user confirmed on the physical Manta that the marker now follows
+the pen. The Nomad on 3.30.45 is untested.
+
 ## Interface provenance
 
 Installed Atelier 1.1.82's native `repaintC` renderer opens `/dev/ebc`, queries

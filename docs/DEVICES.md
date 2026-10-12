@@ -2,14 +2,14 @@
 
 Every hardware difference MonoPaint knows about is recorded in one of two places.
 The rest of the app asks about a named fact (`device.landscapeTilt`,
-`DirectEink.fastBinaryControls()`) and never about a model.
+`device.fastBinaryPlane()`) and never about a model.
 `DeviceChecks`, run by `scripts/test_document.sh`, fails if app code outside
 `Device.java` names a tablet. Comments may still say where a behavior was observed.
 
 | Where | What it holds | How it identifies the tablet |
 | --- | --- | --- |
 | `Device.java` | Input, layout and storage differences | Manufacturer, then the physical panel size |
-| `LAYOUTS` in `cpp/direct_eink.c` | The e-ink driver buffer: size, scan order, fast binary pen path | The driver's own `/dev/ebc` query |
+| `LAYOUTS` in `cpp/direct_eink.c` | The e-ink driver buffer: size and scan order | The driver's own `/dev/ebc` query |
 
 Neither place trusts Android's model property. The Manta reports itself as
 "Supernote Nomad".
@@ -25,7 +25,8 @@ Neither place trusts Android's model property. The Manta reports itself as
 | `simulates`: smaller tablet it can preview at physical size | Nomad | — | — |
 | `testedFirmware`: builds the device checks passed on | `Chauvet.E103.2606141001.2389_release` | `Chauvet.E103.2606141001.2389_release` | none |
 | Driver buffer | 1920×2560 portrait | 1872×1404 landscape | none (Android drawing only) |
-| Fast binary controls (plane 1, mode 9) | no | yes | no |
+| `fastBinaryPlane()`: fast binary controls (mode 9), before build 2610091001 | none (gray mode 7) | plane 1 | none |
+| `fastBinaryPlane()`, from build 2610091001 (3.30.45) on | plane 0 (confirmed by hand 2026-10-12) | plane 0 (not yet tried) | none |
 
 ## Firmware
 
