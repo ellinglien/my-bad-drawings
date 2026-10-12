@@ -37,6 +37,39 @@ final class BrushPerformanceChecks {
         }
         toolReplay(report);
         wetReplay(report);
+        transparentReplay(report);
+    }
+    /** Input cost of an opaque brush and a transparent one, plain or with flowing watercolor paint: each pen event's stamps, and the watercolor laid in full after, before any animation. */
+    private static void transparentReplay(StringBuilder report) throws Exception {
+        for (String mode : new String[]{"opaque", "transparent", "watercolor"}) for (int size : new int[]{48, 96, 128}) for (int step : new int[]{4, 16}) {
+            long[] times = new long[3], laying = new long[3]; long worst = 0; String fingerprint = "";
+            boolean flows = mode.equals("watercolor");
+            for (int run = -1; run < 3; run++) {
+                ToneDocument doc = new ToneDocument(1404, 1872);
+                WetWatercolor wet = flows ? new WetWatercolor(doc) : null;
+                ToolSettings settings = ToolSettings.defaults(ToolSettings.Tool.BRUSH).size(size).flows(flows);
+                BrushInk ink = new BrushInk(true); ink.tint(120);
+                long start = System.nanoTime(), max = 0;
+                DrawingStroke stroke = new PressureStroke(doc, settings, 120, wet, !mode.equals("opaque"), false, false, ink);
+                for (int i = 0; i < 60; i++) {
+                    long sample = System.nanoTime();
+                    stroke.sample(200 + i * step, 900 + (float)Math.sin(i * .08) * 80, .6f, 0, 60);
+                    max = Math.max(max, System.nanoTime() - sample);
+                }
+                stroke.finish();
+                long shown = System.nanoTime();
+                // Watercolor dabs show at once and are laid in full afterwards.
+                if (wet != null) wet.layQueued(false);
+                if (run >= 0) { times[run] = shown - start; laying[run] = System.nanoTime() - shown; worst = Math.max(worst, max); }
+                byte[] hash = MessageDigest.getInstance("SHA-256").digest(doc.snapshot());
+                StringBuilder hex = new StringBuilder();
+                for (byte value : hash) hex.append(String.format(Locale.US, "%02x", value & 255));
+                fingerprint = hex.toString();
+            }
+            Arrays.sort(times); Arrays.sort(laying);
+            report.append(String.format(Locale.US, "brush %s size=%d step=%d per_sample_ms=%.2f worst_sample_ms=%.2f laid_after_ms=%.0f sha256=%s%n",
+                    mode, size, step, times[1] / 60e6, worst / 1e6, laying[1] / 1e6, fingerprint));
+        }
     }
     private static void wetReplay(StringBuilder report) throws Exception {
         for (int size : new int[]{48, 128}) {

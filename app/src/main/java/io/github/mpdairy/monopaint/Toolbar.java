@@ -26,7 +26,7 @@ final class Toolbar {
             ToolSettings.Tool.AIRBRUSH, ToolSettings.Tool.FILL, ToolSettings.Tool.SHAPES,
             ToolSettings.Tool.ERASER, ToolSettings.Tool.SOFTEN};
     /** Toolbar entries that are not tools. */
-    static final String LAYERS = "LAYERS", ZOOM = "ZOOM", PALETTE = "PALETTE";
+    static final String LAYERS = "LAYERS", ZOOM = "ZOOM", PALETTE = "PALETTE", DRYER = "DRYER";
 
     private final PaintActivity app;
     final ToolRail toolRail;
@@ -36,7 +36,7 @@ final class Toolbar {
     final PresetDragHandler presetDrag = new PresetDragHandler();
     /** Selectable buttons by key: {@code tool:<TOOL>} for built-ins, the preset ID for favorites. */
     final Map<String, ToolButton> selectionButtons = new LinkedHashMap<>();
-    ToolButton layersButton, zoomButton;
+    ToolButton layersButton, zoomButton, dryerButton;
     LinearLayout sidebarPalette;
     final ArrayList<PaletteSwatch> sidebarSwatches = new ArrayList<>();
     /** Progress text for long operations such as fills. */
@@ -84,12 +84,15 @@ final class Toolbar {
     boolean shapeChosen() {
         return app.prefs.shapeChosen(!library().builtin(ToolSettings.Tool.SHAPES).equals(ToolSettings.defaults(ToolSettings.Tool.SHAPES)));
     }
-    private boolean isTool(String key) { return !key.equals(LAYERS) && !key.equals(ZOOM) && !key.equals(PALETTE); }
+    private boolean isTool(String key) { return !key.equals(LAYERS) && !key.equals(ZOOM) && !key.equals(PALETTE) && !key.equals(DRYER); }
 
     /** All entries in the saved order, with any new entries appended. */
     ArrayList<String> toolbarOrder() {
         ArrayList<String> defaults = new ArrayList<>(), order = new ArrayList<>();
-        for (ToolSettings.Tool tool : TOOLS) defaults.add(tool.name());
+        for (ToolSettings.Tool tool : TOOLS) {
+            defaults.add(tool.name());
+            if (tool == ToolSettings.Tool.BRUSH_PEN) defaults.add(DRYER);
+        }
         defaults.add(LAYERS); defaults.add(ZOOM); defaults.add(PALETTE);
         for (String key : app.prefs.toolbarOrder()) if (defaults.contains(key) && !order.contains(key)) order.add(key);
         // A newly offered entry joins beside the one it follows by default, not at the end.
@@ -130,7 +133,7 @@ final class Toolbar {
                 library.select(ToolSettings.Tool.valueOf(key)); break;
             }
         }
-        layersButton = null; zoomButton = null;
+        layersButton = null; zoomButton = null; dryerButton = null;
         sidebarPalette = null; sidebarSwatches.clear();
         toolRail.removeAllViews(); selectionButtons.clear();
         for (String key : toolbarOrder()) {
@@ -138,6 +141,7 @@ final class Toolbar {
             if (key.equals(PALETTE)) addSidebarPalette();
             else if (key.equals(ZOOM)) addZoom();
             else if (key.equals(LAYERS)) addLayers();
+            else if (key.equals(DRYER)) addDryer();
             else addTool(ToolSettings.Tool.valueOf(key));
         }
         boolean landscape = landscape();
@@ -161,6 +165,43 @@ final class Toolbar {
         layersButton = railButton("Layers", R.drawable.ic_layers, () -> app.showLayers(layersButton));
         layersButton.selectionOutline = true; layersButton.press.feedback = app.selectionFeedback;
         markActive(layersButton, false);
+    }
+    /** Dries all wet paint at a tap, without changing the selected tool. */
+    private void addDryer() {
+        dryerButton = railButton("Blow dryer", R.drawable.ic_hair_dryer, () -> { if (app.blowDry()) blow(0); });
+        dryerButton.press.feedback = app.selectionFeedback;
+        dryerButton.setContentDescription("Blow dryer. Tap to dry all wet paint.");
+        markActive(dryerButton, false);
+    }
+    /** Frames of air the dryer blows after a tap, each this long, inside a box around it. */
+    private static final int BLOW_FRAMES = 6, BLOW_FRAME_MS = 140;
+    /** Shows frame {@code frame} of the dryer's air, then the next; past the last, clears it. */
+    private void blow(int frame) {
+        ToolButton button = dryerButton;
+        if (button == null || !button.isAttachedToWindow()) return;
+        boolean done = frame >= BLOW_FRAMES;
+        // The dryer steps back while it blows, leaving room for the air in front of it.
+        app.selectionFeedback.update(button, () -> {
+            button.overlay = done ? null : (canvas, b) -> drawAir(canvas, b, frame);
+            button.iconOffset = done ? 0 : -6;
+        });
+        if (!done) button.postDelayed(() -> { if (button == dryerButton) blow(frame + 1); }, BLOW_FRAME_MS);
+    }
+    /** A box around the dryer and puffs of air leaving its nozzle, further out each frame. */
+    private static void drawAir(Canvas canvas, ToolButton button, int frame) {
+        button.press.drawBox(canvas);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(Color.BLACK); paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(dp(button, 1.5f)); paint.setStrokeCap(Paint.Cap.ROUND);
+        // The icon's nozzle faces right; its air lines sit at these heights of the 24-unit icon.
+        float half = dp(button, button.iconHalf), unit = 2 * half / 24;
+        float left = button.getWidth() / 2f + dp(button, button.iconOffset) - half, top = button.getHeight() / 2f - half;
+        float limit = button.getWidth() - dp(button, PressOutline.BOX_INSET_DP + 3);
+        for (float row : new float[]{4.5f, 9, 13.5f}) for (int wave = 0; wave < 2; wave++) {
+            float start = left + (24 + (frame * 2 + wave * 4) % 8) * unit;
+            float end = Math.min(limit, start + 3 * unit);
+            if (end > start) canvas.drawLine(start, top + row * unit, end, top + row * unit, paint);
+        }
     }
     private void addZoom() {
         zoomButton = railButton("Zoom", R.drawable.ic_zoom, app::toggleNavigationLock);

@@ -27,6 +27,7 @@ final class Popups {
         popup.setBackgroundDrawable(new ColorDrawable(background));
         popup.setOutsideTouchable(focusable); popup.setElevation(0); popup.setAnimationStyle(0);
         popup.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
+        if (focusable) popup.setTouchInterceptor(Ui::restingOutside);
         return popup;
     }
     static PopupWindow create(View content, int turn) { return create(content, turn, true, Color.WHITE); }

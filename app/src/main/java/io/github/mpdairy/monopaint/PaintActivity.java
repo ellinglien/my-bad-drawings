@@ -552,9 +552,15 @@ public final class PaintActivity extends Activity implements ControlHost {
                 dismissingTouch = false;
             return true;
         }
-        // A touch outside the page row or palette editor only closes it.
-        if (down && pagePanel != null && Ui.outside(pagePanel, event)) { closePagePanel(); dismissingTouch = true; return true; }
-        if (down && paletteEditor != null && Ui.outside(shadePicker, event)) { closePaletteEditor(); dismissingTouch = true; return true; }
+        // A pen touch outside the page row or palette editor only closes it; a resting hand is ignored.
+        if (down && pagePanel != null && Ui.outside(pagePanel, event)) {
+            if (!Ui.fingersOnly(event)) closePagePanel();
+            dismissingTouch = true; return true;
+        }
+        if (down && paletteEditor != null && Ui.outside(shadePicker, event)) {
+            if (!Ui.fingersOnly(event)) closePaletteEditor();
+            dismissingTouch = true; return true;
+        }
         // Android treats ORIENTATION as radians when it transforms a View's events.
         // Retain the firmware's original signed-degree tilt axes before that happens.
         MotionEvent previous = physicalPenEvent; physicalPenEvent = event;
@@ -692,7 +698,9 @@ public final class PaintActivity extends Activity implements ControlHost {
         // The brush pens lay no color: choosing one goes back to the brush last in use.
         if (library.current().tool.water) toolbar.returnToBrush();
         if (paint.gray != value) updateColorBar(() -> paint.gray = value);
-        // Any tap on a shade, the same one too, resets a flowing brush's ink to it.
+        // Any tap on a shade, the same one too, resets a flowing brush's ink to it,
+        // after the brush has laid the paint it is still showing.
+        pad.layQueuedPaint();
         paint.brushLoad.tint(value);
         if (pad.hasGradient()) pad.previewGradient(value);
         if (paletteEditor != null) paletteEditor.colorChanged(value);
@@ -767,6 +775,16 @@ public final class PaintActivity extends Activity implements ControlHost {
         if (!value) pad.dryWet();
         refreshPaintModes(); saveToolState();
     }
+    /**
+     * The blow dryer: wet paint stops moving and stays as it is. Wet canvas mode stays on,
+     * so the next stroke wets the paint it reaches again. False if busy.
+     */
+    boolean blowDry() {
+        if (busy()) return false;
+        setPickingShade(false);
+        pad.finishStroke(); pad.dryWet();
+        return true;
+    }
     private void setTransparentPaint(boolean value) {
         if (busy()) return;
         pad.finishStroke(); paint.transparentPaint = value;
@@ -833,6 +851,7 @@ public final class PaintActivity extends Activity implements ControlHost {
     void orientDialog(AlertDialog dialog, int desiredWidth) {
         android.view.Window window = dialog.getWindow();
         if (window == null) return;
+        window.getDecorView().setOnTouchListener(Ui::restingOutside);
         int width = Math.min(dp(desiredWidth), root.getWidth()-dp(32));
         boolean compact = compactLayout();
         if (appRotation == Surface.ROTATION_0 && !compact) { window.setLayout(width, -2); return; }

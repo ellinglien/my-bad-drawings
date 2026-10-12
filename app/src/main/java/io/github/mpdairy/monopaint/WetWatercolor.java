@@ -72,6 +72,14 @@ final class WetWatercolor {
     /** Pigment the brush pen carries along the current stroke. */
     private float load;
     private boolean loaded, hasFlowing, flowingFrame;
+    /**
+     * Brush dabs shown at once as a plain glaze, waiting their turn in the full model, in order.
+     * {@link #STROKE} marks where a later stroke began. Laying a big watercolor dab in full
+     * costs several times the plain glaze, so the pen never waits for it.
+     */
+    private final ArrayDeque<Dab> queued = new ArrayDeque<>();
+    private static final Dab STROKE = new Dab(null, 0, 0, 0, 0, 0, false, 0, null);
+    private int[] replayMask = new int[0];
 
     WetWatercolor(ToneDocument document) {
         this(document, false, 100);
@@ -94,6 +102,11 @@ final class WetWatercolor {
     private int margin(float downhill) { return 8 + Math.round(24 * Math.max(0, downhill)); }
     void beginStroke() {
         canContinue = false;
+        for (Tile tile : tiles) if (tile != null && tile.previewed != null) tile.previewed.clear();
+        // Dabs still waiting from the last stroke keep their own stroke's state.
+        if (queued.isEmpty()) startStroke(); else queued.addLast(STROKE);
+    }
+    private void startStroke() {
         strokePixels = 0;
         loaded = false;
         for (Tile tile : tiles) if (tile != null) tile.touched.clear();
@@ -106,6 +119,7 @@ final class WetWatercolor {
     }
     /** {@code strength}, from 0 to 1, moves each pixel only that far toward the paint, as a brush running out of it does. */
     void paintMask(int[] mask, int stride, int x, int y, int w, int h, int gray, boolean transparent, float strength) {
+        lay(true, Long.MAX_VALUE);
         // Rehydrate the local neighborhood lazily: existing drawing is pigment too.
         // The whole canvas is eligible, without scanning/allocating it on a toggle.
         int marginLeft = margin(-gravityX), marginTop = margin(-gravityY);
@@ -138,7 +152,7 @@ final class WetWatercolor {
                 continue;
             }
             if (!tile.wet.get(index)) {
-                tile.base[index] = (byte)document.tone(px, py);
+                tile.base[index] = (byte)dryTone(tile, index, px, py);
                 tile.target[index] = pigment;
                 markWet(tile, index);
             } else tile.target[index] = tile.pigment[index] * .45f + pigment * .55f;
@@ -179,6 +193,61 @@ final class WetWatercolor {
      *            it covers; or null. Its water is at least its {@link BrushInk#tint}.
      */
     void waterMask(int[] mask, int stride, int x, int y, int w, int h, float pull, boolean flowing, float carry, BrushInk ink) {
+        lay(true, Long.MAX_VALUE);
+        layWater(mask, stride, x, y, w, h, pull, flowing, carry, ink);
+    }
+    /**
+     * {@link #waterMask} for a watercolor brush, shown at once and laid in full later, when
+     * there is time: see {@link #advance}. Until then each pixel the dab newly covers shows
+     * the brush's tint glazed over it, which is what a clean brush leaves on dry paper.
+     */
+    void queueWater(int[] mask, int stride, int x, int y, int w, int h, float pull, boolean flowing, float carry, BrushInk ink) {
+        byte[] alpha = new byte[w * h];
+        float tint = ink == null ? 0 : ink.tint();
+        for (int row = 0; row < h; row++) for (int col = 0; col < w; col++) {
+            int coverage = mask[row * stride + col] >>> 24, px = x + col, py = y + row;
+            alpha[row * w + col] = (byte)coverage;
+            if (coverage == 0 || px < 0 || py < 0 || px >= document.width || py >= document.height) continue;
+            Tile tile = tileAt(px, py);
+            int index = (py % SIDE) * SIDE + px % SIDE;
+            if (tile.previewed == null) { tile.previewed = new BitSet(PIXELS); tile.held = new BitSet(PIXELS); tile.under = new byte[PIXELS]; }
+            if (tile.previewed.get(index)) continue;
+            tile.previewed.set(index);
+            int tone = document.tone(px, py);
+            // The model reads the paint as it was, not the preview over it.
+            if (!tile.held.get(index)) { tile.held.set(index); tile.under[index] = (byte)tone; }
+            document.setTone(px, py, Math.round(tone * (1 - tint * coverage / 255f)));
+        }
+        queued.addLast(new Dab(alpha, x, y, w, h, pull, flowing, carry, ink));
+    }
+    private void layNext() {
+        Dab dab = queued.removeFirst();
+        if (dab == STROKE) { startStroke(); return; }
+        int size = dab.w * dab.h;
+        if (replayMask.length < size) replayMask = new int[size];
+        for (int i = 0; i < size; i++) replayMask[i] = (dab.alpha[i] & 255) << 24;
+        layWater(replayMask, dab.w, dab.x, dab.y, dab.w, dab.h, dab.pull, dab.flowing, dab.carry, dab.ink);
+    }
+    /**
+     * Lays all queued dabs in full outside a gesture, as one continuation of the last
+     * stroke, e.g. before the paint dries. False if there were none, or nothing changed.
+     */
+    boolean layQueued(boolean strokeActive) { return lay(strokeActive, Long.MAX_VALUE); }
+    /** Lays queued dabs for about {@code budgetNanos}, at least one; false if none, or nothing changed. */
+    private boolean lay(boolean strokeActive, long budgetNanos) {
+        if (queued.isEmpty()) return false;
+        long start = System.nanoTime();
+        if (!strokeActive) document.begin();
+        do layNext(); while (!queued.isEmpty() && System.nanoTime() - start < budgetNanos);
+        return !strokeActive && finishSlice();
+    }
+    /** Ends a slice of work outside a gesture; the first that changes anything after a stroke starts its own Undo step. */
+    private boolean finishSlice() {
+        boolean changed = canContinue ? document.finishContinuation() : document.finish();
+        canContinue |= changed;
+        return changed;
+    }
+    private void layWater(int[] mask, int stride, int x, int y, int w, int h, float pull, boolean flowing, float carry, BrushInk ink) {
         int marginLeft = margin(-gravityX), marginTop = margin(-gravityY);
         int marginRight = margin(gravityX), marginBottom = margin(gravityY);
         if (wholeCanvas) hydrate(x - marginLeft, y - marginTop, x + w + marginRight, y + h + marginBottom);
@@ -337,7 +406,7 @@ final class WetWatercolor {
     private void settleDried(Tile tile, int index, int x, int y) {
         boolean wet = tile.wet.get(index);
         if (wet && tile.flowing.get(index) && tile.pull != null && tile.pull[index] > STILL) return;
-        int tone = document.tone(x, y);
+        int tone = dryTone(tile, index, x, y);
         if (!wet) markWet(tile, index);
         tile.base[index] = (byte)255;
         tile.pigment[index] = tile.target[index] = 0;
@@ -354,7 +423,11 @@ final class WetWatercolor {
     }
     private void lift(Tile tile, int index, int x, int y) {
         markWet(tile, index); tile.base[index] = (byte)255;
-        tile.pigment[index] = tile.target[index] = 255 - document.tone(x, y);
+        tile.pigment[index] = tile.target[index] = 255 - dryTone(tile, index, x, y);
+    }
+    /** The drawn tone under a pixel, as the model last left it or found it, beneath any preview of queued dabs. */
+    private int dryTone(Tile tile, int index, int x, int y) {
+        return tile.held != null && tile.held.get(index) ? tile.under[index] & 255 : document.tone(x, y);
     }
     private void wake(Tile tile) { wake(tile, FRAMES); }
     private void wake(Tile tile, int frames) {
@@ -372,12 +445,15 @@ final class WetWatercolor {
         canContinue |= changed;
         return changed;
     }
-    boolean isAnimating() { return !active.isEmpty(); }
+    boolean isAnimating() { return !active.isEmpty() || !queued.isEmpty(); }
     int activeTiles() { return active.size(); }
     int activePixels() { return active.size() * PIXELS; }
     int strokePixels() { return strokePixels; }
     int advancedTiles() { return advancedTiles; }
-    boolean framePending() { return frameRemaining > 0; }
+    /** A frame, or queued dabs, are partly done: the next slice should follow at once. */
+    boolean framePending() { return frameRemaining > 0 || !queued.isEmpty(); }
+    /** Dabs shown but not yet laid in full. */
+    int queuedDabs() { return queued.size(); }
     /**
      * Whether flowing water is moving. Its frames need not keep pace with the clock: shown
      * as fast as they can be worked out, the ink settles almost as soon as the pen lifts.
@@ -391,7 +467,10 @@ final class WetWatercolor {
      * The deadline is checked between tiles, so a single tile may exceed it. */
     boolean advance(boolean strokeActive, int maxTiles, long budgetNanos, int maxSpan) {
         advancedTiles = 0;
-        if (active.isEmpty() || maxTiles <= 0 || budgetNanos <= 0) return false;
+        if (budgetNanos <= 0) return false;
+        // Paint is laid before it flows: queued dabs first.
+        if (!queued.isEmpty()) return lay(strokeActive, budgetNanos);
+        if (active.isEmpty() || maxTiles <= 0) return false;
         long start = System.nanoTime();
         if (frameRemaining == 0) {
             frameRemaining = active.size(); frame++;
@@ -443,10 +522,7 @@ final class WetWatercolor {
         }
         advancedTiles = batch.size();
         frameRemaining -= advancedTiles;
-        if (strokeActive) return false;
-        boolean changed = canContinue ? document.finishContinuation() : document.finish();
-        canContinue |= changed;
-        return changed;
+        return !strokeActive && finishSlice();
     }
     /**
      * Works out the next pigment of every tile in {@link #batch}. Each tile reads only the
@@ -688,6 +764,8 @@ final class WetWatercolor {
         float ink = tile.pigment[index] + (tile.stuck == null ? 0 : tile.stuck[index]);
         int tone = Math.round((tile.base[index] & 255) * (1 - Math.min(255, ink) / 255f));
         document.setTone(x, y, Math.max(0, Math.min(255, tone)));
+        // The model owns this pixel's tone again; any preview over it is gone.
+        if (tile.held != null) tile.held.clear(index);
     }
     private static final class Tile {
         final int x, y;
@@ -703,6 +781,9 @@ final class WetWatercolor {
         float[] reserve;
         /** Dry paint, out of 255, held stuck beneath a watercolor brush's water until it soaks loose, and how soaked it is, 0 to 1; allocated when there is some. */
         float[] stuck, soaked;
+        /** Pixels queued dabs have glazed this stroke; and those whose tone beneath a preview is held in {@link #under}. */
+        BitSet previewed, held;
+        byte[] under;
         int frames, wetPixels, flowingPixels;
         float meanInk, meanFresh;
         /** Planned change to this tile's mean flowing ink, per unit of freshness (a gain) or of ink (a loss), during {@link #spreadFrame}. */
@@ -710,5 +791,17 @@ final class WetWatercolor {
         int spreadSlot = -1, spreadFrame = -1;
 
         Tile(int x, int y) { this.x = x; this.y = y; }
+    }
+    /** A queued {@link #waterMask} call; its mask holds only coverage. */
+    private static final class Dab {
+        final byte[] alpha;
+        final int x, y, w, h;
+        final float pull, carry;
+        final boolean flowing;
+        final BrushInk ink;
+        Dab(byte[] alpha, int x, int y, int w, int h, float pull, boolean flowing, float carry, BrushInk ink) {
+            this.alpha = alpha; this.x = x; this.y = y; this.w = w; this.h = h;
+            this.pull = pull; this.flowing = flowing; this.carry = carry; this.ink = ink;
+        }
     }
 }

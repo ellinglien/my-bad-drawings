@@ -55,7 +55,7 @@ final class PaintPreferences {
     void setWetBrushPen(boolean value) { setFlag("wet_brush_pen", value); }
     void setShapeChosen() { setFlag("shape_chosen", true); }
 
-    /** Toolbar entries are tool names plus {@code LAYERS}, {@code ZOOM} and {@code PALETTE}. */
+    /** Toolbar entries are tool names plus {@code LAYERS}, {@code ZOOM}, {@code PALETTE} and {@code DRYER}. */
     boolean toolbarItemVisible(String key) { return flag("tool_visible_" + key, true); }
     void setToolbarItemVisible(String key, boolean visible) { setFlag("tool_visible_" + key, visible); }
     /** Saved toolbar order, possibly missing newer entries or containing removed ones. */

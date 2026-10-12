@@ -6,8 +6,8 @@ import java.util.Arrays;
 public final class WetWatercolorChecks {
     public static void main(String[] args) throws Exception {
         blendingAndHistory(); dryPaperAndLinework(); dryGaps(); drying(); pausedStrokes(false); pausedStrokes(true);
-        liveStroke(); boundedSlices(); adaptiveBudget(); presets(); gravity(); brushPen(false); brushPen(true); carriedPaint(255); carriedPaint(128); wetBrushPen(); brushInk(); smoothFlow(); flowingGravity(); flowingGlaze(); stuckPaint(); flowingSlices();
-        System.out.println("PASS: live wet blending, gravity drift, brush pen seeping and sharp dry edges, wet brush pen ink flow by freshness, adaptive work limits, bounded spatial/time slices, pause/resume, retained water, dry boundaries/linework, drying, exact undo/redo, saved tones and TSP9 migration");
+        liveStroke(); boundedSlices(); adaptiveBudget(); presets(); gravity(); brushPen(false); brushPen(true); carriedPaint(255); carriedPaint(128); wetBrushPen(); brushInk(); smoothFlow(); flowingGravity(); flowingGlaze(); queuedGlaze(); stuckPaint(); flowingSlices();
+        System.out.println("PASS: live wet blending, gravity drift, brush pen seeping and sharp dry edges, wet brush pen ink flow by freshness, adaptive work limits, bounded spatial/time slices, pause/resume, retained water, dry boundaries/linework, queued watercolor dabs, drying, exact undo/redo, saved tones and TSP9 migration");
     }
     private static void check(boolean pass, String message) { if (!pass) throw new AssertionError(message); }
     private static void dab(ToneDocument doc, WetWatercolor wet, int x, int y, int w, int h, int gray) {
@@ -179,6 +179,38 @@ public final class WetWatercolorChecks {
         check(Math.abs(brush.fullness() - 127 / 255f) < .001f, "Tapping a shade resets the brush's ink to it");
         for (int i = 0; i < 50; i++) brush.trade(0, 1);
         check(Math.abs(brush.fullness() - 127 / 255f) < .001f, "Over clear water the brush never gives out its tint");
+    }
+    /**
+     * A watercolor brush's dabs show at once as its tint glazed over the paint, and are laid in
+     * full later, in order, across strokes: the result is the same as laying each at once.
+     */
+    private static void queuedGlaze() {
+        byte[] now = null;
+        for (boolean queue : new boolean[]{false, true}) {
+            ToneDocument doc = new ToneDocument(160, 96);
+            doc.begin(); for (int y = 20; y < 70; y++) for (int x = 60; x < 90; x++) doc.paintTone(x, y, 50); doc.finish();
+            WetWatercolor wet = new WetWatercolor(doc);
+            int[] mask = new int[16 * 16]; Arrays.fill(mask, 0xff000000);
+            for (int i = 0; i < 16; i++) mask[i] = 0x80000000;
+            BrushInk brush = new BrushInk(true); brush.tint(140);
+            for (int stroke = 0; stroke < 2; stroke++) {
+                doc.begin(); wet.beginStroke();
+                for (int pass = 0; pass < 3; pass++) for (int x = 10; x <= 130; x += 4) {
+                    int at = pass % 2 == 0 ? x : 140 - x, top = 30 + stroke * 8;
+                    if (queue) wet.queueWater(mask, 16, at, top, 16, 16, 1, true, 0, brush);
+                    else wet.waterMask(mask, 16, at, top, 16, 16, 1, true, 0, brush);
+                }
+                if (queue && stroke == 0) {
+                    check(wet.queuedDabs() > 0 && doc.tone(30, 40) == Math.round(255 * 140 / 255f)
+                            && doc.tone(75, 40) == Math.round(50 * 140 / 255f),
+                            "Queued dabs show the tint glazed over paper and paint at once (" + doc.tone(30, 40) + ", " + doc.tone(75, 40) + ")");
+                }
+                wet.finishStroke();
+            }
+            if (queue) { wet.layQueued(false); check(wet.queuedDabs() == 0, "Laying empties the queue"); }
+            if (!queue) now = doc.snapshot();
+            else check(Arrays.equals(now, doc.snapshot()), "Queued dabs lay the same paint as dabs laid at once, across strokes");
+        }
     }
     /** How much ink a brush tinted {@code gray} soaks up from one stroke over black. */
     private static float soaked(int gray) {

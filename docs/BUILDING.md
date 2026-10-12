@@ -292,6 +292,9 @@ CPU replay. Wet brush pen replays at 48px and 128px also report stroke processin
 slice. Wet raster hashes are diagnostic: time-budgeted tile grouping can vary
 between runs. The headless wet checks separately verify exact agreement between
 sliced and uninterrupted spread planning, including pen input between slices.
+Transparent brush replays, plain and watercolor, at 48px, 96px and 128px with
+slow and fast strokes report the per-sample and worst-sample input cost of
+laying paint, before any animation, with raster fingerprints.
 The brush UI suite checks wet pen input and animation through the direct display,
 without Android redraws, and one-step undo.
 The

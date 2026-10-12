@@ -3,6 +3,7 @@ package io.github.mpdairy.monopaint;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -15,8 +16,15 @@ final class ToneDocument {
     private static final int HISTORY_BYTES = 32 * 1024 * 1024;
     int width, height;
     private byte[] tones, alpha;
-    private byte[] sprayBaseTile;
-    private int sprayBaseKey=-1;
+    /** The last tile {@link #baseTile} looked up, so a dab's pixels skip the map; reset with {@link #before}. */
+    private byte[] lastBaseTile;
+    private int lastBaseKey=-1;
+    /**
+     * Pixels this gesture's {@link #transparentMask} has fully glazed with {@link #glazedGray},
+     * one bit each, a row of a tile per long. Overlapping dabs would only lay the same glaze again.
+     */
+    private final HashMap<Integer,long[]> glazed=new HashMap<>();
+    private int glazedGray=-1;
     private final ArrayList<Layer> layers = new ArrayList<>();
     private int active;
     private long revision;
@@ -192,7 +200,7 @@ final class ToneDocument {
         if(!captured[key]) return tone(x,y);
         int tileWidth=Math.min(TILE,width-(x/TILE)*TILE);
         int offset=(y%TILE)*tileWidth+x%TILE;
-        byte[] tile=before.get(key);
+        byte[] tile=baseTile(key);
         return onWhite(tile[offset]&255,tile[tile.length/2+offset]&255);
     }
     byte[] snapshot() {
@@ -212,7 +220,7 @@ final class ToneDocument {
     void begin() {
         if (editing) throw new IllegalStateException("Finish the current gesture first");
         if(!layerVisible(active)) throw new IllegalStateException("Show this layer before drawing on it.");
-        writable(); editing = true; before.clear();sprayBaseTile=null;sprayBaseKey=-1;
+        writable(); editing = true; before.clear();lastBaseTile=null;lastBaseKey=-1;glazed.clear();
     }
     void setTone(int x,int y,int gray) {
         if (!editing) throw new IllegalStateException("No active gesture");
@@ -229,8 +237,8 @@ final class ToneDocument {
     /** @param edge anti-aliased share of the pixel the glaze covers, out of 255 */
     void glazeTone(int x,int y,int gray,int edge) {
         if(gray==255) return;
-        int base=strokeBaseTone(x,y),coverage=strokeBasePixel(x,y)&255;
-        int result=transparentTone(base,gray);
+        int pixel=strokeBasePixel(x,y),coverage=pixel&255;
+        int result=transparentTone(onWhite(pixel>>>8,coverage),gray);
         coverage=255-transparentTone(255-coverage,gray);
         cover(x,y,rawTone(result,coverage),coverage,edge);
     }
@@ -245,8 +253,13 @@ final class ToneDocument {
     private int strokeBasePixel(int x,int y) {
         int key=(y/TILE)*columns()+x/TILE,i=y*width+x;
         if(!captured[key]) return (tones[i]&255)<<8|(alpha[i]&255);
-        byte[] tile=before.get(key); int w=Math.min(TILE,width-(x/TILE)*TILE),offset=(y%TILE)*w+x%TILE;
+        byte[] tile=baseTile(key); int w=Math.min(TILE,width-(x/TILE)*TILE),offset=(y%TILE)*w+x%TILE;
         return (tile[offset]&255)<<8|(tile[tile.length/2+offset]&255);
+    }
+    /** A captured tile as this gesture found it. Captures never change mid-gesture, so the last one is kept at hand. */
+    private byte[] baseTile(int key) {
+        if(lastBaseKey!=key||lastBaseTile==null) { lastBaseKey=key; lastBaseTile=before.get(key); }
+        return lastBaseTile;
     }
     /**
      * Lays what full contact leaves ({@code gray} at {@code coverage}) on {@code edge}/255 of the pixel,
@@ -289,11 +302,7 @@ final class ToneDocument {
     /** Remove coverage from the gesture's original layer, retaining its pigment. */
     void eraseFromBase(int x,int y,float strength) {
         int key=(y/TILE)*columns()+x/TILE,i=y*width+x,coverage=alpha[i]&255;
-        if(captured[key]) {
-            if(sprayBaseKey!=key || sprayBaseTile==null) {sprayBaseKey=key;sprayBaseTile=before.get(key);}
-            int w=Math.min(TILE,width-(x/TILE)*TILE),offset=(y%TILE)*w+x%TILE;
-            coverage=sprayBaseTile[sprayBaseTile.length/2+offset]&255;
-        }
+        if(captured[key]) coverage=strokeBasePixel(x,y)&255;
         int result=Math.round(coverage*(1-Math.max(0,Math.min(1,strength))));
         if(result<opacity(x,y)) setPixel(x,y,tones[i]&255,result);
     }
@@ -360,11 +369,23 @@ final class ToneDocument {
     static int transparentTone(int base, int gray) { return (base * (255 + gray) + 255) / 510; }
     /** One glaze per gesture, independent of overlapping interpolation stamps. */
     void transparentMask(int[] mask, int stride, int x, int y, int w, int h, int gray) {
+        if (gray != glazedGray) { glazed.clear(); glazedGray = gray; }
+        long[] bits = null; int bitsKey = -1;
         for (int row = 0; row < h; row++) for (int col = 0; col < w; col++) {
             int px = x + col, py = y + row;
             int edge = mask[row * stride + col] >>> 24;
-            if (edge != 0 && px >= 0 && py >= 0 && px < width && py < height)
-                glazeTone(px, py, gray, edge);
+            if (edge == 0 || px < 0 || py < 0 || px >= width || py >= height) continue;
+            // A partly covered edge may yet be covered more; a fully glazed pixel is final.
+            if (edge < 255) { glazeTone(px, py, gray, edge); continue; }
+            int key = (py / TILE) * columns() + px / TILE;
+            if (key != bitsKey) {
+                bitsKey = key; bits = glazed.get(key);
+                if (bits == null) glazed.put(key, bits = new long[TILE]);
+            }
+            long bit = 1L << (px % TILE);
+            if ((bits[py % TILE] & bit) != 0) continue;
+            bits[py % TILE] |= bit;
+            glazeTone(px, py, gray, 255);
         }
     }
     /** Darken to the selected logical gray; repeated passes retain the same shade. */
@@ -389,7 +410,7 @@ final class ToneDocument {
     boolean finishContinuation() { return finish(true); }
     private boolean finish(boolean continuation) {
         if (!editing) return false;
-        editing = false;sprayBaseTile=null;sprayBaseKey=-1;
+        editing = false;lastBaseTile=null;lastBaseKey=-1;glazed.clear();
         ArrayList<TileEdit> tiles = new ArrayList<>();
         for (Map.Entry<Integer, byte[]> entry : before.entrySet()) {
             captured[entry.getKey()] = false;
@@ -451,7 +472,7 @@ final class ToneDocument {
         for (Map.Entry<Integer, byte[]> tile : before.entrySet()) {
             restoreTile(tile.getKey(), tile.getValue()); captured[tile.getKey()] = false;
         }
-        before.clear(); editing = false;
+        before.clear(); lastBaseTile=null; lastBaseKey=-1; glazed.clear(); editing = false;
     }
     boolean canRedo() { return !redo.isEmpty(); }
     boolean undo() { return travel(undo, redo, false); }

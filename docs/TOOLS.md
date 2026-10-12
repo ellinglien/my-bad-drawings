@@ -67,6 +67,7 @@ once.
 
 | Item | What it does |
 |:-:|---|
+| <img src="icons/hair_dryer.svg" width="24"><br>**Blow dryer** | Tap to dry all wet paint at once: it stops running and stays as it is. Wet canvas stays on for your next stroke, and your tool stays selected. |
 | <img src="icons/layers.svg" width="24"><br>**Layers** | Up to 8 layers per page. <img src="icons/layer_visible.svg" width="24"> shows or hides a layer. |
 | <img src="icons/zoom.svg" width="24"><br>**Zoom** | Tap to lock/unlock pinch and pan. Quickly double-tap for 100% with the artwork back where the page began (an expanded page reaches under the bars), keeping the lock setting. |
 | <img src="icons/palette.svg" width="24"><br>**Palette** | Your saved swatches. |

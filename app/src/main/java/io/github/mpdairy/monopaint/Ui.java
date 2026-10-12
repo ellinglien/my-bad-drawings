@@ -36,6 +36,21 @@ final class Ui {
         return point[0] < 0 || point[1] < 0 || point[0] >= view.getWidth() || point[1] >= view.getHeight();
     }
 
+    /** Whether every pointer is a finger, so no pen is involved. */
+    static boolean fingersOnly(MotionEvent event) {
+        for (int i = 0; i < event.getPointerCount(); i++)
+            if (event.getToolType(i) != MotionEvent.TOOL_TYPE_FINGER) return false;
+        return true;
+    }
+
+    /**
+     * Whether only fingers touch outside a panel: usually the hand resting while the pen
+     * works its controls. Such touches are swallowed; only the pen closes panels.
+     */
+    static boolean restingOutside(View panel, MotionEvent event) {
+        return fingersOnly(event) && (event.getActionMasked() == MotionEvent.ACTION_OUTSIDE || outside(panel, event));
+    }
+
     static void detach(View view) {
         if (view.getParent() instanceof ViewGroup) ((ViewGroup)view.getParent()).removeView(view);
     }

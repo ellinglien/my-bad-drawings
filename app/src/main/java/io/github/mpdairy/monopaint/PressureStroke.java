@@ -214,7 +214,8 @@ final class PressureStroke implements DrawingStroke {
         else if (wet != null && settings.tool.water) wet.waterMask(pixels, w, left, top, w, h, pull, settings.tool.flowing, settings.carry / 100f, ink);
         // Fully fresh water, which pressure does not thin: it sizes the brush instead.
         // The brush's ink is tinted with the selected shade, the lightest it lays.
-        else if (wet != null && flowingGlaze) wet.waterMask(pixels, w, left, top, w, h, 1, true, 0, ink);
+        // Shown at once as a glaze; the wet paint lays it in full when there is time.
+        else if (wet != null && flowingGlaze) wet.queueWater(pixels, w, left, top, w, h, 1, true, 0, ink);
         else if (wet != null) {
             if (load == null) wet.paintMask(pixels, w, left, top, w, h, gray, transparent);
             else {

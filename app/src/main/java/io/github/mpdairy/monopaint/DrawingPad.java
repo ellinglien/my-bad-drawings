@@ -966,11 +966,22 @@ final class DrawingPad extends View {
         }
     }
     boolean stroking() { return stroke != null; }
+    /**
+     * Lays in full the brush dabs so far shown only as a glaze, e.g. before the brush's ink
+     * changes outside a stroke: they trade ink with it in order. False if there were none.
+     */
+    boolean layQueuedPaint() {
+        if (wet == null || wet.queuedDabs() == 0) return false;
+        wetChanged |= wet.layQueued(stroke != null);
+        renderDirty(); flush(true);
+        return true;
+    }
     /** Stops wet blending, leaving the paint as it is. */
     void dryWet() {
         cancelWetCallback();
+        boolean laid = layQueuedPaint();
         // Running water's last changes may not have reached the panel yet.
-        if (wet != null && wet.flowing()) { renderDirty(); flush(true); }
+        if (!laid && wet != null && wet.flowing()) { renderDirty(); flush(true); }
         app.canvasGravity.listen(false);
         wet = null;
         if (wetChanged) { wetChanged = false; app.recovery(); }

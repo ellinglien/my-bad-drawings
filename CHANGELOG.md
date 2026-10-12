@@ -15,6 +15,19 @@ with each change; when cutting a release, turn that section into
   whether to name it. On a named painting, Save painting as… makes a copy under
   a new name.
 
+- Transparent paint keeps up with the pen: a transparent brush now lays its
+  paint as fast as an opaque one, so big strokes no longer lag behind.
+- The **Blow dryer** is back, right below the Brush pen in the toolbar. Tap it
+  to dry all wet paint at once: watercolor, wet canvas paint and wet brush pen
+  ink stop running and stay as they are. Wet canvas stays on, so your next
+  stroke still blends into the paint it touches. It blows a little air for a moment, and the tool you were using
+  stays selected. You can hide or move it in Settings like other toolbar items.
+- Watercolor keeps up with the pen too: a big watercolor stroke shows right
+  away as its color glazed over the page, then turns into watercolor (lifting,
+  soaking and flowing) a moment later, catching up as soon as the tablet has
+  time, mostly once you lift the pen. The finished painting is the same as
+  before.
+
 - The **Wet brush pen** is back, as a choice on the Brush pen: open the Brush
   pen's settings and pick Dry or Wet, and the toolbar button keeps your
   choice (Dry at first). The wet one's water stays wet and lets ink run
