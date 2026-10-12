@@ -41,13 +41,14 @@ final class BrushPerformanceChecks {
     }
     /** Input cost of an opaque brush and a transparent one, plain or with flowing watercolor paint: each pen event's stamps, and the watercolor laid in full after, before any animation. */
     private static void transparentReplay(StringBuilder report) throws Exception {
+        for (ToolSettings.Head head : ToolSettings.Head.values())
         for (String mode : new String[]{"opaque", "transparent", "watercolor"}) for (int size : new int[]{48, 96, 128}) for (int step : new int[]{4, 16}) {
             long[] times = new long[3], laying = new long[3]; long worst = 0; String fingerprint = "";
             boolean flows = mode.equals("watercolor");
             for (int run = -1; run < 3; run++) {
                 ToneDocument doc = new ToneDocument(1404, 1872);
                 WetWatercolor wet = flows ? new WetWatercolor(doc) : null;
-                ToolSettings settings = ToolSettings.defaults(ToolSettings.Tool.BRUSH).size(size).flows(flows);
+                ToolSettings settings = ToolSettings.defaults(ToolSettings.Tool.BRUSH, head).size(size).flows(flows);
                 BrushInk ink = new BrushInk(true); ink.tint(120);
                 long start = System.nanoTime(), max = 0;
                 DrawingStroke stroke = new PressureStroke(doc, settings, 120, wet, !mode.equals("opaque"), false, false, ink);
@@ -67,8 +68,8 @@ final class BrushPerformanceChecks {
                 fingerprint = hex.toString();
             }
             Arrays.sort(times); Arrays.sort(laying);
-            report.append(String.format(Locale.US, "brush %s size=%d step=%d per_sample_ms=%.2f worst_sample_ms=%.2f laid_after_ms=%.0f sha256=%s%n",
-                    mode, size, step, times[1] / 60e6, worst / 1e6, laying[1] / 1e6, fingerprint));
+            report.append(String.format(Locale.US, "brush %s %s size=%d step=%d per_sample_ms=%.2f worst_sample_ms=%.2f laid_after_ms=%.0f sha256=%s%n",
+                    head, mode, size, step, times[1] / 60e6, worst / 1e6, laying[1] / 1e6, fingerprint));
         }
     }
     private static void wetReplay(StringBuilder report) throws Exception {

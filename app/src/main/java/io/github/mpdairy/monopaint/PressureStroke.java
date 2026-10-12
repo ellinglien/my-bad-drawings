@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 
 /** Pressure-sized brush stamps for opaque paint and black-dot washes. */
@@ -22,6 +23,12 @@ final class PressureStroke implements DrawingStroke {
     private final Canvas canvas;
     private final Paint paint = new Paint();
     private final int[] pixels;
+    /**
+     * For flat stamps batched into flowing paint: each stamp adds one to the alpha, so a run
+     * keeps how often its stamps covered each pixel and rubs it as often. Otherwise null.
+     */
+    private final Paint hitPaint;
+    private final byte[] hits;
     private final RectF footprint = new RectF();
     /** The brush's running-out paint, or null when it never runs out. */
     private final PaintLoad load;
@@ -81,11 +88,17 @@ final class PressureStroke implements DrawingStroke {
         // Wet paint softens its own edges, and washes deposit whole dots.
         sweep = smooth && this.wet == null
                 && (this.settings.tool == ToolSettings.Tool.BRUSH || this.settings.tool == ToolSettings.Tool.ERASER);
-        // Running-out paint changes with every dab, so dabs cannot be unioned.
-        batchFlat=this.wet==null && load==null && settings.head==ToolSettings.Head.FLAT;
+        // Running-out paint changes with every dab, so dabs cannot be unioned. Wet paint takes
+        // each pixel once per stroke, and flowing paint is told how often to rub it again.
+        batchFlat=load==null && settings.head==ToolSettings.Head.FLAT && (this.wet==null || !this.settings.tool.water);
         side = (int)Math.ceil(BrushStamp.extent(settings, maximum / 2f) * 2) + 4 + (batchFlat||sweep?66:0);
         mask = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888);
         pixels = new int[side * side]; canvas = new Canvas(mask);
+        if (batchFlat && flowingGlaze && this.wet != null) {
+            hits = new byte[side * side];
+            hitPaint = new Paint(); hitPaint.setColor(Color.argb(1, 0, 0, 0));
+            hitPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.ADD));
+        } else { hits = null; hitPaint = null; }
         paint.setColor(Color.BLACK); paint.setAntiAlias(sweep);
         document.begin();
         if (this.wet != null) this.wet.beginStroke();
@@ -173,7 +186,7 @@ final class PressureStroke implements DrawingStroke {
                     // subpixel and rotated-edge rounding from the original raster.
                     int stampX=(int)Math.floor(cx-e)-1,stampY=(int)Math.floor(cy-e)-1;
                     int saved=canvas.save();canvas.translate(stampX-left,stampY-top);
-                    BrushStamp.draw(canvas,paint,cx-stampX,cy-stampY,size,settings,previousAngle+turn*f,footprint,0);
+                    BrushStamp.draw(canvas,hitPaint!=null?hitPaint:paint,cx-stampX,cy-stampY,size,settings,previousAngle+turn*f,footprint,0);
                     canvas.restoreToCount(saved);footprint.offset(stampX-left,stampY-top);
                 }
                 l=Math.min(l,footprint.left);t=Math.min(t,footprint.top);
@@ -182,7 +195,7 @@ final class PressureStroke implements DrawingStroke {
             if(sweep)canvas.drawPath(outline,paint);
             int cropX=Math.max(0,(int)Math.floor(l)-1),cropY=Math.max(0,(int)Math.floor(t)-1);
             int w=Math.min(side,(int)Math.ceil(r)+1)-cropX,h=Math.min(side,(int)Math.ceil(bottom)+1)-cropY;
-            if(w>0 && h>0)applyMask(left+cropX,top+cropY,cropX,cropY,w,h,1);
+            if(w>0 && h>0)applyMask(left+cropX,top+cropY,cropX,cropY,w,h,1,hits);
         }
     }
     private void dab(float x, float y, float radius, float angle, float pull) {
@@ -206,16 +219,21 @@ final class PressureStroke implements DrawingStroke {
             if(w<=0||h<=0)return;
             left+=cropX;top+=cropY;
         }
-        applyMask(left,top,cropX,cropY,w,h,pull);
+        applyMask(left,top,cropX,cropY,w,h,pull,null);
     }
-    private void applyMask(int left,int top,int cropX,int cropY,int w,int h,float pull) {
+    /** @param hits null, or the buffer for a run drawn with {@link #hitPaint}, whose alpha counts stamps */
+    private void applyMask(int left,int top,int cropX,int cropY,int w,int h,float pull,byte[] hits) {
         mask.getPixels(pixels, 0, w, cropX, cropY, w, h);
+        if (hits != null) for (int i = 0; i < w * h; i++) {
+            hits[i] = (byte)(pixels[i] >>> 24);
+            if (pixels[i] != 0) pixels[i] = 0xFF000000;
+        }
         if(erasing || settings.tool==ToolSettings.Tool.ERASER) document.eraseMask(pixels,w,left,top,w,h);
         else if (wet != null && settings.tool.water) wet.waterMask(pixels, w, left, top, w, h, pull, settings.tool.flowing, settings.carry / 100f, ink);
         // Fully fresh water, which pressure does not thin: it sizes the brush instead.
         // The brush's ink is tinted with the selected shade, the lightest it lays.
         // Shown at once as a glaze; the wet paint lays it in full when there is time.
-        else if (wet != null && flowingGlaze) wet.queueWater(pixels, w, left, top, w, h, 1, true, 0, ink);
+        else if (wet != null && flowingGlaze) wet.queueWater(pixels, w, left, top, w, h, 1, true, 0, ink, hits);
         else if (wet != null) {
             if (load == null) wet.paintMask(pixels, w, left, top, w, h, gray, transparent);
             else {

@@ -6,6 +6,9 @@ with each change; when cutting a release, turn that section into
 
 ## Unreleased (since 0.97)
 
+- The flat brush keeps up with the pen in transparent watercolor paint, as fast
+  as the round and filbert brushes, and lays its watercolor the same as before.
+
 - Tap the canvas with two fingers to undo, or with three fingers to redo, like
   Procreate. Each tap acts as soon as your fingers lift, so tap again to undo
   more. A pinch or pan never counts as a tap. The two-finger double tap that hid

@@ -78,7 +78,7 @@ final class WetWatercolor {
      * costs several times the plain glaze, so the pen never waits for it.
      */
     private final ArrayDeque<Dab> queued = new ArrayDeque<>();
-    private static final Dab STROKE = new Dab(null, 0, 0, 0, 0, 0, false, 0, null);
+    private static final Dab STROKE = new Dab(null, null, 0, 0, 0, 0, 0, false, 0, null);
     private int[] replayMask = new int[0];
 
     WetWatercolor(ToneDocument document) {
@@ -194,7 +194,7 @@ final class WetWatercolor {
      */
     void waterMask(int[] mask, int stride, int x, int y, int w, int h, float pull, boolean flowing, float carry, BrushInk ink) {
         lay(true, Long.MAX_VALUE);
-        layWater(mask, stride, x, y, w, h, pull, flowing, carry, ink);
+        layWater(mask, stride, x, y, w, h, pull, flowing, carry, ink, null);
     }
     /**
      * {@link #waterMask} for a watercolor brush, shown at once and laid in full later, when
@@ -202,11 +202,19 @@ final class WetWatercolor {
      * the brush's tint glazed over it, which is what a clean brush leaves on dry paper.
      */
     void queueWater(int[] mask, int stride, int x, int y, int w, int h, float pull, boolean flowing, float carry, BrushInk ink) {
-        byte[] alpha = new byte[w * h];
+        queueWater(mask, stride, x, y, w, h, pull, flowing, carry, ink, null);
+    }
+    /**
+     * @param hits for a run of stamps queued as one, how many of them covered each pixel,
+     *             in the mask's layout; the brush rubs each pixel once per stamp. Null for one stamp.
+     */
+    void queueWater(int[] mask, int stride, int x, int y, int w, int h, float pull, boolean flowing, float carry, BrushInk ink, byte[] hits) {
+        byte[] alpha = new byte[w * h], counts = hits == null ? null : new byte[w * h];
         float tint = ink == null ? 0 : ink.tint();
         for (int row = 0; row < h; row++) for (int col = 0; col < w; col++) {
             int coverage = mask[row * stride + col] >>> 24, px = x + col, py = y + row;
             alpha[row * w + col] = (byte)coverage;
+            if (counts != null) counts[row * w + col] = hits[row * stride + col];
             if (coverage == 0 || px < 0 || py < 0 || px >= document.width || py >= document.height) continue;
             Tile tile = tileAt(px, py);
             int index = (py % SIDE) * SIDE + px % SIDE;
@@ -218,7 +226,7 @@ final class WetWatercolor {
             if (!tile.held.get(index)) { tile.held.set(index); tile.under[index] = (byte)tone; }
             document.setTone(px, py, Math.round(tone * (1 - tint * coverage / 255f)));
         }
-        queued.addLast(new Dab(alpha, x, y, w, h, pull, flowing, carry, ink));
+        queued.addLast(new Dab(alpha, counts, x, y, w, h, pull, flowing, carry, ink));
     }
     private void layNext() {
         Dab dab = queued.removeFirst();
@@ -226,7 +234,7 @@ final class WetWatercolor {
         int size = dab.w * dab.h;
         if (replayMask.length < size) replayMask = new int[size];
         for (int i = 0; i < size; i++) replayMask[i] = (dab.alpha[i] & 255) << 24;
-        layWater(replayMask, dab.w, dab.x, dab.y, dab.w, dab.h, dab.pull, dab.flowing, dab.carry, dab.ink);
+        layWater(replayMask, dab.w, dab.x, dab.y, dab.w, dab.h, dab.pull, dab.flowing, dab.carry, dab.ink, dab.hits);
     }
     /**
      * Lays all queued dabs in full outside a gesture, as one continuation of the last
@@ -247,7 +255,8 @@ final class WetWatercolor {
         canContinue |= changed;
         return changed;
     }
-    private void layWater(int[] mask, int stride, int x, int y, int w, int h, float pull, boolean flowing, float carry, BrushInk ink) {
+    /** @param hits stamps per pixel for a run queued as one, in the mask's layout; or null for one stamp */
+    private void layWater(int[] mask, int stride, int x, int y, int w, int h, float pull, boolean flowing, float carry, BrushInk ink, byte[] hits) {
         int marginLeft = margin(-gravityX), marginTop = margin(-gravityY);
         int marginRight = margin(gravityX), marginBottom = margin(gravityY);
         if (wholeCanvas) hydrate(x - marginLeft, y - marginTop, x + w + marginRight, y + h + marginBottom);
@@ -275,12 +284,10 @@ final class WetWatercolor {
             Tile tile = tileAt(px, py);
             int index = (py % SIDE) * SIDE + px % SIDE;
             float coverage = (mask[row * stride + col] >>> 24) / 255f;
+            int rubs = hits == null ? 1 : hits[row * stride + col] & 255;
             // Each dab adds water only where the pen is newly arriving, but rubbing keeps trading ink.
             if (tile.touched.get(index)) {
-                if (ink != null && tile.flowing.get(index)) {
-                    if (ink.dryPaintSticks) scrub(tile, index, coverage);
-                    soak(tile, index, px, py, ink, pull * coverage);
-                }
+                for (int i = 0; i < rubs; i++) rub(tile, index, px, py, ink, pull, coverage);
                 continue;
             }
             // A watercolor brush on a dry canvas leaves dry paint stuck; anything else lifts it all.
@@ -313,10 +320,17 @@ final class WetWatercolor {
             }
             if (ink != null && flowing) soak(tile, index, px, py, ink, pull * coverage);
             else composite(tile, index, px, py);
+            for (int i = 1; i < rubs; i++) rub(tile, index, px, py, ink, pull, coverage);
             wake(tile, WATER_FRAMES);
         }
         if (!flowing) load += (under - load) * PICKUP * (1 - carry) * (1 - carry);
         wakeAround(x - marginLeft, y - marginTop, x + w + marginRight, y + h + marginBottom);
+    }
+    /** A dab over water the stroke already laid trades ink with it again. */
+    private void rub(Tile tile, int index, int px, int py, BrushInk ink, float pull, float coverage) {
+        if (ink == null || !tile.flowing.get(index)) return;
+        if (ink.dryPaintSticks) scrub(tile, index, coverage);
+        soak(tile, index, px, py, ink, pull * coverage);
     }
     /**
      * Trades ink between the brush and a pixel of flowing water. Ink the brush soaks up
@@ -794,13 +808,13 @@ final class WetWatercolor {
     }
     /** A queued {@link #waterMask} call; its mask holds only coverage. */
     private static final class Dab {
-        final byte[] alpha;
+        final byte[] alpha, hits;
         final int x, y, w, h;
         final float pull, carry;
         final boolean flowing;
         final BrushInk ink;
-        Dab(byte[] alpha, int x, int y, int w, int h, float pull, boolean flowing, float carry, BrushInk ink) {
-            this.alpha = alpha; this.x = x; this.y = y; this.w = w; this.h = h;
+        Dab(byte[] alpha, byte[] hits, int x, int y, int w, int h, float pull, boolean flowing, float carry, BrushInk ink) {
+            this.alpha = alpha; this.hits = hits; this.x = x; this.y = y; this.w = w; this.h = h;
             this.pull = pull; this.flowing = flowing; this.carry = carry; this.ink = ink;
         }
     }
