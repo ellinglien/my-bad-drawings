@@ -6,10 +6,29 @@ with each change; when cutting a release, turn that section into
 
 ## Unreleased (since 0.97)
 
-- On Supernote firmware 3.30.45, the marker under the color bar follows the pen
-  again on the Manta instead of trailing behind it like a snake. Buttons there
-  are now drawn in black and white dots, as on the Nomad, so their press
-  feedback is fast too. Older firmware behaves as before.
+- Supernote firmware 3.30.45 works with MonoPaint. On the Manta, the marker
+  under the color bar follows the pen again instead of trailing behind it like
+  a snake, and buttons are now drawn in black and white dots, as on the Nomad,
+  so their press feedback is fast too. On the Nomad, closing the Layers panel
+  or the Pages box no longer leaves a black box over the painting. Older
+  firmware behaves as before.
+
+- Small watercolor splotches keep running a little longer. They still take on
+  most of their watercolor look right away, but then slow down instead of
+  stopping, creeping for about two seconds, so you have time to tilt the
+  tablet and let them run where you want. Bigger washes run at full speed as
+  before. Going back over a wash with the watercolor brush glazes over it once it
+  has slowed, instead of lifting it: starting the new stroke stops the older
+  water, so it can't bleed into the new wash through gaps you missed. Paint you
+  just laid is still wet enough to bleed into.
+
+- On the Manta, the page button at the top right drops down a column of quick
+  page action icons: add a page, **duplicate the page** (a copy goes right after
+  it and becomes the current page: on page 5 of 8, the copy becomes page 6 of
+  9), **delete the page**, **clear the page** and **clear the current layer**.
+  Deleting a page asks first; clearing can be undone. On the Nomad, the Pages
+  box shows them too: the page arrows and add page on top, the rest below.
+  These replace the Clear button, which made room for the Blow dryer.
 
 - The flat brush keeps up with the pen in transparent watercolor paint, as fast
   as the round and filbert brushes, and lays its watercolor the same as before.
@@ -30,11 +49,12 @@ with each change; when cutting a release, turn that section into
 
 - Transparent paint keeps up with the pen: a transparent brush now lays its
   paint as fast as an opaque one, so big strokes no longer lag behind.
-- The **Blow dryer** is back, right below the Brush pen in the toolbar. Tap it
-  to dry all wet paint at once: watercolor, wet canvas paint and wet brush pen
-  ink stop running and stay as they are. Wet canvas stays on, so your next
-  stroke still blends into the paint it touches. It blows a little air for a moment, and the tool you were using
-  stays selected. You can hide or move it in Settings like other toolbar items.
+- The **Blow dryer** is back, in the color bar right beside Wet canvas, so it
+  stays at hand even with the toolbar hidden. Tap it to dry all wet paint at
+  once: watercolor, wet canvas paint and wet brush pen ink stop running and
+  stay as they are. Wet canvas stays on, so your next stroke still blends into
+  the paint it touches. It blows a little air for a moment, and the tool you
+  were using stays selected.
 - Watercolor keeps up with the pen too: a big watercolor stroke shows right
   away as its color glazed over the page, then turns into watercolor (lifting,
   soaking and flowing) a moment later, catching up as soon as the tablet has

@@ -114,10 +114,10 @@ final class LayerUiChecks {
                 await(test,() -> get(pad,"direct")!=null,"Rotated fast display reconnects");
                 for(boolean all:new boolean[]{false,true}) {
                     byte[] before=DrawingBook.encode(doc);
-                    main(test,() -> ((View)get(activity,"clearButton")).performClick());test.waitForIdleSync();
-                    PopupWindow clear=(PopupWindow)get(activity,"toolPicker");
-                    check(clear!=null&&clear.isShowing(),"Clear opens dropdown");
-                    tap(test,description(clear.getContentView(),all?"Clear all layers":"Clear current layer"));
+                    String action=all?"Clear page":"Clear current layer";
+                    main(test,() -> call(activity,"showPageMenu"));test.waitForIdleSync();
+                    tap(test,PageNavigationChecks.pageMenuItem(activity,action));
+                    check(get(activity,"pageConfirmation")==null,action+" is undoable, so it does not ask first");
                     check(doc.compositeTone(200,200)==(all?255:20),"Clear scope is correct");
                     main(test,() -> {check(doc.undo()&&java.util.Arrays.equals(before,DrawingBook.encode(doc)),"Clear is one exact undo");call(pad,"renderAll");});
                 }

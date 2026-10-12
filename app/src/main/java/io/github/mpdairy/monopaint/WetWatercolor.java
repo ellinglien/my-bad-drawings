@@ -11,6 +11,14 @@ import java.util.BitSet;
  * Drying drops this state; the composited tones remain ordinary saved pixels. */
 final class WetWatercolor {
     static final int FRAME_MS = 150;
+    /**
+     * Once no flowing water is {@link #LOOSE}, a small wash's frames take at least this long.
+     * The fresh water's frames, which make most of the watercolor's look, run as fast as they
+     * can; a small wash could otherwise run through the rest in a moment too, settling
+     * before the tablet can be tilted. At this pace the slower tail runs for about two seconds.
+     * Bigger washes take less of a wait, and from {@link #PACED_TILES} tiles, none.
+     */
+    private static final int FLOW_FRAME_MS = 50, PACED_TILES = 64;
     /** Spare cores that share each batch's pixel work with the calling thread, or none on one core. */
     private static final int HELPERS = Math.max(0, Math.min(3, Runtime.getRuntime().availableProcessors() - 1));
     private static final java.util.concurrent.ExecutorService WORKERS = HELPERS == 0 ? null
@@ -28,6 +36,13 @@ final class WetWatercolor {
      * quarter of the frames. Below DAMP water also stops joining tile-scale spreading.
      */
     private static final float DRYING = .985f, STILL = .4f, DAMP = .3f;
+    /**
+     * Water this fresh, for its first 23 frames, still runs at full speed, and a watercolor
+     * brush finds it wet enough to bleed into. Water runs on more slowly after that, until a
+     * wash goes back over it: then it rests, and the wash glazes over its paint instead of
+     * lifting it.
+     */
+    private static final float LOOSE = .7f;
     /**
      * Share of the soaking still to come each dab of a watercolor brush soaks into the stuck
      * paint under it. A single pass is several overlapping dabs, so this stays small: it
@@ -72,6 +87,12 @@ final class WetWatercolor {
     /** Pigment the brush pen carries along the current stroke. */
     private float load;
     private boolean loaded, hasFlowing, flowingFrame;
+    /** Whether flowing water was still {@link #LOOSE} in the last whole frame, or has been laid since; and so far in this frame. */
+    private boolean looseWater, looseSoFar;
+    /** The most tiles running at once since the water was last all still: how big this wash is. */
+    private int runTiles;
+    /** Whether this stroke's watercolor brush has stopped older water from running; see {@link #restOlderWater}. */
+    private boolean restedOlder;
     /**
      * Brush dabs shown at once as a plain glaze, waiting their turn in the full model, in order.
      * {@link #STROKE} marks where a later stroke began. Laying a big watercolor dab in full
@@ -108,7 +129,7 @@ final class WetWatercolor {
     }
     private void startStroke() {
         strokePixels = 0;
-        loaded = false;
+        loaded = restedOlder = false;
         for (Tile tile : tiles) if (tile != null) tile.touched.clear();
     }
     void paintMask(int[] mask, int stride, int x, int y, int w, int h, int gray) {
@@ -257,6 +278,8 @@ final class WetWatercolor {
     }
     /** @param hits stamps per pixel for a run queued as one, in the mask's layout; or null for one stamp */
     private void layWater(int[] mask, int stride, int x, int y, int w, int h, float pull, boolean flowing, float carry, BrushInk ink, byte[] hits) {
+        boolean sticky = ink != null && ink.dryPaintSticks && !wholeCanvas;
+        if (sticky && !restedOlder) { restOlderWater(); restedOlder = true; }
         int marginLeft = margin(-gravityX), marginTop = margin(-gravityY);
         int marginRight = margin(gravityX), marginBottom = margin(gravityY);
         if (wholeCanvas) hydrate(x - marginLeft, y - marginTop, x + w + marginRight, y + h + marginBottom);
@@ -291,7 +314,6 @@ final class WetWatercolor {
                 continue;
             }
             // A watercolor brush on a dry canvas leaves dry paint stuck; anything else lifts it all.
-            boolean sticky = ink != null && ink.dryPaintSticks && !wholeCanvas;
             if (sticky) { settleDried(tile, index, px, py); scrub(tile, index, coverage); }
             else if (!tile.wet.get(index)) lift(tile, index, px, py);
             else loosen(tile, index, 1);
@@ -311,7 +333,7 @@ final class WetWatercolor {
                 tile.reserve[index] = tile.pigment[index] * (DEPTH - 1);
             }
             tile.water.set(index);
-            if (flowing) { tile.flowing.set(index); hasFlowing = true; } else tile.flowing.clear(index);
+            if (flowing) { tile.flowing.set(index); hasFlowing = looseWater = true; } else tile.flowing.clear(index);
             // A tinted brush's water is never lighter than its tint; darker paint it lifts stays.
             // Over stuck paint the tint fills only the light left, glazing like transparent paint.
             if (ink != null && flowing) {
@@ -419,7 +441,7 @@ final class WetWatercolor {
      */
     private void settleDried(Tile tile, int index, int x, int y) {
         boolean wet = tile.wet.get(index);
-        if (wet && tile.flowing.get(index) && tile.pull != null && tile.pull[index] > STILL) return;
+        if (wet && tile.flowing.get(index) && tile.pull != null && tile.pull[index] > LOOSE) return;
         int tone = dryTone(tile, index, x, y);
         if (!wet) markWet(tile, index);
         tile.base[index] = (byte)255;
@@ -428,6 +450,18 @@ final class WetWatercolor {
         if (tile.stuck == null) { tile.stuck = new float[PIXELS]; tile.soaked = new float[PIXELS]; }
         tile.stuck[index] = 255 - tone; tile.soaked[index] = 0;
         tile.water.clear(index); tile.flowing.clear(index);
+    }
+    /**
+     * A watercolor brush's stroke stops older water that is no longer {@link #LOOSE} from
+     * running: it may still be moving, but it reads as dried, so the new wash glazes over
+     * it instead of the old paint running into the fresh water, even in gaps the brush missed.
+     */
+    private void restOlderWater() {
+        for (Tile tile : active) {
+            if (tile.pull == null) continue;
+            for (int i = tile.flowing.nextSetBit(0); i >= 0; i = tile.flowing.nextSetBit(i + 1))
+                if (tile.pull[i] <= LOOSE && tile.pull[i] > STILL) { tile.pull[i] = STILL; tile.mobility[i] = mobility(STILL); }
+        }
     }
     /** Frees {@code share} of a pixel's stuck paint into its water as loose ink; its shade stays the same. */
     private static void loosen(Tile tile, int index, float share) {
@@ -468,11 +502,15 @@ final class WetWatercolor {
     boolean framePending() { return frameRemaining > 0 || !queued.isEmpty(); }
     /** Dabs shown but not yet laid in full. */
     int queuedDabs() { return queued.size(); }
-    /**
-     * Whether flowing water is moving. Its frames need not keep pace with the clock: shown
-     * as fast as they can be worked out, the ink settles almost as soon as the pen lifts.
-     */
+    /** Whether flowing water is moving. Its frames run faster than still paint's. */
     boolean flowing() { return flowingFrame && !active.isEmpty(); }
+    /** How long flowing water's frames should take at least, or 0 to run them as fast as they can; see {@link #FLOW_FRAME_MS}. */
+    int flowFrameMillis() {
+        if (!flowing() || looseWater) return 0;
+        return Math.round(FLOW_FRAME_MS * Math.max(0, 1 - runTiles / (float)PACED_TILES));
+    }
+    /** Counts frames begun, so the caller can pace them. */
+    int frame() { return frame; }
     /** Unpaced advancement for model checks. The UI supplies a small work budget. */
     boolean advance(boolean strokeActive) {
         return advance(strokeActive, TILES_PER_FRAME, Long.MAX_VALUE, Integer.MAX_VALUE);
@@ -488,6 +526,7 @@ final class WetWatercolor {
         long start = System.nanoTime();
         if (frameRemaining == 0) {
             frameRemaining = active.size(); frame++;
+            runTiles = Math.max(runTiles, active.size());
             flowingFrame = false;
             for (Tile tile : active) if (!tile.flowing.isEmpty()) { flowingFrame = true; break; }
             spreadCandidates = hasFlowing ? active.toArray(new Tile[0]) : null;
@@ -529,6 +568,7 @@ final class WetWatercolor {
                     tile.reserve[i] -= dissolved; tile.pigment[i] += dissolved;
                 }
                 damp |= (tile.pull[i] *= DRYING) > STILL;
+                looseSoFar |= tile.pull[i] > LOOSE;
                 tile.mobility[i] = mobility(tile.pull[i]);
             }
             if (damp) tile.frames = Math.max(tile.frames, 2);
@@ -536,6 +576,8 @@ final class WetWatercolor {
         }
         advancedTiles = batch.size();
         frameRemaining -= advancedTiles;
+        if (frameRemaining == 0) { looseWater = looseSoFar; looseSoFar = false; }
+        if (active.isEmpty()) runTiles = 0;
         return !strokeActive && finishSlice();
     }
     /**

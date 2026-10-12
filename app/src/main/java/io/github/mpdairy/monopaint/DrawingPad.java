@@ -77,6 +77,8 @@ final class DrawingPad extends View {
     /** When running wet paint last reached the panel; flowing water shows itself at most every {@link #WET_SHOW_MS}. */
     private long lastWetShown;
     private static final int WET_SHOW_MS = 120;
+    /** When the wet paint's current frame began, to pace flowing water. */
+    private long wetFrameStarted;
     private int wetSliceCount;
 
     // Shapes
@@ -933,9 +935,12 @@ final class DrawingPad extends View {
 
     private void scheduleWet() {
         // Yield between slices; input queued during the last slice runs
-        // before the next idle callback. Only completed sweeps wait a frame,
-        // except flowing water, which runs ahead to its settled look.
-        scheduleWet(wet != null && (wet.framePending() || wet.flowing()) ? 1 : WetWatercolor.FRAME_MS);
+        // before the next idle callback. Only completed sweeps wait a frame;
+        // flowing water runs ahead, except a small wash's slowing tail.
+        if (wet != null && wet.framePending()) scheduleWet(1);
+        else if (wet != null && wet.flowing())
+            scheduleWet((int)Math.max(1, wet.flowFrameMillis() - (SystemClock.uptimeMillis() - wetFrameStarted)));
+        else scheduleWet(WetWatercolor.FRAME_MS);
     }
     private void scheduleWet(int delayMillis) {
         if (wet != null && wet.isAnimating() && app.resumed && hasWindowFocus() && !app.loading && !navigating) {
@@ -958,8 +963,11 @@ final class DrawingPad extends View {
         if (budget == 0 || !pending.isEmpty()) { scheduleWet(16); return; }
         long start = System.nanoTime();
         app.canvasGravity.apply(wet);
+        int frame = wet.frame();
+        long sliceStarted = SystemClock.uptimeMillis();
         wetChanged |= wet.advance(drawing, wetBudget.tiles(budget, drawing), budget / 2, drawing ? 96 : 192);
         long computed = System.nanoTime();
+        if (wet.frame() != frame) wetFrameStarted = sliceStarted;
         // Presenting every slice of fast-running water would cost more than working it out.
         // While drawing, each slice still shows its own changes, or the pen's next event
         // would have to render all the water's held-back ones.

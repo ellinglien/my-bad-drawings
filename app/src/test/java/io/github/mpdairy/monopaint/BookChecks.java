@@ -46,7 +46,41 @@ public final class BookChecks {
         try{many.addPage();throw new AssertionError("Page limit ignored");}catch(IOException expected){}
         check(many.count()==100,"Page-limit failure preserves existing pages");
         packedPageReuse();
-        System.out.println("PASS: blank pages, navigation/cache, isolated clear, recent undo, immutable ZIP saves, legacy import and damaged-archive rejection");
+        duplicate();
+        delete();
+        System.out.println("PASS: blank pages, duplicated and deleted pages, navigation/cache, isolated clear, recent undo, immutable ZIP saves, legacy import and damaged-archive rejection");
+    }
+    private static void duplicate() throws Exception {
+        DrawingBook book=new DrawingBook(new ToneDocument(41,23));
+        for(int i=0;i<4;i++){if(i>0)book.addPage();mark(book.current(),i,i,100+i);}
+        book.select(1);book.setCanvasChoice(2);book.current().addLayer();mark(book.current(),9,9,40);
+        book.duplicatePage();
+        check(book.count()==5&&book.index()==2,"The copy follows its page and is selected");
+        check(book.current().compositeTone(1,1)==101&&book.current().layerCount()==2&&book.current().tone(9,9)==40,"The copy keeps every layer");
+        check(!book.current().canUndo()&&book.canvasChoice()==2&&book.unsaved(),"The copy starts its own history, keeps the canvas and needs saving");
+        mark(book.current(),5,5,0);book.select(1);
+        check(book.current().tone(5,5)==255&&book.current().tone(9,9)==40&&book.current().canUndo(),"The original keeps its tones and history");
+        for(int i=2;i<4;i++){book.select(i+1);check(book.current().tone(i,i)==100+i,"Later pages move back one");}
+        book.select(2);check(book.current().tone(5,5)==0,"Edits to the copy stay on the copy");
+        DrawingBook full=new DrawingBook(new ToneDocument(2,2));for(int i=1;i<DrawingBook.MAX_PAGES;i++)full.addPage();
+        try{full.duplicatePage();throw new AssertionError("Page limit ignored by duplicate");}catch(IOException expected){}
+        check(full.count()==100,"Duplicate respects the page limit");
+    }
+    private static void delete() throws Exception {
+        DrawingBook book=new DrawingBook(new ToneDocument(41,23));
+        for(int i=0;i<4;i++){if(i>0)book.addPage();mark(book.current(),i,i,100+i);book.setCanvasChoice(i%3);}
+        book.select(1);mark(book.current(),7,7,30);
+        book.deletePage();
+        check(book.count()==3&&book.index()==1&&book.current().tone(2,2)==102&&book.canvasChoice()==2,"The next page takes the deleted page's place");
+        check(book.unsaved(),"Deleting a page needs saving");
+        book.select(0);check(book.current().tone(0,0)==100&&book.canvasChoice()==0,"Earlier pages stay");
+        book.select(2);check(book.current().tone(3,3)==103&&book.canvasChoice()==0,"Later pages move forward one");
+        book.deletePage();
+        check(book.count()==2&&book.index()==1&&book.current().tone(2,2)==102,"Deleting the last page shows the one before");
+        for(int i=0;i<2;i++){book.select(i);check(book.current().tone(7,7)==255,"The deleted page's tones are gone");}
+        book.deletePage();
+        try{book.deletePage();throw new AssertionError("Deleted the only page");}catch(IOException expected){}
+        check(book.count()==1&&book.current().tone(0,0)==100,"A painting keeps its only page");
     }
     private static void packedPageReuse() throws Exception {
         DrawingBook book=new DrawingBook(new ToneDocument(37,29));

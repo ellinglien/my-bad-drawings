@@ -66,7 +66,6 @@ final class PageNavigationChecks {
             }
             View previous=(View)get(app,nomad?"popupPrevious":"previousPage");
             View next=(View)get(app,nomad?"popupNext":"nextPage");
-            View add=(View)get(app,nomad?"popupAdd":"addPage");
             press(test,app,previous,book,0,feedback);
             check(book.current().tone(70,80)==40,"Previous page retains its artwork");
             check(!previous.isEnabled(),"Previous disabled on first page");
@@ -74,10 +73,21 @@ final class PageNavigationChecks {
             press(test,app,next,book,1,feedback);
             check(book.current().tone(90,100)==160,"Next page retains its artwork");
             check(!next.isEnabled(),"Next disabled on last page");
+            // The Nomad's Pages box is already open and holds the actions.
+            if(!nomad) {
+                main(test,() -> {
+                    int submitted=feedback.submitted;call(app,"showPageMenu");
+                    check(feedback.submitted>submitted,"Page menu pixels submitted synchronously through fast path");
+                });idle(test);
+                check(bounds((View)get(app,"orientationFrame")).contains(bounds((View)get(app,"pagePanel"))),"Page menu inside preview");
+                check(get(get(app,"pad"),"direct")==null,"Canvas presenter suspended under page menu");
+            }
+            View add=pageMenuItem(app,"Add page");
             press(test,app,add,book,2,feedback);
             check(book.count()==3&&book.current().opacity(90,100)==0,"Add creates exactly one blank page");
             if(nomad) {
-                check(get(app,"pagePanel")!=null,"Page panel stays available after navigation");
+                main(test,() -> call(app,"showPagePanel"));idle(test);
+                check(get(app,"pagePanel")!=null&&get(app,"popupPageNumber")!=null,"Page row reopens after a page action");
                 if(turn==0&&!right)screenshot(test,app,"nomad-pages.png");
                 RectF paper=bounds((View)get(app,"pad"));
                 float outsideX=paper.centerX(),outsideY=paper.centerY();
@@ -189,10 +199,19 @@ final class PageNavigationChecks {
                     .append(" ms, max=").append(times[7]).append(" ms (not physical panel latency).\n");
         }
     }
+    /** The open page menu's item named {@code name}. */
+    static View pageMenuItem(PaintActivity app,String name)throws Exception {
+        java.util.ArrayList<View> found=new java.util.ArrayList<>();
+        ((View)get(app,"pagePanel")).findViewsWithText(found,name,View.FIND_VIEWS_WITH_CONTENT_DESCRIPTION);
+        check(found.size()==1,"Page menu has one "+name+" item");
+        return found.get(0);
+    }
     private static void press(Instrumentation test,PaintActivity app,View button,DrawingBook book,int expected,SelectionFeedback feedback)throws Exception {
         RectF bounds=bounds(button);long down=SystemClock.uptimeMillis();int before=book.index(),submitted=feedback.submitted;
         int pageSubmissions=(Integer)get(get(app,"pad"),"pagePresentCount");
-        android.widget.TextView counter=(android.widget.TextView)get(app,get(app,"pagePanel")!=null?"popupPageNumber":"pageNumber");
+        android.widget.TextView counter=(android.widget.TextView)get(app,get(app,"popupPageNumber")!=null?"popupPageNumber":"pageNumber");
+        // A page action also closes its panel, through the same fast path.
+        Object panel=get(app,"pagePanel");
         boolean[] releasedBeforeCounter={false};
         android.text.TextWatcher watcher=new android.text.TextWatcher() {
             public void beforeTextChanged(CharSequence s,int start,int count,int after) {}
@@ -218,8 +237,9 @@ final class PageNavigationChecks {
             check((Integer)get(get(app,"pad"),"pagePresentCount")>pageSubmissions,"Page artwork submitted through fast display");
             SystemClock.sleep(250);test.waitForIdleSync();
             check(!(Boolean)get(get(button,"press"),"pressed"),"Press clears after completion");
-            check(feedback.submitted==submitted+2,"Exactly one press and one release, with no delayed repeat");
-            check(feedback.lastDisplayMode==(DirectEink.fastBinaryControls()?9:7),"Page arrow release uses device-specific fast mode");
+            boolean closed=panel!=null&&get(app,"pagePanel")==null;
+            check(feedback.submitted==submitted+(closed?3:2),"Exactly one press and one release, with no delayed repeat");
+            if(!closed)check(feedback.lastDisplayMode==(DirectEink.fastBinaryControls()?9:7),"Page arrow release uses device-specific fast mode");
         } finally {main(test,() -> counter.removeTextChangedListener(watcher));}
     }
     private static void verifyRaster(StringBuilder report) {

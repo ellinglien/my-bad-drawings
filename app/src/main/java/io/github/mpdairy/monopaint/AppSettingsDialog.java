@@ -125,7 +125,6 @@ final class AppSettingsDialog {
             case Toolbar.LAYERS: return "Layers";
             case Toolbar.ZOOM: return "Zoom";
             case Toolbar.PALETTE: return "Palette";
-            case Toolbar.DRYER: return "Blow dryer";
             default: return app.library.builtin(ToolSettings.Tool.valueOf(key)).label();
         }
     }
@@ -134,7 +133,6 @@ final class AppSettingsDialog {
             case Toolbar.LAYERS: return R.drawable.ic_layers;
             case Toolbar.ZOOM: return R.drawable.ic_zoom;
             case Toolbar.PALETTE: return R.drawable.ic_palette;
-            case Toolbar.DRYER: return R.drawable.ic_hair_dryer;
             default:
                 ToolSettings settings = app.library.builtin(ToolSettings.Tool.valueOf(key));
                 return settings.tool == ToolSettings.Tool.SHAPES ? R.drawable.ic_shapes : ToolIcons.of(settings);

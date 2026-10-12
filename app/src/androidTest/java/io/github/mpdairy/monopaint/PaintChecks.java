@@ -887,7 +887,7 @@ final class PaintChecks {
         check(shade[0]>=header[0]&&shade[0]+picker.getWidth()<=header[0]+palette.getWidth(),"Grayscale strip stays within the header");
         // In portrait the menu side, with the page actions, sits opposite the drawing hand's toolbar.
         boolean actionsRight=!activity.landscape&&activity.toolboxRight;
-        for(String name:new String[]{"Undo","Redo","Clear"}) {
+        for(String name:new String[]{"Undo","Redo"}) {
             Button button=findButton(activity,name);button.getLocationOnScreen(action);
             check(actionsRight?action[0]>=shade[0]+picker.getWidth():action[0]+button.getWidth()<=shade[0], "Page action stays on the menu side of the color selector");
         }
@@ -903,9 +903,11 @@ final class PaintChecks {
         DrawingBook book=(DrawingBook)field(activity,"book");byte[] first=book.current().snapshot();
         // Compact layouts move the page row into the Pages popup; detached header buttons never run their posted actions.
         boolean compact=activity.compactLayout();
-        if(compact){test.runOnMainSync(() -> call(activity,"showPagePanel",new Class<?>[0]));test.waitForIdleSync();}
-        View add=(View)field(activity,compact?"popupAdd":"addPage"),previous=(View)field(activity,compact?"popupPrevious":"previousPage"),next=(View)field(activity,compact?"popupNext":"nextPage");
+        test.runOnMainSync(() -> call(activity,"showPageMenu",new Class<?>[0]));test.waitForIdleSync();
+        View add=PageNavigationChecks.pageMenuItem(activity,"Add page");
         test.runOnMainSync(add::performClick);test.waitForIdleSync();
+        if(compact){test.runOnMainSync(() -> call(activity,"showPagePanel",new Class<?>[0]));test.waitForIdleSync();}
+        View previous=(View)field(activity,compact?"popupPrevious":"previousPage"),next=(View)field(activity,compact?"popupNext":"nextPage");
         check(book.count()==2&&book.index()==1,"Add page appends and selects a new page");
         for(byte tone:book.current().snapshot())check((tone&255)==255,"New page starts white");
         Object pad=field(activity,"pad");View canvas=(View)pad;long start=SystemClock.uptimeMillis();

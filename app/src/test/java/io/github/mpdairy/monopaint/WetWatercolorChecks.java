@@ -6,7 +6,7 @@ import java.util.Arrays;
 public final class WetWatercolorChecks {
     public static void main(String[] args) throws Exception {
         blendingAndHistory(); dryPaperAndLinework(); dryGaps(); drying(); pausedStrokes(false); pausedStrokes(true);
-        liveStroke(); boundedSlices(); adaptiveBudget(); presets(); gravity(); brushPen(false); brushPen(true); carriedPaint(255); carriedPaint(128); wetBrushPen(); brushInk(); smoothFlow(); flowingGravity(); flowingGlaze(); queuedGlaze(); stuckPaint(); flowingSlices();
+        liveStroke(); boundedSlices(); adaptiveBudget(); presets(); gravity(); brushPen(false); brushPen(true); carriedPaint(255); carriedPaint(128); wetBrushPen(); brushInk(); smoothFlow(); flowingGravity(); flowingGlaze(); queuedGlaze(); stuckPaint(); washOverWash(); pacing(); flowingSlices();
         System.out.println("PASS: live wet blending, gravity drift, brush pen seeping and sharp dry edges, wet brush pen ink flow by freshness, adaptive work limits, bounded spatial/time slices, pause/resume, retained water, dry boundaries/linework, queued watercolor dabs, drying, exact undo/redo, saved tones and TSP9 migration");
     }
     private static void check(boolean pass, String message) { if (!pass) throw new AssertionError(message); }
@@ -246,6 +246,56 @@ public final class WetWatercolorChecks {
         // Lifted ink the brush put down nearby may run back over the spot; the spot's own paint never drains away.
         check(rubbed[0] <= rubbed[2] + 6, "Once the brush leaves, soaked paint stays put instead of draining into the wash (at pen-up "
                 + rubbed[2] + ", settled " + rubbed[0] + ")");
+    }
+    /** Fresh water runs as fast as it can; then a tiny splotch slows down for a while, and a big wash does not. */
+    private static void pacing() {
+        int[] tiny = paced(12), big = paced(200);
+        String waits = " (tiny splotch fresh " + tiny[0] + " ms, then " + tiny[1] + " ms; big wash " + big[0] + ", " + big[1] + " ms)";
+        check(tiny[0] == 0 && big[0] == 0, "Fresh water's frames run at once" + waits);
+        check(tiny[1] >= 30, "A tiny splotch's slowing frames wait, leaving time to tilt" + waits);
+        check(big[1] == 0, "A big wash never waits" + waits);
+    }
+    /** Frame waits for a {@code size}-px square watercolor wash, fresh and after 30 frames. */
+    private static int[] paced(int size) {
+        ToneDocument doc = new ToneDocument(256, 256); WetWatercolor wet = new WetWatercolor(doc);
+        int[] mask = new int[size * size]; Arrays.fill(mask, 0xff000000);
+        BrushInk ink = new BrushInk(true); ink.tint(120);
+        doc.begin(); wet.beginStroke(); wet.waterMask(mask, size, 20, 20, size, size, 1, true, 0, ink); wet.finishStroke();
+        wet.advance(false); while (wet.framePending()) wet.advance(false);
+        int fresh = wet.flowFrameMillis();
+        for (int frame = 0; frame < 30; frame++) { wet.advance(false); while (wet.framePending()) wet.advance(false); }
+        return new int[]{fresh, wet.flowFrameMillis()};
+    }
+    /**
+     * A light watercolor scribble over a dark wash: right away it runs into the wet paint,
+     * but once it slows, though the water still runs, it glazes over the paint instead of
+     * lifting it, and the old paint in the scribble's gaps stays put too.
+     */
+    private static void washOverWash() {
+        int[] wetInWet = washedOver(2), glazed = washedOver(30);
+        String tones = " (dark wash under, beside the light: at once " + wetInWet[0] + ", " + wetInWet[1] + "; once slowing "
+                + glazed[0] + ", " + glazed[1] + "; before " + glazed[2] + ", " + glazed[3] + ")";
+        check(wetInWet[0] > wetInWet[2] + 20, "A wash straight into wet paint lifts it" + tones);
+        check(glazed[0] <= glazed[2] + 4 && glazed[1] <= glazed[3] + 4, "A wash once it slows leaves the paint under it and in its gaps" + tones);
+    }
+    /** A dark wash after a light scribble goes over it {@code frames} later, under the scribble and in its gap; and both before. */
+    private static int[] washedOver(int frames) {
+        ToneDocument doc = new ToneDocument(128, 64);
+        WetWatercolor wet = new WetWatercolor(doc);
+        int[] mask = new int[16 * 16]; Arrays.fill(mask, 0xff000000);
+        BrushInk dark = new BrushInk(true); dark.tint(60);
+        doc.begin(); wet.beginStroke();
+        for (int x = 20; x <= 60; x += 3) wet.waterMask(mask, 16, x, 24, 16, 16, 1, true, 0, dark);
+        wet.finishStroke();
+        for (int frame = 0; frame < frames; frame++) { wet.advance(false); while (wet.framePending()) wet.advance(false); }
+        int under = doc.tone(40, 26), gap = doc.tone(40, 34);
+        BrushInk light = new BrushInk(true); light.tint(230);
+        doc.begin(); wet.beginStroke();
+        // Two quick passes leave a gap between them, from y 30 to 38.
+        for (int pass = 0; pass < 2; pass++)
+            for (int x = 0; x <= 100; x += 3) wet.waterMask(mask, 16, pass == 0 ? x : 100 - x, pass == 0 ? 14 : 38, 16, 16, 1, true, 0, light);
+        wet.finishStroke(); settle(wet);
+        return new int[]{doc.tone(40, 26), doc.tone(40, 34), under, gap};
     }
     /**
      * Tones of a black spot, the wash beyond it, and the spot at pen-up, after a stroke tinted

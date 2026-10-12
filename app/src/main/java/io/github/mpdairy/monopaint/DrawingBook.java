@@ -55,6 +55,44 @@ final class DrawingBook {
         ToneDocument next=new ToneDocument(width,height);
         index=pages.size();pages.add(null);canvasChoices.add(0);cache.put(index,next);edits++;evict();
     }
+    /** Inserts a copy of the current page right after it, without its undo history, and selects the copy. */
+    void duplicatePage() throws IOException {
+        if(count()>=MAX_PAGES)throw new IOException("This painting has 100 pages. Start a new painting for more pages.");
+        retainCurrent();
+        byte[] packed=currentPacked();long size=packed.length;
+        for(byte[] page:pages)if(page!=null)size+=page.length;
+        if(size>MAX_PACKED_BYTES)throw new IOException("This painting is full. Save it and start a new painting.");
+        ToneDocument copy=decode(packed);
+        int target=index+1;
+        shiftPages(target,1);
+        pages.add(target,packed);canvasChoices.add(target,canvasChoice());
+        index=target;cache.put(index,copy);packedRevisions.put(index,copy.revision());edits++;evict();
+    }
+    /** Removes the current page and selects the page after it, or the one before when it was last. */
+    void deletePage() throws IOException {
+        if(count()<=1)throw new IOException("A painting keeps at least one page.");
+        int removed=index,next=removed+1<count()?removed+1:removed-1;
+        // Decode the page to show before changing anything, so a damaged page leaves the book whole.
+        ToneDocument shown=cache.get(next);
+        if(shown==null) {shown=decode(pages.get(next));packedRevisions.put(next,shown.revision());savedRevisions.put(next,shown.revision());}
+        cache.remove(removed);packedRevisions.remove(removed);savedRevisions.remove(removed);
+        pages.remove(removed);canvasChoices.remove(removed);
+        shiftPages(removed+1,-1);
+        index=Math.min(next,removed);cache.put(index,shown);edits++;evict();
+    }
+    /** Moves the cached documents and revisions of pages from {@code first} on by {@code by}. */
+    private void shiftPages(int first,int by) {
+        LinkedHashMap<Integer,ToneDocument> shifted=new LinkedHashMap<>(4,.75f,true);
+        for(java.util.Map.Entry<Integer,ToneDocument> page:cache.entrySet())shifted.put(shift(page.getKey(),first,by),page.getValue());
+        cache.clear();cache.putAll(shifted);
+        shiftKeys(packedRevisions,first,by);shiftKeys(savedRevisions,first,by);
+    }
+    private static int shift(int page,int first,int by){return page>=first?page+by:page;}
+    private static void shiftKeys(java.util.HashMap<Integer,Long> map,int first,int by) {
+        java.util.HashMap<Integer,Long> shifted=new java.util.HashMap<>();
+        for(java.util.Map.Entry<Integer,Long> page:map.entrySet())shifted.put(shift(page.getKey(),first,by),page.getValue());
+        map.clear();map.putAll(shifted);
+    }
     private void retainCurrent() throws IOException {
         // Browsing does not change a page. Keep its already-compressed bytes,
         // including after decoding an evicted page, instead of deflating it again.

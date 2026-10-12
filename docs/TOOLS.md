@@ -59,6 +59,7 @@ once.
 | **Color bar** | 65 shades of gray. |
 | <img src="icons/eraser.svg" width="24"><br>**Eraser color** | Makes your current tool erase instead of paint. |
 | <img src="icons/eyedropper.svg" width="24"><br>**Eyedropper** | Picks a shade from the drawing. |
+| <img src="icons/hair_dryer.svg" width="24"><br>**Blow dryer** | Tap to dry all wet paint at once: it stops running and stays as it is. Wet canvas stays on for your next stroke, and your tool stays selected. |
 | <img src="icons/water_drop.svg" width="24"><br>**Wet canvas** | New strokes blend into the paint already there. |
 | <img src="icons/opaque.svg" width="24"><br>**Opaque** | Paint covers what's below. |
 | <img src="icons/transparent.svg" width="24"><br>**Transparent** | Paint layers like a glaze. |
@@ -67,7 +68,6 @@ once.
 
 | Item | What it does |
 |:-:|---|
-| <img src="icons/hair_dryer.svg" width="24"><br>**Blow dryer** | Tap to dry all wet paint at once: it stops running and stays as it is. Wet canvas stays on for your next stroke, and your tool stays selected. |
 | <img src="icons/layers.svg" width="24"><br>**Layers** | Up to 8 layers per page. <img src="icons/layer_visible.svg" width="24"> shows or hides a layer. |
 | <img src="icons/zoom.svg" width="24"><br>**Zoom** | Tap to lock/unlock pinch and pan. Quickly double-tap for 100% with the artwork back where the page began (an expanded page reaches under the bars), keeping the lock setting. |
 | <img src="icons/palette.svg" width="24"><br>**Palette** | Your saved swatches. |
@@ -79,8 +79,8 @@ once.
 |:-:|---|
 | <img src="icons/menu.svg" width="24"><br>**Menu** | New, open, save and settings. |
 | <img src="icons/undo.svg" width="24"> <img src="icons/redo.svg" width="24"><br>**Undo / Redo** | Undo or redo the last change. Tap the canvas with **two fingers** to undo, or **three fingers** to redo. |
-| <img src="icons/clear.svg" width="24"><br>**Clear** | Clears one layer or all layers. |
-| <img src="icons/pages.svg" width="24"> <img src="icons/new.svg" width="24"><br>**Pages** | Change pages or add a page. |
+| <img src="icons/page.svg" width="24"><br>**Page** (Manta) | Drops down a column of page actions: <img src="icons/new.svg" width="16"> add a page, <img src="icons/pages.svg" width="16"> duplicate the page, <img src="icons/page_delete.svg" width="16"> delete the page, <img src="icons/page_clear.svg" width="16"> clear the whole page, and <img src="icons/layer_clear.svg" width="16"> clear the current layer. Deleting a page asks first; clearing can be undone. |
+| <img src="icons/pages.svg" width="24"> <img src="icons/new.svg" width="24"><br>**Pages** | Change pages or add a page. On the Nomad, the Pages box also holds the other page actions in a second row. |
 | <img src="icons/rotate.svg" width="24"><br>**Rotate** | Appears when you turn the tablet. Tap it to rotate. |
 
 ## Fullscreen and canvas size

@@ -84,19 +84,18 @@ public final class PaintActivity extends Activity implements ControlHost {
     CanvasGravity canvasGravity;
     ShadePicker shadePicker;
     WetnessBar wetnessBar;
-    ToolButton wetButton, opaqueButton, transparentButton, eyedropperButton, eraseButton;
-    ImageButton menuButton, previousPage, nextPage, addPage;
+    ToolButton dryerButton, wetButton, opaqueButton, transparentButton, eyedropperButton, eraseButton;
+    ImageButton menuButton, previousPage, nextPage, pageMenuButton;
     PageActionButton rotateButton, pagesButton;
     TextView pageNumber;
-    View clearButton;
 
     // Panels. At most one popup is open at a time.
     PopupWindow toolPicker, filePopup, layersPopup;
     PaletteEditor paletteEditor;
-    AlertDialog pageOverview;
+    AlertDialog pageOverview, pageConfirmation;
     QuarterTurnLayout pagePanel;
     private TextView popupPageNumber;
-    private PageActionButton popupPrevious, popupNext, popupAdd;
+    private PageActionButton popupPrevious, popupNext;
     private final Rect pagePanelBounds = new Rect();
     TextView gradientHint;
     private final Runnable gradientHintTask = this::showGradientHint;
@@ -189,7 +188,7 @@ public final class PaintActivity extends Activity implements ControlHost {
         }));
     }
 
-    /** Builds the header strip: menu, undo/redo/clear, the color bar and the page controls. */
+    /** Builds the header strip: menu, undo/redo, the color bar and the page controls. */
     private void buildHeader() {
         palette = new LinearLayout(this);
         leftHeader = new LinearLayout(this); rightHeader = new LinearLayout(this);
@@ -211,7 +210,6 @@ public final class PaintActivity extends Activity implements ControlHost {
         menuControls.addView(menuButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
         headerAction("Undo", R.drawable.ic_undo, () -> history(pad.document::undo));
         headerAction("Redo", R.drawable.ic_redo, () -> history(pad.document::redo));
-        clearButton = headerAction("Clear", R.drawable.ic_clear, this::clearDrawing);
         leftHeader.addView(menuControls);
 
         rotateButton = pageAction("Rotate", R.drawable.ic_rotate, () -> rotationPrompt.accept(), false);
@@ -224,11 +222,14 @@ public final class PaintActivity extends Activity implements ControlHost {
         pageNumber.setTextSize(15); pageNumber.setTypeface(null, Typeface.BOLD);
         pageNumber.setGravity(Gravity.CENTER); headerControls.addView(pageNumber, new LinearLayout.LayoutParams(dp(76), dp(48)));
         nextPage = headerPageButton("Next page", R.drawable.ic_chevron, () -> changePage(book.index()+1));
-        addPage = headerPageButton("Add page", R.drawable.ic_new, this::addPage);
+        pageMenuButton = headerPageButton("Page actions", R.drawable.ic_page, this::showPageMenu);
         pagesButton = new PageActionButton(this, this, true); pagesButton.setImageResource(R.drawable.ic_pages);
         pagesButton.setContentDescription("Pages");
         pagesButton.setOnClickListener(v -> { if (!busy()) showPagePanel(); });
 
+        dryerButton = headerButton(colors, "Blow dryer", R.drawable.ic_hair_dryer, () -> { if (blowDry()) BlowDryer.blow(this, dryerButton, 0); });
+        dryerButton.press.feedback = selectionFeedback;
+        dryerButton.setContentDescription("Blow dryer. Tap to dry all wet paint.");
         wetButton = colorBarButton(colors, "Wet canvas", R.drawable.ic_water_drop, () -> setWetCanvas(!paint.wetCanvas));
         wetButton.iconHalf = 18; wetButton.iconOffset = 8; wetButton.markerLeft = true;
         wetnessBar = new WetnessBar(this);
@@ -335,15 +336,14 @@ public final class PaintActivity extends Activity implements ControlHost {
         int count = book == null ? 1 : book.count(), index = book == null ? 0 : book.index();
         // Text and enabled states use Android's next frame. Artwork is already
         // submitted by showPage; updating the counter must not add an e-ink flash.
-        updatePageRow(pageNumber, previousPage, nextPage, addPage, index, count);
+        updatePageRow(pageNumber, previousPage, nextPage, index, count);
         if (pagesButton != null) pagesButton.setContentDescription("Pages. Page " + (index+1) + " of " + count);
-        if (pagePanel != null) updatePageRow(popupPageNumber, popupPrevious, popupNext, popupAdd, index, count);
+        if (popupPageNumber != null) updatePageRow(popupPageNumber, popupPrevious, popupNext, index, count);
     }
-    private void updatePageRow(TextView label, View previous, View next, View add, int index, int count) {
+    private void updatePageRow(TextView label, View previous, View next, int index, int count) {
         label.setText((index+1) + " / " + count); label.setContentDescription("Page " + (index+1) + " of " + count + ". Show all pages");
         Ui.setDimmed(previous, book != null && index > 0, .3f);
         Ui.setDimmed(next, book != null && index+1 < count, .3f);
-        Ui.setDimmed(add, book != null && count < DrawingBook.MAX_PAGES, .3f);
     }
     private void replaceBook(DrawingBook replacement) {
         if (replacement == null) { pad.replace(null); return; }
@@ -355,36 +355,97 @@ public final class PaintActivity extends Activity implements ControlHost {
         try { book.select(index); pad.showPage(book.current()); updatePages(); recovery(); fullscreen.pageChanged(); }
         catch (java.io.IOException error) { message("Could not open page: " + error.getMessage()); }
     }
-    private void addPage() {
+    private void addPage() { pageEdit("add", () -> book.addPage()); }
+    /** Inserts a copy of the current page after it and turns to the copy. */
+    private void duplicatePage() { pageEdit("duplicate", () -> book.duplicatePage()); }
+    private void deletePage() { pageEdit("delete", () -> book.deletePage()); }
+    private void clearPage() { layerChange(() -> pad.document.clearAllLayers()); }
+    private void clearLayer() { layerChange(() -> pad.document.clear()); }
+    private interface BookEdit { void run() throws java.io.IOException; }
+    /** Changes the pages with {@code edit}, which selects the page to show, and shows it. */
+    private void pageEdit(String verb, BookEdit edit) {
         if (busy()) return;
         pad.finishStroke(); pad.dryWet();
-        try { book.addPage(); pad.showPage(book.current()); updatePages(); recovery(); fullscreen.pageChanged(); }
-        catch (java.io.IOException error) { message("Could not add page: " + error.getMessage()); }
+        try { edit.run(); pad.showPage(book.current()); updatePages(); recovery(); fullscreen.pageChanged(); }
+        catch (java.io.IOException error) { message("Could not " + verb + " page: " + error.getMessage()); }
     }
-    /** The compact page row shown from the Pages button in Nomad layout. */
+    /** The compact layout's Pages box: the page row with Add page, above the other page actions. */
     private void showPagePanel() {
-        if (pagePanel != null) { closePagePanel(); return; }
-        if (busy()) return;
-        dismissPanels(); hideGradientHint();
-        pad.suspend();
-        LinearLayout row = new LinearLayout(this); row.setPadding(dp(4), dp(4), dp(4), dp(4));
-        row.setBackground(Ui.outline(dp(1), Color.BLACK, 0));
+        if (!beginPagePanel()) return;
+        LinearLayout row = new LinearLayout(this); row.setGravity(Gravity.CENTER_HORIZONTAL);
         popupPrevious = pageAction("Previous page", R.drawable.ic_previous, () -> changePage(book.index()-1), false);
         popupNext = pageAction("Next page", R.drawable.ic_chevron, () -> changePage(book.index()+1), false);
-        popupAdd = pageAction("Add page", R.drawable.ic_new, this::addPage, false);
         popupPageNumber = new TextView(this); popupPageNumber.setTextSize(15); popupPageNumber.setTextColor(Color.BLACK);
         popupPageNumber.setOnClickListener(v -> showPageOverview());
         popupPageNumber.setTypeface(null, Typeface.BOLD); popupPageNumber.setGravity(Gravity.CENTER);
         row.addView(popupPrevious, new LinearLayout.LayoutParams(dp(48), dp(48)));
         row.addView(popupPageNumber, new LinearLayout.LayoutParams(dp(76), dp(48)));
         row.addView(popupNext, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        row.addView(popupAdd, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        updatePageRow(popupPageNumber, popupPrevious, popupNext, popupAdd, book.index(), book.count());
-        QuarterTurnLayout panel = new QuarterTurnLayout(this); panel.setTurn(appTurn()); panel.addView(row);
-        RectF anchor = Popups.bounds(root, pagesButton);
+        addPageItem(row);
+        updatePageRow(popupPageNumber, popupPrevious, popupNext, book.index(), book.count());
+        LinearLayout actions = new LinearLayout(this); actions.setGravity(Gravity.CENTER_HORIZONTAL); addPageChanges(actions);
+        LinearLayout box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL);
+        box.addView(row, new LinearLayout.LayoutParams(-1, dp(48)));
+        box.addView(actions, new LinearLayout.LayoutParams(-1, dp(48)));
+        showPagePanel(pagesButton, box, 3*dp(48)+dp(76), 2*dp(48));
+    }
+    /**
+     * The page actions in a column below the header's page button; compact layouts show them in
+     * the Pages box instead.
+     */
+    private void showPageMenu() {
+        if (compactLayout()) { showPagePanel(); return; }
+        if (!beginPagePanel()) return;
+        LinearLayout column = new LinearLayout(this); column.setOrientation(LinearLayout.VERTICAL);
+        addPageItem(column); addPageChanges(column);
+        showPagePanel(pageMenuButton, column, dp(48), 5*dp(48));
+    }
+    private void addPageItem(LinearLayout menu) {
+        pageMenuItem(menu, "Add page", R.drawable.ic_new, this::addPage, book.count() < DrawingBook.MAX_PAGES);
+    }
+    /** Adds the actions that change the current page; deleting it, which can't be undone, asks first. */
+    private void addPageChanges(LinearLayout menu) {
+        pageMenuItem(menu, "Duplicate page", R.drawable.ic_pages, this::duplicatePage, book.count() < DrawingBook.MAX_PAGES);
+        pageMenuItem(menu, "Delete page", R.drawable.ic_page_delete, () -> confirmPageAction(
+                "Delete page " + (book.index()+1) + "?", "You can't undo this.",
+                "Delete", this::deletePage), book.count() > 1);
+        pageMenuItem(menu, "Clear page", R.drawable.ic_page_clear, this::clearPage, true);
+        pageMenuItem(menu, "Clear current layer", R.drawable.ic_layer_clear, this::clearLayer, true);
+    }
+    private void pageMenuItem(LinearLayout menu, String name, int icon, Runnable action, boolean enabled) {
+        // Like the page row, act while the panel is open so page artwork reaches the panel at once.
+        View item = pageAction(name, icon, () -> { action.run(); closePagePanel(); }, false);
+        Ui.setDimmed(item, enabled, .3f);
+        menu.addView(item, new LinearLayout.LayoutParams(dp(48), dp(48)));
+    }
+    private void confirmPageAction(String title, String text, String verb, Runnable action) {
+        closePagePanel();
+        AlertDialog dialog = showDialog(new AlertDialog.Builder(this).setTitle(title).setMessage(text)
+                .setPositiveButton(verb, (unused, which) -> { if (!busy()) action.run(); })
+                .setNegativeButton("Cancel", null));
+        pageConfirmation = dialog;
+        dialog.setOnDismissListener(unused -> { if (pageConfirmation == dialog) pageConfirmation = null; });
+    }
+    /** Closes an open page panel, or prepares the canvas for a new one; false when none should open. */
+    private boolean beginPagePanel() {
+        if (pagePanel != null) { closePagePanel(); return false; }
+        if (busy()) return false;
+        dismissPanels(); hideGradientHint();
+        pad.suspend();
+        return true;
+    }
+    /**
+     * Shows {@code content} ({@code width} × {@code height} pixels, without its border) in an
+     * outlined panel beside {@code button}, drawn through the same fast path as toolbar selection.
+     */
+    private void showPagePanel(View button, View content, int width, int height) {
+        content.setPadding(dp(4), dp(4), dp(4), dp(4));
+        content.setBackground(Ui.outline(dp(1), Color.BLACK, 0));
+        QuarterTurnLayout panel = new QuarterTurnLayout(this); panel.setTurn(appTurn()); panel.addView(content);
+        RectF anchor = Popups.bounds(root, button);
         // Sum rounded child pixels: at density 300, dp(56) is one pixel shorter
         // than dp(48)+2*dp(4), which clips buttons and disables direct feedback.
-        int width = 3*dp(48)+dp(76)+2*dp(4), height = dp(48)+2*dp(4);
+        width += 2*dp(4); height += 2*dp(4);
         float left = landscape ? (toolboxRight ? anchor.left-width : anchor.right) : anchor.right-width;
         float top = landscape ? anchor.bottom-height : anchor.bottom;
         RectF bounds = Popups.rect(Popups.clamp(left, 0, root.getWidth()-width), Popups.clamp(top, 0, root.getHeight()-height), width, height);
@@ -401,7 +462,7 @@ public final class PaintActivity extends Activity implements ControlHost {
         if (pagePanel == null) return;
         Rect bounds = new Rect(pagePanelBounds); pagePanel = null;
         selectionFeedback.update(previewFrame, bounds, previewFrame::hidePanel);
-        pagePanelBounds.setEmpty(); popupPageNumber = null; popupPrevious = null; popupNext = null; popupAdd = null;
+        pagePanelBounds.setEmpty(); popupPageNumber = null; popupPrevious = null; popupNext = null;
         pad.post(pad::connectDisplay);
     }
     /** The thumbnail grid of every page. */
@@ -615,11 +676,16 @@ public final class PaintActivity extends Activity implements ControlHost {
     AlertDialog appSettings() { closePagePanel(); return new AppSettingsDialog(this).dialog; }
 
     private void fileMenu(View anchor) {
-        closePagePanel();
         String[] names = {"New painting", "Open painting", "Save painting as…", "Export PNG…", "Fullscreen…", "Settings"};
         int[] icons = {R.drawable.ic_new, R.drawable.ic_open, R.drawable.ic_save, R.drawable.ic_export, R.drawable.ic_zoom, R.drawable.ic_settings};
         Runnable[] actions = {() -> settleChanges("starting a new painting", this::startNewDrawing),
-                () -> settleChanges("opening another painting", this::openDrawing), this::saveDrawingAs, this::exportPng, () -> fullscreen.showModes(), this::appSettings};
+                () -> settleChanges("opening another painting", this::openDrawing), this::saveDrawingAs, this::exportPng,
+                () -> fullscreen.showModes(), this::appSettings};
+        menu(anchor, names, icons, actions);
+    }
+    /** A list of labeled rows below the hamburger; tapping one closes the list and runs its action. */
+    private void menu(View anchor, String[] names, int[] icons, Runnable[] actions) {
+        closePagePanel();
         dismiss(filePopup); dismiss(layersPopup);
         LinearLayout rows = new LinearLayout(this); rows.setOrientation(LinearLayout.VERTICAL);
         ScrollView scroll = new ScrollView(this); scroll.addView(rows);
@@ -649,22 +715,6 @@ public final class PaintActivity extends Activity implements ControlHost {
         filePopup = menu;
         Popups.show(menu, root, Popups.rect(left, anchorBounds.bottom, width, height));
     }
-    private void clearDrawing() {
-        closePagePanel();
-        SidePanel menu = new SidePanel(this, clearButton, 300);
-        for (boolean all : new boolean[]{false, true}) {
-            Button option = new Button(this); option.setAllCaps(false);
-            String label = all ? "Clear all layers" : "Clear current layer";
-            option.setText(label); option.setContentDescription(label);
-            option.setOnClickListener(v -> {
-                menu.popup.dismiss();
-                layerChange(() -> { if (all) pad.document.clearAllLayers(); else pad.document.clear(); });
-            });
-            menu.panel.addView(option, new LinearLayout.LayoutParams(-1, dp(56)));
-        }
-        menu.show();
-    }
-
     // Document edits
 
     /** Applies a layer edit as one undoable change and presents it. */
