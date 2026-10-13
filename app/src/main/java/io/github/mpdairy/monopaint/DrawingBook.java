@@ -164,7 +164,7 @@ final class DrawingBook {
         int count(){return pages.size();}
         /** Decodes one page without selecting it or touching the live book's undo history. */
         ToneDocument page(int i) throws IOException {
-            if(i==index)return new ToneDocument(activePage.width,activePage.height,activePage.layers,activePage.active);
+            if(i==index)return new ToneDocument(activePage.width,activePage.height,activePage.layers,activePage.active,activePage.mask);
             return DocumentCodec.read(new ByteArrayInputStream(pages.get(i)));
         }
     }

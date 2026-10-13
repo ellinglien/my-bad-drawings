@@ -12,8 +12,12 @@ final class PaintState {
     int wetness = 65;
     /** Brushes leave existing marks visible beneath the new paint. */
     boolean transparentPaint;
+    /** Transparent paint from brushes, shapes and flat fills is watercolor: it lifts, blends and runs. */
+    boolean watercolor;
+    /** Tools lay masking fluid, or with {@link #eraseMode} rub it off, instead of painting. */
+    boolean maskingFluid;
     /** Ink the wet brush pen has soaked up, kept between strokes until it is cleaned. */
     final BrushInk brushInk = new BrushInk();
-    /** Ink in brushes whose transparent paint flows, tinted with the last shade tapped and kept between strokes. */
+    /** Ink in brushes in {@link #watercolor} mode, tinted with the last shade tapped and kept between strokes. */
     final BrushInk brushLoad = new BrushInk(true);
 }

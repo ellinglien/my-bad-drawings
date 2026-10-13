@@ -43,8 +43,8 @@ final class WetnessBar extends View {
 
     @Override protected void onDraw(Canvas canvas) {
         canvas.drawColor(Color.WHITE);
-        // Keep the narrow slider next to its droplet with room to touch either side.
-        float left = dp(4), right = dp(16);
+        // The narrow slider sits in the middle of its strip beside the droplet.
+        float left = (getWidth() - dp(12)) / 2f, right = left + dp(12);
         float top = dp(6), bottom = getHeight() - dp(6);
         ink.setColor(Color.BLACK); ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(dp(1));
         canvas.drawRect(left, top, right, bottom, ink);

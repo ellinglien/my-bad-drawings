@@ -12,7 +12,7 @@ final class ToolStrokes {
      * @param transparent brushes leave existing marks visible beneath the paint
      * @param erasing the tool erases with its own footprint instead of applying {@code gray}
      * @param smooth dry brush and hard eraser stamps anti-alias their edges
-     * @param ink the water and ink the wet brush pen, or a brush whose transparent paint flows, holds between strokes
+     * @param ink the water and ink the wet brush pen, or a brush in watercolor mode, holds between strokes; or null
      */
     static DrawingStroke create(ToneDocument document, ToolSettings settings, int gray,
                                 WetWatercolor wet, boolean transparent, boolean erasing, boolean smooth, BrushInk ink) {

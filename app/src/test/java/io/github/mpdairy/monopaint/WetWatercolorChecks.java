@@ -6,8 +6,8 @@ import java.util.Arrays;
 public final class WetWatercolorChecks {
     public static void main(String[] args) throws Exception {
         blendingAndHistory(); dryPaperAndLinework(); dryGaps(); drying(); pausedStrokes(false); pausedStrokes(true);
-        liveStroke(); boundedSlices(); adaptiveBudget(); presets(); gravity(); brushPen(false); brushPen(true); carriedPaint(255); carriedPaint(128); wetBrushPen(); brushInk(); smoothFlow(); flowingGravity(); flowingGlaze(); queuedGlaze(); stuckPaint(); washOverWash(); pacing(); flowingSlices();
-        System.out.println("PASS: live wet blending, gravity drift, brush pen seeping and sharp dry edges, wet brush pen ink flow by freshness, adaptive work limits, bounded spatial/time slices, pause/resume, retained water, dry boundaries/linework, queued watercolor dabs, drying, exact undo/redo, saved tones and TSP9 migration");
+        liveStroke(); boundedSlices(); adaptiveBudget(); presets(); gravity(); brushPen(false); brushPen(true); carriedPaint(255); carriedPaint(128); wetBrushPen(); brushInk(); smoothFlow(); flowingGravity(); flowingGlaze(); queuedGlaze(); stuckPaint(); washOverWash(); pacing(); flowingSlices(); hugeWash(); regionWash(); inkLoading(); running(); canvasGlaze();
+        System.out.println("PASS: live wet blending, gravity drift, brush pen seeping and sharp dry edges, wet brush pen ink flow by freshness, adaptive work limits, bounded spatial/time slices, pause/resume, retained water, dry boundaries/linework, queued watercolor dabs, shape and fill washes, dipped ink, drying, exact undo/redo, saved tones and TSP9 migration");
     }
     private static void check(boolean pass, String message) { if (!pass) throw new AssertionError(message); }
     private static void dab(ToneDocument doc, WetWatercolor wet, int x, int y, int w, int h, int gray) {
@@ -43,6 +43,73 @@ public final class WetWatercolorChecks {
         check(doc.redo() && Arrays.equals(doc.snapshot(), mixed) && !doc.canRedo(), "Animated stroke redoes to its final appearance");
         ByteArrayOutputStream bytes = new ByteArrayOutputStream(); DocumentCodec.write(bytes, doc.width, doc.height, doc.snapshot());
         check(Arrays.equals(DocumentCodec.read(new ByteArrayInputStream(bytes.toByteArray())).snapshot(), mixed), "Save/load retains blended tones without transient water");
+    }
+    /** A shape's spans and a fill's region are laid as one watercolor stroke: glazed at once, then run, in one Undo step. */
+    private static void regionWash() {
+        for (boolean fill : new boolean[]{false, true}) {
+            ToneDocument doc = new ToneDocument(200, 160);
+            WetWatercolor wet = new WetWatercolor(doc);
+            byte[] blank = doc.snapshot();
+            doc.begin(); wet.beginStroke();
+            if (fill) {
+                java.util.BitSet region = new java.util.BitSet(200 * 160);
+                for (int y = 30; y < 130; y++) region.set(y * 200 + 40, y * 200 + 160);
+                WatercolorWash.pixels(wet, region, 200, 160, 60);
+            } else {
+                int[] spans = new int[160 * 4];
+                for (int y = 30; y < 130; y++) { spans[y * 4] = 40; spans[y * 4 + 1] = 160; }
+                WatercolorWash.spans(wet, spans, 200, 160, 60);
+            }
+            check(wet.finishStroke(), "A wash is one change");
+            check(doc.tone(100, 80) < 255 && doc.tone(20, 80) == 255, "The wash shows at once as a glaze over its region only");
+            check(wet.queuedDabs() > 1, "A tall wash is queued in bands");
+            settle(wet);
+            check(doc.tone(100, 80) < 200 && doc.tone(10, 10) == 255, "The wash lays its shade and stays near its region");
+            check(doc.undo() && Arrays.equals(doc.snapshot(), blank) && !doc.canUndo(), "One Undo removes the wash and all its running");
+        }
+    }
+    /** Watercolor and wet canvas paint count as running; the dry brush pen's seeping water doesn't. */
+    private static void running() {
+        ToneDocument doc = new ToneDocument(120, 80);
+        WetWatercolor dry = new WetWatercolor(doc);
+        int[] mask = new int[16 * 16]; Arrays.fill(mask, 0xff000000);
+        doc.begin(); dry.beginStroke(); dry.waterMask(mask, 16, 40, 30, 16, 16, 1, false); dry.finishStroke();
+        check(dry.isAnimating() && !dry.running(), "The dry brush pen's water seeps without running");
+        WetWatercolor flowing = new WetWatercolor(doc);
+        BrushInk ink = new BrushInk(true); ink.tint(60);
+        doc.begin(); flowing.beginStroke(); flowing.queueWater(mask, 16, 40, 30, 16, 16, 1, true, 0, ink); flowing.finishStroke();
+        check(flowing.running(), "Queued watercolor runs");
+        WetWatercolor canvas = new WetWatercolor(doc, 65);
+        dab(doc, canvas, 40, 30, 16, 16, 60);
+        check(canvas.running(), "Wet canvas paint runs");
+    }
+    /**
+     * A watercolor brush dragged downhill across dark paint on a wet canvas glazes over it,
+     * loosening only some: it doesn't soak up all the paint it crosses and pool it at its end.
+     */
+    private static void canvasGlaze() {
+        ToneDocument doc = new ToneDocument(220, 64);
+        doc.begin(); for (int y = 8; y < 56; y++) for (int x = 20; x < 200; x++) doc.paintTone(x, y, 60); doc.finish();
+        WetWatercolor wet = new WetWatercolor(doc, 100);
+        wet.setGravity(.4f, 0);
+        BrushInk ink = new BrushInk(true); ink.tint(200);
+        int[] mask = new int[16 * 16]; Arrays.fill(mask, 0xff000000);
+        doc.begin(); wet.beginStroke();
+        for (int x = 24; x <= 180; x += 4) wet.queueWater(mask, 16, x, 24, 16, 16, 1, true, 0, ink);
+        wet.finishStroke(); settle(wet);
+        int start = doc.tone(28, 32), middle = doc.tone(100, 32);
+        String tones = " (start " + start + ", middle " + middle + ")";
+        check(start < 130, "The paint under the stroke's start still shows" + tones);
+        check(middle > 40 && middle < 80, "The paint along the stroke stays about as it was" + tones);
+    }
+    /** Dipping the wet brush pen fills it with that ink; white leaves it clean. */
+    private static void inkLoading() {
+        BrushInk ink = new BrushInk();
+        ink.load(0); check(ink.fullness() == 1, "Black fills the pen with black ink");
+        ink.load(128); check(Math.abs(ink.fullness() - 127 / 255f) < 1e-4, "A gray fills it to that gray, even after black");
+        ink.load(255); check(ink.fullness() == 0, "White leaves it clean");
+        BrushInk tinted = new BrushInk(true); tinted.tint(100); tinted.load(200);
+        check(tinted.fullness() == tinted.tint(), "A tinted brush never holds less than its tint");
     }
     private static void gravity() {
         int[] level = gravityTones(0, 0), downhill = gravityTones(0, 1), sideways = gravityTones(-.7f, 0);
@@ -241,7 +308,8 @@ public final class WetWatercolorChecks {
         check(pen[0] > 200, "The wet brush pen lifts dry paint at once" + tones);
         check(two[0] < 30 && clearTwo[0] < 30 && Math.abs(two[1] - 220) <= 6,
                 "A couple of passes over a black line leave it, and the wash keeps its own tint" + tones);
-        check(rubbed[0] > two[0] + 60 && clearRubbed[0] > clearTwo[0] + 60, "Rubbing several times lifts the soaked paint" + tones);
+        if (WetWatercolor.SCRUB_LIFTS) check(rubbed[0] > two[0] + 60 && clearRubbed[0] > clearTwo[0] + 60, "Rubbing several times lifts the soaked paint" + tones);
+        else check(rubbed[0] < 30 && clearRubbed[0] < 30, "With scrubbing off, rubbing leaves the stuck paint" + tones);
         check(Math.abs(slow[0] - clearRubbed[0]) <= 30, "Pausing between passes does not soak the paint by itself" + tones);
         // Lifted ink the brush put down nearby may run back over the spot; the spot's own paint never drains away.
         check(rubbed[0] <= rubbed[2] + 6, "Once the brush leaves, soaked paint stays put instead of draining into the wash (at pen-up "
@@ -323,6 +391,25 @@ public final class WetWatercolorChecks {
         check(Math.abs(level - 64) < 4, "On a level tablet the ink spreads evenly around its band" + centers);
         check(down > level + 15, "Tilted, the ink runs down through the water and pools at its low edge" + centers);
         check(right > level + 15 && Math.abs(inkCenterY - 64) < 4, "Sideways tilt runs the ink sideways only" + centers);
+    }
+    /** A huge wash of flowing water settles in fewer frames than a small one, and still runs downhill. */
+    private static void hugeWash() {
+        float[] small = washFrames(128, 0), huge = washFrames(768, 0), tilted = washFrames(768, .3f);
+        String frames = " (small " + small[0] + " frames, huge " + huge[0] + ", ink centers " + huge[1] + ", tilted " + tilted[1] + ")";
+        check(huge[0] <= small[0] * .6f, "A huge wash takes bigger steps" + frames);
+        check(Math.abs(huge[1] - .5f) < .01f && tilted[1] > huge[1] + .03f, "A huge tilted wash still runs downhill" + frames);
+    }
+    /** Frames a {@code size}-px square of flowing water over a dark middle band takes to settle, and its ink's center down the page, as a share of it. */
+    private static float[] washFrames(int size, float downhill) {
+        ToneDocument doc = new ToneDocument(size, size);
+        doc.begin(); for (int y = size * 7 / 16; y < size * 9 / 16; y++) for (int x = 0; x < size; x++) doc.paintTone(x, y, 0); doc.finish();
+        WetWatercolor wet = new WetWatercolor(doc); wet.setGravity(0, downhill);
+        int[] mask = new int[size * size]; Arrays.fill(mask, 0xff000000);
+        doc.begin(); wet.beginStroke(); wet.waterMask(mask, size, 0, 0, size, size, 1, true); wet.finishStroke();
+        while (wet.isAnimating()) wet.advance(false, Integer.MAX_VALUE, Long.MAX_VALUE, Integer.MAX_VALUE);
+        double ink = 0, along = 0;
+        for (int y = 0; y < size; y++) for (int x = 0; x < size; x++) { double k = 255 - doc.tone(x, y); ink += k; along += k * (y + .5); }
+        return new float[]{wet.frame(), (float)(along / ink / size)};
     }
     private static float inkCenterY;
     /** Where a dark band's ink settles in a wide wash of flowing water: along the tilt's axis, and across it in {@link #inkCenterY}. */

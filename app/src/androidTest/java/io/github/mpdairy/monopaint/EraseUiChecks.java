@@ -76,7 +76,7 @@ final class EraseUiChecks {
                 for(ToolSettings.Head head:ToolSettings.Head.values()) {
                     tools.selectHead(head);tools.edit(tools.current().size(64));TestAccess.setMaximum(activity,64);call(get(activity,"toolbar"),"refreshToolSelection");
                     ToolSettings settings=tools.current();
-                    call(activity,"setWetCanvas",new Class<?>[]{boolean.class},true);
+                    set(get(activity,"paint"),"wetCanvas",true);
                     call(activity,"setTransparentPaint",new Class<?>[]{boolean.class},true);
                     call(activity,"selectShade",new Class<?>[]{int.class},0);
                     ((View)get(activity,"eraseButton")).performClick();

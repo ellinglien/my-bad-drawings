@@ -45,6 +45,8 @@ final class ShapePreview {
         if(ended)return new Rect();ended=true;java.util.Arrays.fill(next,0);
         return apply(display,logical);
     }
+    /** The shape as last previewed: two intervals per row, as {@link ShapeGeometry} rasters them. */
+    int[] spans() { return previous.clone(); }
     boolean finish() {
         if(ended)return false;ended=true;
         document.begin();

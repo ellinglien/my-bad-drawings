@@ -39,9 +39,12 @@ final class PageNavigationChecks {
                 check(compact.getWidth()==compact.getHeight(),"Nomad page button is square");
                 View shade=(View)get(app,"shadePicker");
                 check(shade.getWidth()>=430,"Nomad color bar reclaims the unused header gaps: "+shade.getWidth());
-                View wet=(View)get(app,"wetButton"),strength=(View)get(app,"wetnessBar");
-                check(wet.getParent()==shade.getParent()&&wet.getLeft()==0&&strength.getLeft()==wet.getRight(),
-                        "Wet controls stay together at the start of the color group");
+                View mask=(View)get(app,"maskButton");
+                View wet=(View)get(app,"watercolorButton"),strength=(View)get(app,"wetnessBar");
+                View pair=(View)get(app,"wetControls");
+                check(pair.getParent()==shade.getParent()&&mask.getLeft()==0&&pair.getLeft()==mask.getRight()
+                        &&pair.getWidth()==pair.getHeight()&&wet.getParent()==strength.getParent()&&strength.getLeft()==wet.getRight(),
+                        "Masking fluid and the square of wet controls stay together at the start of the color group");
                 check(((View)get(app,"rotateButton")).getParent()!=get(app,"menuControls"),"Rotation prompt never occupies header space");
                 main(test,() -> {
                     int submitted=feedback.submitted;call(app,"showPagePanel");

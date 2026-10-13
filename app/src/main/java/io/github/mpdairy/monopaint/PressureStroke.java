@@ -34,7 +34,7 @@ final class PressureStroke implements DrawingStroke {
     private final PaintLoad load;
     /** The water and ink a flowing brush keeps between strokes; null for other strokes. */
     private final BrushInk ink;
-    /** A brush's transparent paint flows through the water it holds, carrying its mix. */
+    /** A brush in watercolor mode: its transparent paint flows through the water it holds, carrying its mix. */
     private final boolean flowingGlaze;
     /** Which end of a brush pen's head, along its heading, its shaft leans toward: +1 or -1. */
     private float shaftSide = 1;
@@ -68,7 +68,7 @@ final class PressureStroke implements DrawingStroke {
     PressureStroke(ToneDocument document, ToolSettings settings, int gray, WetWatercolor wet, boolean transparent, boolean erasing, boolean smooth) {
         this(document, settings, gray, wet, transparent, erasing, smooth, null);
     }
-    /** @param ink the water and ink the wet brush pen, or a brush whose transparent paint flows, holds between strokes; or null */
+    /** @param ink the water and ink the wet brush pen, or a brush in watercolor mode, holds between strokes; or null, and a brush paints without watercolor */
     PressureStroke(ToneDocument document, ToolSettings settings, int gray, WetWatercolor wet, boolean transparent, boolean erasing, boolean smooth, BrushInk ink) {
         this(document, settings, gray, erasing ? null : wet, transparent, true, erasing, smooth, ink);
     }
@@ -77,7 +77,7 @@ final class PressureStroke implements DrawingStroke {
         // Oil paint mode is for opaque paint; transparent paint never runs out.
         if (canvasControls && transparent && settings.limitsPaint()) settings = settings.oilPaint(false);
         this.erasing = erasing;
-        flowingGlaze = canvasControls && transparent && !erasing && settings.isBrush() && settings.flows;
+        flowingGlaze = canvasControls && transparent && !erasing && settings.isBrush() && ink != null;
         this.ink = settings.tool.flowing || flowingGlaze ? ink : null;
         this.transparent = transparent;
         this.document = document; this.settings = canvasControls && settings.isBrush() ? settings.asBrush() : settings; this.maximum = settings.maximum; this.gray = gray;
@@ -249,6 +249,8 @@ final class PressureStroke implements DrawingStroke {
             document.washMask(pixels, w, left, top, w, h, gray);
         else document.paintMask(pixels, w, left, top, w, h, gray);
     }
+    /** A watercolor brush shows its dabs as a flat glaze while drawn, and lays them in full once lifted. */
+    @Override public boolean holdsWetPaint() { return wet != null && flowingGlaze; }
     @Override public boolean finish() {
         // A crescent tapped without moving still leaves its sliver.
         if (started && !dabbed) { lead = 1; dab(previousX, previousY, previousRadius, previousAngle, previousPull); }

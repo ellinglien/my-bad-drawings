@@ -14,9 +14,11 @@ final class DocumentCodec {
     private static final int MAGIC = 0x54534d31; // TSM1
     private static final int LAYER_MAGIC = 0x54534d32; // TSM2
     private static final int OPACITY_MAGIC = 0x54534d33; // TSM3
+    /** TSM3 followed by the page's masking fluid; pages without any keep writing TSM3. */
+    private static final int MASK_MAGIC = 0x54534d34; // TSM4
     static void write(OutputStream stream, ToneDocument.Snapshot snapshot) throws IOException {
         DataOutputStream header=new DataOutputStream(stream);
-        header.writeInt(OPACITY_MAGIC); header.writeInt(snapshot.width); header.writeInt(snapshot.height);
+        header.writeInt(snapshot.mask != null ? MASK_MAGIC : OPACITY_MAGIC); header.writeInt(snapshot.width); header.writeInt(snapshot.height);
         java.util.zip.Deflater deflater=new java.util.zip.Deflater();
         try {
             DeflaterOutputStream compressed=new DeflaterOutputStream(stream,deflater);
@@ -27,11 +29,12 @@ final class DocumentCodec {
                 data.writeUTF(layer.name); data.writeBoolean(layer.visible); data.writeByte(layer.opacity);
                 data.write(layer.tones); data.write(layer.alpha);
             }
+            if(snapshot.mask!=null) { data.write(snapshot.mask.tones); data.write(snapshot.mask.alpha); }
             data.flush(); new DataOutputStream(compressed).writeLong(crc.getValue());
             compressed.finish(); compressed.flush();
         } finally { deflater.end(); }
     }
-    private static ToneDocument readLayers(InputStream stream,int width,int height,boolean retain,boolean hasOpacity) throws IOException {
+    private static ToneDocument readLayers(InputStream stream,int width,int height,boolean retain,boolean hasOpacity,boolean hasMask) throws IOException {
         java.util.zip.Inflater inflater=new java.util.zip.Inflater();
         try {
             InflaterInputStream compressed=new InflaterInputStream(stream,inflater);
@@ -52,10 +55,16 @@ final class DocumentCodec {
                     layer.opacity=opacity; layers.add(layer);
                 } else consume(data,width*height*2);
             }
+            ToneDocument.Layer mask=null;
+            if(hasMask&&retain) {
+                byte[] tones=new byte[width*height],alpha=new byte[width*height];
+                data.readFully(tones); data.readFully(alpha);
+                mask=new ToneDocument.Layer("Masking fluid",true,tones,alpha);
+            } else if(hasMask) consume(data,width*height*2);
             long checksum=crc.getValue();
             if(new DataInputStream(compressed).readLong()!=checksum) throw new IOException("Painting checksum mismatch");
             if(compressed.read()!=-1) throw new IOException("Extra painting data");
-            return retain?new ToneDocument(width,height,layers,active):null;
+            return retain?new ToneDocument(width,height,layers,active,mask):null;
         } finally { inflater.end(); }
     }
     static void write(OutputStream stream, int width, int height, byte[] tones) throws IOException {
@@ -79,12 +88,13 @@ final class DocumentCodec {
     private static ToneDocument read(InputStream stream,boolean retain,int expectedWidth,int expectedHeight) throws IOException {
         DataInputStream header = new DataInputStream(stream);
         int magic=header.readInt();
-        if (magic != MAGIC && magic != LAYER_MAGIC && magic != OPACITY_MAGIC) throw new IOException("Unknown painting format");
+        if (magic != MAGIC && magic != LAYER_MAGIC && magic != OPACITY_MAGIC && magic != MASK_MAGIC) throw new IOException("Unknown painting format");
         int width = header.readInt(), height = header.readInt();
         try { ToneDocument.validateSize(width, height); }
         catch (IllegalArgumentException invalid) { throw new IOException("Invalid painting dimensions", invalid); }
         if(expectedWidth!=0&&(width!=expectedWidth||height!=expectedHeight)) throw new IOException("Page size mismatch");
-        if(magic==LAYER_MAGIC || magic==OPACITY_MAGIC) return readLayers(stream,width,height,retain,magic==OPACITY_MAGIC);
+        if(magic==LAYER_MAGIC || magic==OPACITY_MAGIC || magic==MASK_MAGIC)
+            return readLayers(stream,width,height,retain,magic!=LAYER_MAGIC,magic==MASK_MAGIC);
         long checksum=header.readLong();
         byte[] tones = retain?new byte[width * height]:null;
         CRC32 crc = new CRC32();

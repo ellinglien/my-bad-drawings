@@ -7,7 +7,7 @@ Tap a tool to select it. Tap it again to open its settings.
 | Tool | What it does |
 |:-:|---|
 | <img src="icons/brush.svg" width="24"><br>**Brush** | Pressure-sensitive paintbrush. |
-| <img src="icons/brush_pen.svg" width="24"><br>**Brush pen** | Clear water that drags paint around. Choose Dry or Wet in its settings: the wet one's ink keeps running through its water. |
+| <img src="icons/brush_pen.svg" width="24"><br>**Brush pen** | Clear water that drags paint around. Choose Dry or Wet in its settings: the wet one's ink keeps running through its water. Tap a color, or pick one with the Eyedropper, to dip the wet one in that ink; it gives it out as you paint and picks up what it passes over, and each time you lift it the color bar's marker slides to the ink it has left. The Eraser color cleans it. |
 | <img src="icons/pencil.svg" width="24"><br>**Pencil** | Textured pencil. Lean it for broader strokes. |
 | <img src="icons/airbrush.svg" width="24"><br>**Airbrush** | Soft spray. Go over an area again to build up color. |
 | <img src="icons/fill.svg" width="24"><br>**Fill** | Flat or gradient flood fill. |
@@ -27,15 +27,18 @@ Tap a tool to select it. Tap it again to open its settings.
 runs out of paint along the stroke and then just smudges. Rub the pen on the
 color bar or a swatch to reload it.
 
-**Watercolor mode when transparent** (a brush option): with transparent paint,
-the brush paints like the wet brush pen: it lifts paint, soaks up ink and keeps it between
-strokes, and its ink runs and pools downhill when **Watercolor uses gravity** is
-on. The selected color is the lightest shade it lays; darker colors soak up less.
+**Watercolor mode** (the droplet in the color bar): with transparent paint,
+brushes paint like the wet brush pen: they lift paint, soak up ink and keep it between
+strokes, and their ink runs and pools downhill when **Watercolor uses gravity** is
+on. While the pen is down the stroke goes on as a flat glaze and nothing moves;
+the paint lifts, blends and runs once you lift the pen. The selected color is the lightest shade it lays; darker colors soak up less.
 Tap a color to reset the ink the brush has picked up. On a dry canvas, dried
-paint stays stuck under the wash. Each dab over it soaks it a little: a couple
-of passes leave it, more scrubbing lets the brush lift it. It never runs into the
-wash by itself. On a wet canvas it lifts at
-once.
+paint stays stuck under the wash, however much you rub it; use the wet brush pen
+to lift it. On a wet canvas some of that paint
+comes loose and bleeds and runs with the wash, more the wetter the canvas, and
+the rest stays put and shows through. Shapes and flat fills lay their whole area as one watercolor wash, which
+then blends and runs the same way; they start clean each time. Pencils, the
+airbrush and gradient fills paint as usual.
 
 ### Fill types
 
@@ -59,8 +62,9 @@ once.
 | **Color bar** | 65 shades of gray. |
 | <img src="icons/eraser.svg" width="24"><br>**Eraser color** | Makes your current tool erase instead of paint. |
 | <img src="icons/eyedropper.svg" width="24"><br>**Eyedropper** | Picks a shade from the drawing. |
-| <img src="icons/hair_dryer.svg" width="24"><br>**Blow dryer** | Tap to dry all wet paint at once: it stops running and stays as it is. Wet canvas stays on for your next stroke, and your tool stays selected. |
-| <img src="icons/water_drop.svg" width="24"><br>**Wet canvas** | New strokes blend into the paint already there. |
+| <img src="icons/masking_fluid.svg" width="24"><br>**Masking fluid** | Choose it like a color, then paint it on with any tool; it shows as diagonal hatching. Paint, erasing and seeping wet paint can't reach under it, on any layer. With the Eraser color on as well, your tool rubs it off. Hold it and <img src="icons/peel.svg" width="24"> **Peel** pops out below: slide onto it and lift, or tap it, to peel it all off. Clear page peels it too. |
+| <img src="icons/water_drop.svg" width="24"><br>**Watercolor mode** | Transparent brushes, shapes and flat fills paint watercolor (see Brushes). The droplet is solid while it's on and dashed while it's off. While watercolor or wet canvas paint is still moving, the droplet's outline ripples, slowing as the paint settles. Tap it while it ripples and it turns into a <img src="icons/hair_dryer.svg" width="24"> **blow dryer** for a moment: all wet paint dries at once and stays as it is, and both modes stay as they were. Tap the resting droplet to turn Watercolor mode on or off. |
+| **Wetness slider** | Beside the droplet: slide it up to wet the canvas, so new strokes blend into the paint already there, the higher the longer it stays wet. Slide it to the bottom to dry the canvas. |
 | <img src="icons/opaque.svg" width="24"><br>**Opaque** | Paint covers what's below. |
 | <img src="icons/transparent.svg" width="24"><br>**Transparent** | Paint layers like a glaze. |
 

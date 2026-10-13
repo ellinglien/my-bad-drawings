@@ -84,7 +84,10 @@ public final class PaintActivity extends Activity implements ControlHost {
     CanvasGravity canvasGravity;
     ShadePicker shadePicker;
     WetnessBar wetnessBar;
-    ToolButton dryerButton, wetButton, opaqueButton, transparentButton, eyedropperButton, eraseButton;
+    /** The droplet and wetness slider, kept upright together. */
+    private QuarterTurnLayout wetControls;
+    WetDroplet wetDroplet;
+    ToolButton maskButton, watercolorButton, opaqueButton, transparentButton, eyedropperButton, eraseButton;
     ImageButton menuButton, previousPage, nextPage, pageMenuButton;
     PageActionButton rotateButton, pagesButton;
     TextView pageNumber;
@@ -227,13 +230,23 @@ public final class PaintActivity extends Activity implements ControlHost {
         pagesButton.setContentDescription("Pages");
         pagesButton.setOnClickListener(v -> { if (!busy()) showPagePanel(); });
 
-        dryerButton = headerButton(colors, "Blow dryer", R.drawable.ic_hair_dryer, () -> { if (blowDry()) BlowDryer.blow(this, dryerButton, 0); });
-        dryerButton.press.feedback = selectionFeedback;
-        dryerButton.setContentDescription("Blow dryer. Tap to dry all wet paint.");
-        wetButton = colorBarButton(colors, "Wet canvas", R.drawable.ic_water_drop, () -> setWetCanvas(!paint.wetCanvas));
-        wetButton.iconHalf = 18; wetButton.iconOffset = 8; wetButton.markerLeft = true;
+        maskButton = colorBarButton(colors, "Masking fluid", R.drawable.ic_masking_fluid, 32, this::toggleMaskingFluid);
+        maskButton.setOnTouchListener(new MaskPeelTouch(this, maskButton));
+        maskButton.markerBelow = true;
+        // The droplet and its wetness slider make one square, turned upright in landscape
+        // like an icon, so the slider always fills from the bottom.
+        LinearLayout wetPair = new LinearLayout(this);
+        wetControls = new QuarterTurnLayout(this); wetControls.addView(wetPair);
+        colors.addView(wetControls, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        watercolorButton = colorBarButton(wetPair, "Watercolor mode", 0, 32, this::tapDroplet);
+        watercolorButton.headerIcon = false;
+        // No icon resource: the droplet is solid while Watercolor mode is on, and dashed while it is off.
+        watercolorButton.iconOnly(new DropletIcon(false), new DropletIcon(true));
+        watercolorButton.setContentDescription("Watercolor mode. Transparent brushes, shapes and flat fills paint watercolor. While wet paint is moving, tap to dry it.");
+        watercolorButton.iconHalf = 18;
+        wetDroplet = new WetDroplet(this, watercolorButton);
         wetnessBar = new WetnessBar(this);
-        colors.addView(wetnessBar, new LinearLayout.LayoutParams(dp(24), dp(48)));
+        wetPair.addView(wetnessBar, new LinearLayout.LayoutParams(dp(16), dp(48)));
         eyedropperButton = colorBarButton(colors, "Pick color from canvas", R.drawable.ic_eyedropper, () -> {
             setPickingShade(!pickingShade);
             if (pickingShade) pad.dryWet();
@@ -249,7 +262,7 @@ public final class PaintActivity extends Activity implements ControlHost {
         eraseButton.markerBelow = true;
         transparentButton = colorBarButton(colors, "Transparent paint", R.drawable.ic_transparent, () -> setTransparentPaint(true));
         opaqueButton = colorBarButton(colors, "Opaque paint", R.drawable.ic_opaque, () -> setTransparentPaint(false));
-        refreshPaintModes();
+        refreshPaintModes(); setMaskingFluid(paint.maskingFluid);
         rightHeader.addView(headerControls);
     }
 
@@ -283,15 +296,25 @@ public final class PaintActivity extends Activity implements ControlHost {
         return button;
     }
     private ToolButton headerButton(LinearLayout parent, String title, int icon, Runnable action) {
+        return headerButton(parent, title, icon, 48, action);
+    }
+    /**
+     * A header control {@code width} dp along the strip. A narrow icon takes a narrow button,
+     * leaving the room to the shade strip; it still turns upright in place in landscape.
+     */
+    private ToolButton headerButton(LinearLayout parent, String title, int icon, int width, Runnable action) {
         ToolButton button = iconButton(title, icon, action);
         button.headerIcon = true; button.setBackgroundColor(Color.WHITE);
-        parent.addView(button, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        parent.addView(button, new LinearLayout.LayoutParams(dp(width), dp(48)));
         return button;
     }
     private ToolButton headerAction(String title, int icon, Runnable action) { return headerButton(menuControls, title, icon, action); }
     /** A color bar toggle that shows its state with a dot. */
     private ToolButton colorBarButton(LinearLayout parent, String title, int icon, Runnable action) {
-        ToolButton button = headerButton(parent, title, icon, action);
+        return colorBarButton(parent, title, icon, 48, action);
+    }
+    private ToolButton colorBarButton(LinearLayout parent, String title, int icon, int width, Runnable action) {
+        ToolButton button = headerButton(parent, title, icon, width, action);
         button.alwaysDot = true;
         return button;
     }
@@ -412,11 +435,12 @@ public final class PaintActivity extends Activity implements ControlHost {
         pageMenuItem(menu, "Clear page", R.drawable.ic_page_clear, this::clearPage, true);
         pageMenuItem(menu, "Clear current layer", R.drawable.ic_layer_clear, this::clearLayer, true);
     }
-    private void pageMenuItem(LinearLayout menu, String name, int icon, Runnable action, boolean enabled) {
+    private View pageMenuItem(LinearLayout menu, String name, int icon, Runnable action, boolean enabled) {
         // Like the page row, act while the panel is open so page artwork reaches the panel at once.
         View item = pageAction(name, icon, () -> { action.run(); closePagePanel(); }, false);
         Ui.setDimmed(item, enabled, .3f);
         menu.addView(item, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        return item;
     }
     private void confirmPageAction(String title, String text, String verb, Runnable action) {
         closePagePanel();
@@ -508,7 +532,7 @@ public final class PaintActivity extends Activity implements ControlHost {
         colors.removeView(eraseButton); colors.removeView(eyedropperButton);
         colors.addView(landscape ? eraseButton : eyedropperButton, colors.indexOfChild(shadePicker));
         colors.addView(landscape ? eyedropperButton : eraseButton, colors.indexOfChild(shadePicker) + 1);
-        paletteFrame.setTurn(toolbarTurn);
+        paletteFrame.setTurn(toolbarTurn); wetControls.setTurn(-toolbarTurn);
         root.setOrientation(landscape ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
         root.removeView(paletteFrame);
         root.addView(paletteFrame, landscape && right ? root.getChildCount() : 0,
@@ -739,22 +763,36 @@ public final class PaintActivity extends Activity implements ControlHost {
 
     /** Changes the color bar's state through the fast display path. */
     void updateColorBar(Runnable change) { selectionFeedback.update(shadePicker, shadePicker.markerArea(), change); }
-    boolean shadeMarkerVisible() { return !((paint.eraseMode && !pickingShade) || (pickingShade && !pickedShade)); }
+    boolean shadeMarkerVisible() { return !(((paint.eraseMode || paint.maskingFluid) && !pickingShade) || (pickingShade && !pickedShade)); }
 
     void selectShade(int value) {
         if (busy()) return;
         setPickingShade(false);
         if (!pad.hasGradient()) pad.finishStroke();
-        setEraseMode(false);
-        // The brush pens lay no color: choosing one goes back to the brush last in use.
-        if (library.current().tool.water) toolbar.returnToBrush();
+        setEraseMode(false); setMaskingFluid(false);
+        // The dry brush pen lays no color: choosing one goes back to the brush last in use.
+        if (library.current().tool.water && !library.current().tool.flowing) toolbar.returnToBrush();
         if (paint.gray != value) updateColorBar(() -> paint.gray = value);
-        // Any tap on a shade, the same one too, resets a flowing brush's ink to it,
-        // after the brush has laid the paint it is still showing.
-        pad.layQueuedPaint();
-        paint.brushLoad.tint(value);
+        loadInk(value);
         if (pad.hasGradient()) pad.previewGradient(value);
         if (paletteEditor != null) paletteEditor.colorChanged(value);
+    }
+    /**
+     * Any shade chosen, the same one too, resets a watercolor brush's ink to it, after the brush
+     * has laid the paint it is still showing; with the wet brush pen, it dips the pen in that ink.
+     */
+    void loadInk(int value) {
+        pad.layQueuedPaint();
+        paint.brushLoad.tint(value);
+        if (cleansBrush()) paint.brushInk.load(value);
+    }
+    /** With the wet brush pen, the color bar's marker slides to the ink it holds now, after a stroke or cleaning. */
+    void showBrushInk() {
+        if (!cleansBrush() || paint.eraseMode || paint.maskingFluid || pickingShade) return;
+        int shade = 255 - Math.round(paint.brushInk.fullness() * 255), from = paint.gray;
+        if (shade == from) return;
+        // The marker still shows the old shade until it slides.
+        paint.gray = shade; shadePicker.slideMarker(from);
     }
     /** Loads a brush with limited paint by as far as the pen rubbed in the color bar or palette. */
     void loadPaint(float travel) {
@@ -798,7 +836,7 @@ public final class PaintActivity extends Activity implements ControlHost {
     private boolean brushCleaned;
     private final Runnable brushCleanShown = () -> { brushCleaned = false; refreshEraseControl(); };
     private void cleanBrush() {
-        paint.brushInk.clean(); saveToolState();
+        paint.brushInk.clean(); showBrushInk(); saveToolState();
         brushCleaned = true; refreshEraseControl();
         eraseButton.removeCallbacks(brushCleanShown);
         eraseButton.postDelayed(brushCleanShown, 500);
@@ -813,28 +851,58 @@ public final class PaintActivity extends Activity implements ControlHost {
             eyedropperButton.setContentDescription(picking ? "Cancel picking color" : "Pick color from canvas");
         }
     }
+    // Masking fluid
+
+    /** Masking fluid is chosen like a color; the eraser then rubs it off. */
+    private void toggleMaskingFluid() {
+        if (busy()) return;
+        pad.dryWet();
+        // The brush pens lay no color: masking fluid goes on with the brush last in use.
+        if (!paint.maskingFluid && library.current().tool.water) toolbar.returnToBrush();
+        setMaskingFluid(!paint.maskingFluid); saveToolState();
+    }
+    void setMaskingFluid(boolean value) {
+        if (paint.maskingFluid != value) updateColorBar(() -> paint.maskingFluid = value);
+        if (maskButton == null) return;
+        maskButton.mark(value);
+        maskButton.setContentDescription(value ? "Masking fluid. Erase to rub it off; hold to peel it all off."
+                : "Masking fluid. Hold to peel it all off.");
+    }
+    /** Opens the Peel button below the masking fluid; null when no panel opened. */
+    View showPeel() {
+        if (!beginPagePanel()) return null;
+        LinearLayout column = new LinearLayout(this);
+        View peel = pageMenuItem(column, "Peel off masking fluid", R.drawable.ic_peel, this::peelMask, pad.document.hasMask());
+        showPagePanel(maskButton, column, dp(48), dp(48));
+        return peel;
+    }
+    private void peelMask() { layerChange(() -> pad.document.peelMask()); }
+
     void refreshPaintModes() {
-        wetButton.mark(paint.wetCanvas);
+        watercolorButton.mark(paint.watercolor);
         transparentButton.mark(paint.transparentPaint);
         opaqueButton.mark(!paint.transparentPaint);
     }
-    private void setWetCanvas(boolean value) {
+    /** Transparent paint from brushes, shapes and flat fills becomes watercolor, or stops being it. */
+    private void setWatercolor(boolean value) {
         if (busy()) return;
-        pad.finishStroke();
-        if (value && paint.wetness == 0) wetnessBar.select(65);
-        paint.wetCanvas = value;
-        if (!value) pad.dryWet();
+        pad.finishStroke(); paint.watercolor = value;
         refreshPaintModes(); saveToolState();
     }
+    /** While wet paint is moving, the droplet dries it; otherwise it toggles watercolor mode. */
+    private void tapDroplet() {
+        if (wetDroplet.moving()) blowDry();
+        else setWatercolor(!paint.watercolor);
+    }
     /**
-     * The blow dryer: wet paint stops moving and stays as it is. Wet canvas mode stays on,
-     * so the next stroke wets the paint it reaches again. False if busy.
+     * The blow dryer: wet paint stops moving and stays as it is, and the droplet blows a little
+     * air. The modes stay as they are, so on a wet canvas the next stroke wets the paint it reaches again.
      */
-    boolean blowDry() {
-        if (busy()) return false;
+    void blowDry() {
+        if (busy()) return;
         setPickingShade(false);
         pad.finishStroke(); pad.dryWet();
-        return true;
+        wetDroplet.rest(); BlowDryer.blow(this, watercolorButton);
     }
     private void setTransparentPaint(boolean value) {
         if (busy()) return;

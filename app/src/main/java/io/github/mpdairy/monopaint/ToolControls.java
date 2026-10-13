@@ -46,7 +46,6 @@ final class ToolControls {
         form.visibleWhen((View)form.percent("Loading speed", s -> s.loadingSpeed, ToolSettings::loadingSpeed).getParent(), ToolSettings::limitsPaint);
         form.visibleWhen((View)form.percent("Minimum load", s -> s.minimumLoad, ToolSettings::minimumLoad).getParent(), ToolSettings::limitsPaint);
         form.hint("Rub your pen in the color selector to pick up more paint.");
-        form.check("Watercolor mode when transparent", s -> s.flows, ToolSettings::flows);
         if (current.tool == ToolSettings.Tool.WATERCOLOR) form.hint("Black dots; white adds no ink.");
         else if (current.tool == ToolSettings.Tool.FLAT_WASH) form.hint("Even gray; darker marks stay.");
         else if (current.tool == ToolSettings.Tool.WET_WATERCOLOR)

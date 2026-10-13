@@ -27,6 +27,15 @@ final class ToneDocument {
     private int glazedGray=-1;
     private final ArrayList<Layer> layers = new ArrayList<>();
     private int active;
+    /**
+     * Masking fluid over the whole page, or null: its darkness shields every layer from paint,
+     * erasing and wet paint seeping in. It is never part of the artwork.
+     */
+    private Layer mask;
+    /** Gestures paint the masking fluid instead of the active layer; see {@link #paintMaskingFluid}. */
+    private boolean maskTarget;
+    /** The layer {@link #tones} and {@link #alpha} belong to: the active one, or the mask during a masking gesture. */
+    private Layer bound;
     private long revision;
     long revision() { return revision; }
     static final class Layer {
@@ -44,9 +53,12 @@ final class ToneDocument {
     static final class Snapshot {
         final int width, height, active;
         final ArrayList<Layer> layers = new ArrayList<>();
+        /** The masking fluid, or null when the page has none. */
+        final Layer mask;
         Snapshot(ToneDocument document) {
             width=document.width; height=document.height; active=document.active;
             for(Layer layer:document.layers) layers.add(layer.copy());
+            mask=document.hasMask()?document.mask.copy():null;
         }
     }
     Snapshot layerSnapshot() { return new Snapshot(this); }
@@ -62,16 +74,41 @@ final class ToneDocument {
     }
     private void writable() {
         revision++;
-        Layer layer=layers.get(active);
-        if(layer.shared) {
-            layer.tones=layer.tones.clone(); layer.alpha=layer.alpha.clone(); layer.shared=false;
-            tones=layer.tones; alpha=layer.alpha;
+        if(bound.shared) {
+            bound.tones=bound.tones.clone(); bound.alpha=bound.alpha.clone(); bound.shared=false;
+            bind(bound);
         }
     }
+    private void bind(Layer layer) { bound=layer; tones=layer.tones; alpha=layer.alpha; }
     private void idle() { if(editing) throw new IllegalStateException("Finish the current gesture first"); }
     void selectLayer(int index) {
         idle(); Layer layer=layers.get(index); if(active!=index)revision++;
-        active=index; tones=layer.tones; alpha=layer.alpha;
+        active=index; bind(layer);
+    }
+    /** Gestures from now on lay or, erasing, rub off masking fluid instead of painting the active layer. */
+    void paintMaskingFluid(boolean value) { idle(); maskTarget=value; }
+    /** Whether any masking fluid is on the page. */
+    boolean hasMask() {
+        if(mask==null) return false;
+        for(byte a:mask.alpha) if(a!=0) return true;
+        return false;
+    }
+    /** How strongly masking fluid shields this pixel, 0 to 255: the fluid's darkness. */
+    private int shield(int i) { return mask==null?0:255-onWhite(mask.tones[i]&255,mask.alpha[i]&255); }
+    /** Peel all the masking fluid off the page as one undoable step; false when there is none. */
+    boolean peelMask() {
+        idle(); if(!hasMask()) { mask=null; return false; }
+        StackState old=new StackState(this); mask=null; stackEdit(old); return true;
+    }
+    /** Spacing of {@link #maskHatch}'s diagonal lines, and how many pixels across each is, thick enough to read as lines at the panel's resolution. */
+    static final int HATCH=12, HATCH_LINE=4;
+    /**
+     * Diagonal hatching that shows the masking fluid over the painting: black over light
+     * paint and white over dark, or -1 where the pixel shows the painting.
+     */
+    int maskHatch(int x,int y) {
+        if(mask==null||(x+y)%HATCH>=HATCH_LINE||shield(y*width+x)<32) return -1;
+        return compositeTone(x,y)<128?255:0;
     }
     void addLayer() {
         idle(); if(layers.size()>=MAX_LAYERS) throw new IllegalStateException("Each page can have up to "+MAX_LAYERS+" layers.");
@@ -113,17 +150,20 @@ final class ToneDocument {
         if(w==width && h==height)return;
         StackState old=new StackState(this);
         ArrayList<Layer> expanded=new ArrayList<>();
-        for(Layer layer:layers) {
-            byte[] ink=paper((int)w,(int)h), coverage=new byte[(int)(w*h)];
-            for(int y=0;y<height;y++) {
-                System.arraycopy(layer.tones,y*width,ink,(y+top)*(int)w+left,width);
-                System.arraycopy(layer.alpha,y*width,coverage,(y+top)*(int)w+left,width);
-            }
-            Layer next=new Layer(layer.name,layer.visible,ink,coverage); next.opacity=layer.opacity; expanded.add(next);
-        }
-        width=(int)w; height=(int)h; layers.clear(); layers.addAll(expanded);
+        for(Layer layer:layers) expanded.add(expanded(layer,(int)w,(int)h,left,top));
+        Layer fluid=mask==null?null:expanded(mask,(int)w,(int)h,left,top);
+        width=(int)w; height=(int)h; layers.clear(); layers.addAll(expanded); mask=fluid;
         captured=new boolean[columns()*((height+TILE-1)/TILE)];
         selectLayer(active); stackEdit(old);
+    }
+    /** A copy of {@code layer} on a larger transparent canvas, offset by {@code left} and {@code top}. */
+    private Layer expanded(Layer layer,int w,int h,int left,int top) {
+        byte[] ink=paper(w,h), coverage=new byte[w*h];
+        for(int y=0;y<height;y++) {
+            System.arraycopy(layer.tones,y*width,ink,(y+top)*w+left,width);
+            System.arraycopy(layer.alpha,y*width,coverage,(y+top)*w+left,width);
+        }
+        Layer next=new Layer(layer.name,layer.visible,ink,coverage); next.opacity=layer.opacity; return next;
     }
     private void markAllDirty() { left=0; top=0; right=width; bottom=height; }
     private void addEdit(Edit edit) {
@@ -174,13 +214,15 @@ final class ToneDocument {
         captured = new boolean[columns() * ((height + TILE - 1) / TILE)];
         clearDirty();
     }
-    ToneDocument(int width,int height,ArrayList<Layer> source,int active) {
+    ToneDocument(int width,int height,ArrayList<Layer> source,int active) { this(width,height,source,active,null); }
+    /** @param mask the page's masking fluid, or null */
+    ToneDocument(int width,int height,ArrayList<Layer> source,int active,Layer mask) {
         validateSize(width,height); this.width=width; this.height=height;
         if(source.isEmpty()||source.size()>MAX_LAYERS) throw new IllegalArgumentException("Invalid layer count");
-        for(Layer layer:source) {
+        ArrayList<Layer> all=new ArrayList<>(source); if(mask!=null) all.add(mask);
+        for(Layer layer:all)
             if(layer.tones.length!=width*height||layer.alpha.length!=width*height) throw new IllegalArgumentException("Invalid layer pixels");
-            layers.add(layer);
-        }
+        layers.addAll(source); this.mask=mask;
         selectLayer(active); captured=new boolean[columns()*((height+TILE-1)/TILE)]; clearDirty();
     }
     static void validateSize(int width, int height) {
@@ -194,6 +236,8 @@ final class ToneDocument {
         byte[] bytes = new byte[width * height]; Arrays.fill(bytes, (byte)255); return bytes;
     }
     int tone(int x, int y) { int i=y*width+x; return onWhite(tones[i]&255,alpha[i]&255); }
+    /** The active layer's tone, even while a gesture lays masking fluid, so fills can mask a painted region. */
+    int layerTone(int x, int y) { Layer layer=layers.get(active); int i=y*width+x; return onWhite(layer.tones[i]&255,layer.alpha[i]&255); }
     private static int onWhite(int tone,int alpha) { return (tone*alpha+255*(255-alpha)+127)/255; }
     int strokeBaseTone(int x, int y) {
         int key=(y/TILE)*columns()+x/TILE;
@@ -217,9 +261,13 @@ final class ToneDocument {
         }
         return pixels;
     }
-    void begin() {
+    void begin() { begin(maskTarget); }
+    private void begin(boolean fluid) {
         if (editing) throw new IllegalStateException("Finish the current gesture first");
-        if(!layerVisible(active)) throw new IllegalStateException("Show this layer before drawing on it.");
+        if(fluid) {
+            if(mask==null) mask=new Layer("Masking fluid",true,paper(width,height),new byte[width*height]);
+            bind(mask);
+        } else if(!layerVisible(active)) throw new IllegalStateException("Show this layer before drawing on it.");
         writable(); editing = true; before.clear();lastBaseTile=null;lastBaseKey=-1;glazed.clear();
     }
     void setTone(int x,int y,int gray) {
@@ -229,6 +277,27 @@ final class ToneDocument {
         // Tonal tools carry pigment over transparent paper; opaque brushes use paintTone.
         int coverage=Math.max(opacity(x,y),255-gray);
         setPixel(x,y,rawTone(gray,coverage),coverage);
+    }
+    /**
+     * {@link #setTone} for a block of pixels, {@code grays} row by row, {@code w} to a row; a
+     * negative gray leaves its pixel, as do those off the page. Wet paint changes this many
+     * at once each frame, and the checks for the whole block are made once.
+     */
+    void setTones(int x,int y,int w,int h,int[] grays) {
+        if (!editing) throw new IllegalStateException("No active gesture");
+        if(mask!=null&&bound!=mask) {
+            // Masking fluid shields some of these pixels; each one takes its share.
+            for(int row=0;row<h;row++) for(int col=0;col<w;col++) if(grays[row*w+col]>=0) setTone(x+col,y+row,grays[row*w+col]);
+            return;
+        }
+        for(int row=Math.max(0,-y);row<Math.min(h,height-y);row++) for(int col=Math.max(0,-x);col<Math.min(w,width-x);col++) {
+            int gray=grays[row*w+col],px=x+col,py=y+row,i=py*width+px;
+            if(gray<0) continue;
+            if(gray>255) throw new IllegalArgumentException("Invalid tone");
+            if(onWhite(tones[i]&255,alpha[i]&255)==gray) continue;
+            int coverage=Math.max(alpha[i]&255,255-gray);
+            store(px,py,rawTone(gray,coverage),coverage);
+        }
     }
     private static int rawTone(int onWhite,int coverage) {
         return coverage==0?255:Math.max(0,Math.min(255,(onWhite*255-255*(255-coverage)+coverage/2)/coverage));
@@ -317,6 +386,11 @@ final class ToneDocument {
         if(gray<ERASE || gray>255) throw new IllegalArgumentException("Invalid pixel");
         x=Math.max(0,x);end=Math.min(width,end);
         if(y<0 || y>=height || x>=end) return;
+        if(mask!=null&&bound!=mask) {
+            // Masking fluid shields some of these pixels; each one takes its share.
+            for(int px=x;px<end;px++) if(gray==ERASE) setPixel(px,y,255,0); else setPixel(px,y,gray,255);
+            return;
+        }
         writable();
         int rowKey=(y/TILE)*columns();
         for(int column=x/TILE;column<=(end-1)/TILE;column++) {
@@ -349,7 +423,21 @@ final class ToneDocument {
         if (!editing) throw new IllegalStateException("No active gesture");
         if(gray<0||gray>255||coverage<0||coverage>255) throw new IllegalArgumentException("Invalid pixel");
         if(x<0||y<0||x>=width||y>=height) return;
+        int i=y*width+x;
+        int shield=bound==mask?0:shield(i);
+        if(shield==255) return;
+        if(shield>0) {
+            // Only the unmasked share of the change reaches the paint the gesture found.
+            int base=strokeBasePixel(x,y),baseTone=base>>>8,baseAlpha=base&255;
+            float t=1-shield/255f,a=baseAlpha+(coverage-baseAlpha)*t;
+            float pigment=baseTone*baseAlpha+(gray*coverage-baseTone*baseAlpha)*t;
+            coverage=Math.round(a); gray=coverage==0?255:Math.max(0,Math.min(255,Math.round(pigment/a)));
+        }
         if(coverage==0) gray=255;
+        store(x,y,gray,coverage);
+    }
+    /** Writes a pixel on the page, unless it already holds this, capturing its tile for Undo first. */
+    private void store(int x,int y,int gray,int coverage) {
         int i=y*width+x;
         if((tones[i]&255)==gray&&(alpha[i]&255)==coverage) return;
         int key=(y/TILE)*columns()+x/TILE;
@@ -419,8 +507,9 @@ final class ToneDocument {
                 tiles.add(new TileEdit(entry.getKey(), entry.getValue(), after));
         }
         before.clear();
+        Layer edited=bound; bind(layers.get(active));
         if (tiles.isEmpty()) return false;
-        if (continuation && !undo.isEmpty() && redo.isEmpty() && undo.peekLast().layer==layers.get(active)) {
+        if (continuation && !undo.isEmpty() && redo.isEmpty() && undo.peekLast().layer==edited) {
             Edit previous = undo.removeLast(); historyBytes -= previous.bytes;
             LinkedHashMap<Integer, TileEdit> merged = new LinkedHashMap<>();
             for (TileEdit tile : previous.tiles) merged.put(tile.key, tile);
@@ -433,7 +522,7 @@ final class ToneDocument {
         }
         for (Edit edit : redo) historyBytes -= edit.bytes;
         redo.clear();
-        if (!tiles.isEmpty()) { Edit edit = new Edit(tiles,layers.get(active)); undo.addLast(edit); historyBytes += edit.bytes; }
+        if (!tiles.isEmpty()) { Edit edit = new Edit(tiles,edited); undo.addLast(edit); historyBytes += edit.bytes; }
         while (historyBytes > HISTORY_BYTES && undo.size() > 1) historyBytes -= undo.removeFirst().bytes;
         return true;
     }
@@ -444,7 +533,7 @@ final class ToneDocument {
     }
     /** Clear all disconnected marks as one undoable edit, retaining canvas dimensions. */
     boolean clear() {
-        begin();
+        begin(false);
         for(int key=0;key<captured.length;key++) {
             byte[] tile=copyTile(key); boolean marked=false;
             for(int i=tile.length/2;i<tile.length;i++) if(tile[i]!=0) { marked=true; break; }
@@ -457,10 +546,10 @@ final class ToneDocument {
     }
     /** Clear the current page, including hidden layers, as one structural undo step. */
     boolean clearAllLayers() {
-        idle(); boolean marked=false;
+        idle(); boolean marked=hasMask();
         for(Layer layer:layers)for(byte a:layer.alpha)if(a!=0) {marked=true;break;}
         if(!marked)return false;
-        StackState old=new StackState(this);
+        StackState old=new StackState(this); mask=null;
         for(int i=0;i<layers.size();i++) {
             Layer prior=layers.get(i),blank=new Layer(prior.name,prior.visible,paper(width,height),new byte[width*height]);
             blank.opacity=prior.opacity; layers.set(i,blank);
@@ -473,6 +562,7 @@ final class ToneDocument {
             restoreTile(tile.getKey(), tile.getValue()); captured[tile.getKey()] = false;
         }
         before.clear(); lastBaseTile=null; lastBaseKey=-1; glazed.clear(); editing = false;
+        bind(layers.get(active));
     }
     boolean canRedo() { return !redo.isEmpty(); }
     boolean undo() { return travel(undo, redo, false); }
@@ -483,8 +573,11 @@ final class ToneDocument {
         Edit edit = source.removeLast();
         if(edit.layer==null) { (forward?edit.next:edit.previous).restore(this); revision++; markAllDirty(); }
         else {
-            selectLayer(layers.indexOf(edit.layer));
+            int index=layers.indexOf(edit.layer);
+            // Any other layer is masking fluid, laid since the page last had none.
+            if(index<0) { mask=edit.layer; bind(mask); } else selectLayer(index);
             for (TileEdit tile : edit.tiles) restoreTile(tile.key, forward ? tile.after : tile.before);
+            if(index<0) bind(layers.get(active));
         }
         target.addLast(edit); return true;
     }
@@ -492,8 +585,11 @@ final class ToneDocument {
     int[] dirty() { return right > left && bottom > top ? new int[]{left, top, right, bottom} : null; }
     void clearDirty() { left = width; top = height; right = bottom = 0; }
     void render(int[] pixels, int x, int y, int w, int h) {
-        for (int row = 0; row < h; row++) for (int col = 0; col < w; col++)
-            pixels[row * w + col] = DotPattern.pixel(compositeTone(x + col, y + row), x + col, y + row);
+        for (int row = 0; row < h; row++) for (int col = 0; col < w; col++) {
+            int hatch = maskHatch(x + col, y + row);
+            pixels[row * w + col] = hatch >= 0 ? (hatch == 0 ? 0xff000000 : 0xffffffff)
+                    : DotPattern.pixel(compositeTone(x + col, y + row), x + col, y + row);
+        }
     }
     private int columns() { return (width + TILE - 1) / TILE; }
     private byte[] copyTile(int key) {
@@ -523,19 +619,20 @@ final class ToneDocument {
     }
     private static final class StackState {
         final ArrayList<Layer> layers;
+        final Layer mask;
         final String[] names;
         final boolean[] visible;
         final int[] opacity;
         final int active, width, height;
         StackState(ToneDocument doc) {
-            layers=new ArrayList<>(doc.layers); active=doc.active; width=doc.width; height=doc.height;
+            layers=new ArrayList<>(doc.layers); mask=doc.mask; active=doc.active; width=doc.width; height=doc.height;
             names=new String[layers.size()]; visible=new boolean[layers.size()]; opacity=new int[layers.size()];
             for(int i=0;i<layers.size();i++) { names[i]=layers.get(i).name; visible[i]=layers.get(i).visible; opacity[i]=layers.get(i).opacity; }
         }
         void restore(ToneDocument doc) {
             doc.width=width; doc.height=height;
             doc.captured=new boolean[doc.columns()*((height+TILE-1)/TILE)];
-            doc.layers.clear(); doc.layers.addAll(layers);
+            doc.layers.clear(); doc.layers.addAll(layers); doc.mask=mask;
             for(int i=0;i<layers.size();i++) { layers.get(i).name=names[i]; layers.get(i).visible=visible[i]; layers.get(i).opacity=opacity[i]; }
             doc.selectLayer(active);
         }
@@ -549,6 +646,7 @@ final class ToneDocument {
             int count=256;
             for(Layer layer:previous.layers) if(!next.layers.contains(layer)) count+=layer.tones.length*2;
             for(Layer layer:next.layers) if(!previous.layers.contains(layer)) count+=layer.tones.length*2;
+            if(previous.mask!=next.mask) count+=(previous.mask!=null?previous.mask.tones.length*2:0)+(next.mask!=null?next.mask.tones.length*2:0);
             bytes=count;
         }
         Edit(ArrayList<TileEdit> tiles,Layer layer) {

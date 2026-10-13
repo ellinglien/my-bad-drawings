@@ -4,8 +4,8 @@ cd "$(dirname "$0")/.."
 test_classes=$(mktemp -d)
 trap 'rm -rf "$test_classes"' EXIT
 javac -d "$test_classes" \
-  app/src/main/java/io/github/mpdairy/monopaint/{GrayPalette,DotPattern,ToneDocument,DocumentCodec,DrawingBook,BookCodec,DrawingFiles,RecoveryCodec,ToolSettings,ToolLibrary,BrushDirection,BristleTexture,WetWatercolor,WetWorkBudget,FloodFill,ToneDabs,DrawingStroke,ToolStroke,ShapeStroke,ShapeGeometry,DirtyRegions,PaintLoad,BrushInk}.java \
-  app/src/test/java/io/github/mpdairy/monopaint/{LayerChecks,DocumentChecks,ToolChecks,BookChecks,DrawingFilesChecks,BristleChecks,WetWatercolorChecks,FlatWashChecks,CanvasPaintChecks,GradientFillChecks,AirbrushChecks,EraseChecks,ShapeChecks,PaintLoadChecks,CanvasSizeChecks}.java
+  app/src/main/java/io/github/mpdairy/monopaint/{GrayPalette,DotPattern,ToneDocument,DocumentCodec,DrawingBook,BookCodec,DrawingFiles,RecoveryCodec,ToolSettings,ToolLibrary,BrushDirection,BristleTexture,WetWatercolor,WetWorkBudget,FloodFill,ToneDabs,DrawingStroke,ToolStroke,ShapeStroke,ShapeGeometry,DirtyRegions,PaintLoad,BrushInk,WatercolorWash}.java \
+  app/src/test/java/io/github/mpdairy/monopaint/{LayerChecks,MaskChecks,DocumentChecks,ToolChecks,BookChecks,DrawingFilesChecks,BristleChecks,WetWatercolorChecks,FlatWashChecks,CanvasPaintChecks,GradientFillChecks,AirbrushChecks,EraseChecks,ShapeChecks,PaintLoadChecks,CanvasSizeChecks}.java
 javac -d "$test_classes" app/src/main/java/io/github/mpdairy/monopaint/RotationSuggestion.java app/src/test/java/io/github/mpdairy/monopaint/RotationSuggestionChecks.java
 java -cp "$test_classes" io.github.mpdairy.monopaint.RotationSuggestionChecks
 java -cp "$test_classes" io.github.mpdairy.monopaint.DocumentChecks
@@ -18,6 +18,7 @@ java -cp "$test_classes" io.github.mpdairy.monopaint.FlatWashChecks
 java -cp "$test_classes" io.github.mpdairy.monopaint.CanvasPaintChecks
 
 java -cp "$test_classes" io.github.mpdairy.monopaint.LayerChecks
+java -cp "$test_classes" io.github.mpdairy.monopaint.MaskChecks
 java -cp "$test_classes" io.github.mpdairy.monopaint.GradientFillChecks
 
 java -cp "$test_classes" io.github.mpdairy.monopaint.AirbrushChecks

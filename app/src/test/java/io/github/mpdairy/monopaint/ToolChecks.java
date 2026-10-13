@@ -47,8 +47,6 @@ public final class ToolChecks {
         restored.edit(restored.current().carry(70));
         check(ToolLibrary.decode(restored.encode()).builtin(ToolSettings.Tool.BRUSH_PEN).carry==70,"Carry persists");
         check(!restored.current().equals(restored.current().carry(0)),"Carry participates in settings identity");
-        restored.select(ToolSettings.Tool.BRUSH);restored.edit(restored.current().flows(true));
-        check(ToolLibrary.decode(restored.encode()).builtin(ToolSettings.Tool.BRUSH).flows && !ToolSettings.defaults(ToolSettings.Tool.BRUSH).flows,"Watercolor mode persists and starts off");
         ToolSettings brush=restored.builtin(ToolSettings.Tool.BRUSH);
         check(brush.paintLoad==ToolSettings.UNLIMITED_PAINT && !Float.isFinite(brush.paintLength()),"Earlier brushes never run out of paint");
         restored.select(ToolSettings.Tool.BRUSH);restored.edit(brush.paintLoad(40));

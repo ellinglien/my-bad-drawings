@@ -38,6 +38,8 @@ final class ToolButton extends Button {
     Overlay overlay;
     Drawable settingsArrow;
     private Drawable centerIcon;
+    /** Drawn instead of the icon while unmarked, so the icon itself shows the selection, with no dot; or null. */
+    private Drawable unmarkedIcon;
     private int iconResource;
     private final Paint markerPaint = new Paint();
     private final ControlRaster controlRaster = new ControlRaster();
@@ -73,14 +75,21 @@ final class ToolButton extends Button {
     }
     void iconOnly(int resource) {
         if (iconResource == resource) return;
+        iconOnly(getContext().getDrawable(resource), null);
+        iconResource = resource;
+    }
+    /**
+     * An icon drawn as {@code marked} while selected and as {@code unmarked} otherwise, so it
+     * shows the selection itself, with no dot; or with {@code unmarked} null, always the same.
+     */
+    void iconOnly(Drawable marked, Drawable unmarked) {
         // Changing the selected variant only changes the drawable; keep the
         // toolbar's measured geometry stable while its settings panel is open.
         if (centerIcon == null) {
             setText(""); setCompoundDrawables(null, null, null, null); setMinWidth(0); setMinimumWidth(0);
             setTextColor(Color.BLACK); setHintTextColor(Color.BLACK); setLinkTextColor(Color.BLACK);
         }
-        iconResource = resource;
-        centerIcon = getContext().getDrawable(resource); invalidate();
+        iconResource = 0; centerIcon = marked; unmarkedIcon = unmarked; invalidate();
     }
     /** Selects or deselects the control through the fast display path. */
     void mark(boolean selected) {
@@ -92,7 +101,7 @@ final class ToolButton extends Button {
     }
     /** The pixels that change when {@link #marked} changes. */
     Rect markerArea() {
-        if (selectionOutline) return new Rect(0, 0, getWidth(), getHeight());
+        if (selectionOutline || unmarkedIcon != null) return new Rect(0, 0, getWidth(), getHeight());
         if (markerBelow) {
             RectF area = new RectF(getWidth()/2f-dp(3), getHeight()-dp(7), getWidth()/2f+dp(3), getHeight()-dp(1));
             Matrix rotation = new Matrix();
@@ -115,7 +124,8 @@ final class ToolButton extends Button {
             int half = dp(iconHalf), x = getWidth()/2+dp(iconOffset), y = getHeight()/2-(caption != null ? dp(9) : 0);
             canvas.save();
             if (headerIcon) canvas.rotate(-host.toolbarTurn(), x, y);
-            centerIcon.setBounds(x-half, y-half, x+half, y+half); centerIcon.draw(canvas);
+            Drawable icon = marked || unmarkedIcon == null ? centerIcon : unmarkedIcon;
+            icon.setBounds(x-half, y-half, x+half, y+half); icon.draw(canvas);
             canvas.restore();
         }
         if (caption != null) {
@@ -131,7 +141,7 @@ final class ToolButton extends Button {
             settingsArrow.setBounds(x-dp(8), y-dp(10), x+dp(8), y+dp(10)); settingsArrow.draw(canvas);
         }
         if (press.pressed || (selectionOutline && marked)) press.drawBox(canvas);
-        if (selectionOutline || !marked || (!alwaysDot && !host.selectionFeedback().enabled)) return;
+        if (selectionOutline || unmarkedIcon != null || !marked || (!alwaysDot && !host.selectionFeedback().enabled)) return;
         markerPaint.setColor(Color.BLACK);
         if (markerBelow) {
             // Turn with the upright icon, so the square stays below it for either hand.

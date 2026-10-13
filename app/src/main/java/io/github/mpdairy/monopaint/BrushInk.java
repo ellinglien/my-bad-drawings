@@ -38,6 +38,8 @@ final class BrushInk {
         floor = finite(tint); ink = Math.max(floor, finite(fullness)) * CAPACITY;
     }
     private static float finite(float value) { return Float.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0; }
+    /** Fills the brush with ink of {@code gray}, as if dipped in it, or with only its tint if that is darker. */
+    void load(int gray) { ink = Math.max(floor, (255 - Math.max(0, Math.min(255, gray))) / 255f) * CAPACITY; }
     /** Leaves only the tint's ink in the brush. */
     void clean() { ink = floor * CAPACITY; }
     /** Sets the brush's ink to {@code gray}, which then is the lightest it lays. */

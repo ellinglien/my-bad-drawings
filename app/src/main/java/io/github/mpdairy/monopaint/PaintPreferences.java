@@ -87,9 +87,12 @@ final class PaintPreferences {
     void loadPaint(PaintState state) {
         state.wetCanvas = flag("wet_canvas", false);
         state.transparentPaint = flag("transparent_paint", false);
+        state.watercolor = flag("watercolor", false);
         state.eraseMode = flag("erase_mode", false);
+        state.maskingFluid = flag("masking_fluid", false);
         state.wetness = Math.max(0, Math.min(100, store.getInt("canvas_wetness", 65)));
-        if (state.wetness == 0) state.wetCanvas = false;
+        // The slider alone wets the canvas: a dry one shows it at zero.
+        if (state.wetness == 0 || !state.wetCanvas) { state.wetCanvas = false; state.wetness = 0; }
         state.gray = Math.max(0, Math.min(255, store.getInt("gray", 0)));
         state.brushInk.restore(store.getFloat("brush_ink", 0), 0);
         state.brushLoad.restore(store.getFloat("brush_load_ink", 0), store.getFloat("brush_load_tint", 1 - state.gray / 255f));
@@ -112,8 +115,8 @@ final class PaintPreferences {
     void savePaint(PaintState state, ToolLibrary library) throws java.io.IOException {
         // "diameter" also seeds the brush size if the tool library is ever missing.
         store.edit().putInt("gray", state.gray).putInt("diameter", library.current().maximum)
-                .putBoolean("wet_canvas", state.wetCanvas).putBoolean("transparent_paint", state.transparentPaint)
-                .putBoolean("erase_mode", state.eraseMode).putFloat("brush_ink", state.brushInk.fullness())
+                .putBoolean("wet_canvas", state.wetCanvas).putBoolean("transparent_paint", state.transparentPaint).putBoolean("watercolor", state.watercolor)
+                .putBoolean("erase_mode", state.eraseMode).putBoolean("masking_fluid", state.maskingFluid).putFloat("brush_ink", state.brushInk.fullness())
                 .putFloat("brush_load_ink", state.brushLoad.fullness()).putFloat("brush_load_tint", state.brushLoad.tint()).putInt("canvas_wetness", state.wetness)
                 .putString("tools", java.util.Base64.getEncoder().encodeToString(library.encode())).apply();
     }

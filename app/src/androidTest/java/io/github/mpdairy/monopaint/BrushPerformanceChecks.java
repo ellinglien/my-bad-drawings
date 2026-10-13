@@ -48,8 +48,8 @@ final class BrushPerformanceChecks {
             for (int run = -1; run < 3; run++) {
                 ToneDocument doc = new ToneDocument(1404, 1872);
                 WetWatercolor wet = flows ? new WetWatercolor(doc) : null;
-                ToolSettings settings = ToolSettings.defaults(ToolSettings.Tool.BRUSH, head).size(size).flows(flows);
-                BrushInk ink = new BrushInk(true); ink.tint(120);
+                ToolSettings settings = ToolSettings.defaults(ToolSettings.Tool.BRUSH, head).size(size);
+                BrushInk ink = flows ? new BrushInk(true) : null; if (flows) ink.tint(120);
                 long start = System.nanoTime(), max = 0;
                 DrawingStroke stroke = new PressureStroke(doc, settings, 120, wet, !mode.equals("opaque"), false, false, ink);
                 for (int i = 0; i < 60; i++) {

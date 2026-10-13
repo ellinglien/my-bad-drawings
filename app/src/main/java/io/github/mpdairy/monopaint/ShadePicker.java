@@ -24,6 +24,12 @@ final class ShadePicker extends View {
     private int activePointer = -1;
     private boolean deferMarkerCommit;
     private final Runnable cleanMarker = this::cleanMarker;
+    /** Steps of a marker slide, each this long: the same however far, so a long slide moves faster. */
+    private static final int SLIDE_STEPS = 4, SLIDE_STEP_MS = 45;
+    /** Where the sliding marker shows, in the strip's coordinates, while the shade is still {@link #slideShade}; NaN when not sliding. */
+    private float slideX = Float.NaN, slideFrom, slideTo;
+    private int slideShade, slideStep;
+    private final Runnable slide = this::slide;
 
     ShadePicker(PaintActivity app) {
         super(app); this.app = app; setFocusable(true); setClickable(true);
@@ -50,7 +56,7 @@ final class ShadePicker extends View {
         if (DirectEink.fastBinaryControls()) postDelayed(cleanMarker, 250);
     }
     @Override protected void onDetachedFromWindow() {
-        removeCallbacks(cleanMarker);
+        removeCallbacks(cleanMarker); removeCallbacks(slide); slideX = Float.NaN;
         deferMarkerCommit = false;
         finishUpdate();
         super.onDetachedFromWindow();
@@ -91,11 +97,34 @@ final class ShadePicker extends View {
         canvas.restoreToCount(saved);
     }
     private void drawMarker(Canvas canvas, int inset) {
-        int gray = app.paint.gray, density = DotPattern.whiteCount(gray), width = strip.getWidth();
-        float x = inset + (density == 0 ? endpointWidth / 2f : density == 64 ? width - endpointWidth / 2f
-                : endpointWidth + DotPattern.pickerPosition(gray) * (width - 2 * endpointWidth - 1) / 255f);
+        boolean sliding = !Float.isNaN(slideX) && app.paint.gray == slideShade;
+        float x = inset + (sliding ? slideX : markerX(app.paint.gray));
         marker.setStyle(Paint.Style.FILL);
         canvas.drawRect(x - dp(3), getHeight() - dp(7), x + dp(3), getHeight() - dp(1), marker);
+    }
+    /** Where the marker sits for {@code gray}, in the strip's coordinates. */
+    private float markerX(int gray) {
+        int density = DotPattern.whiteCount(gray), width = strip.getWidth();
+        return density == 0 ? endpointWidth / 2f : density == 64 ? width - endpointWidth / 2f
+                : endpointWidth + DotPattern.pickerPosition(gray) * (width - 2 * endpointWidth - 1) / 255f;
+    }
+    /**
+     * Slides the marker from where it shows {@code fromGray} to the selected shade, quickly,
+     * easing in to land. A new shade chosen meanwhile shows at once instead.
+     */
+    void slideMarker(int fromGray) {
+        removeCallbacks(slide);
+        if (strip == null) return;
+        beginMarkerGesture();
+        slideShade = app.paint.gray; slideStep = 0;
+        slideFrom = slideX = markerX(fromGray); slideTo = markerX(slideShade);
+        slide();
+    }
+    private void slide() {
+        boolean done = ++slideStep >= SLIDE_STEPS || app.paint.gray != slideShade || Math.abs(slideTo - slideFrom) < dp(4);
+        float t = slideStep / (float)SLIDE_STEPS, eased = 1 - (1 - t) * (1 - t);
+        app.updateColorBar(() -> slideX = done ? Float.NaN : slideFrom + (slideTo - slideFrom) * eased);
+        if (done) { finishUpdate(); scheduleCleanup(); } else postDelayed(slide, SLIDE_STEP_MS);
     }
     /** Keep moving ink off the dotted ramp and capture only its small white gutter. */
     Rect markerArea() {

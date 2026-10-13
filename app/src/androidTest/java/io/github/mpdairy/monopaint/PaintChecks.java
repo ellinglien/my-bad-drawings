@@ -290,43 +290,42 @@ final class PaintChecks {
                     feedback.enabled = fast;
                     check(findButton(activity,"Wet watercolor (experimental)")==null && findButton(activity,"Watercolor")==null
                             && findButton(activity,"Flat wash")==null && findButton(activity,"Dry watercolor")==null,"Redundant tools and dryer removed");
-                    Button droplet=findButton(activity,"Wet canvas"); droplet.performClick();
+                    Button droplet=findButton(activity,"Watercolor mode");
+                    Bitmap dashed=controlBitmap(droplet); droplet.performClick();
                     check(droplet.isSelected(),"Droplet is selected in both feedback modes");
                     Bitmap selected=controlBitmap(droplet);
                     int inset=Math.round(12*activity.getResources().getDisplayMetrics().density);
-                    check(selected.getPixel(inset,inset)==Color.BLACK,"Wet selection shows its dot clear of the outline");
-                    int iconCenter=selected.getWidth()/2+Math.round(8*activity.getResources().getDisplayMetrics().density);
-                    check(selected.getPixel(iconCenter,selected.getHeight()/2)==Color.WHITE,"Water droplet has a clear interior"); selected.recycle();
+                    check(selected.getPixel(inset,inset)==Color.WHITE,"Watercolor mode shows in the droplet itself, with no dot");
+                    int dashes=0,solid=0;
+                    for(int y=0;y<selected.getHeight();y++)for(int x=0;x<selected.getWidth();x++) {
+                        if(dashed.getPixel(x,y)==Color.BLACK)dashes++;
+                        if(selected.getPixel(x,y)==Color.BLACK)solid++;
+                    }
+                    check(dashes>0&&solid>dashes,"The droplet is dashed while off and solid while on: "+dashes+" / "+solid);
+                    check(selected.getPixel(selected.getWidth()/2,selected.getHeight()/2)==Color.WHITE,"Water droplet has a clear interior");
+                    selected.recycle(); dashed.recycle();
                     findButton(activity,"Transparent paint").performClick();
                     check(findButton(activity,"Transparent paint").isSelected()&&!findButton(activity,"Opaque paint").isSelected(),"Paint modes are mutually exclusive");
                     event(bar,start,MotionEvent.ACTION_DOWN,bar.getWidth()/2f,bar.getHeight(),.3f,MotionEvent.TOOL_TYPE_FINGER);
-                    check(!droplet.isSelected(),"Dragging to zero switches wet mode off");
+                    check(!(Boolean)get(get(activity,"paint"),"wetCanvas")&&droplet.isSelected(),"Dragging to zero dries the canvas and leaves watercolor mode on");
                     event(bar,start,MotionEvent.ACTION_MOVE,bar.getWidth()/2f,0,.3f,MotionEvent.TOOL_TYPE_FINGER);
                     event(bar,start,MotionEvent.ACTION_UP,bar.getWidth()/2f,0,0,MotionEvent.TOOL_TYPE_FINGER);
-                    try {check((Integer)field(get(activity,"paint"),"wetness")==100,"Wetness drag reaches full strength");}
-                    catch(Exception error){throw new IllegalStateException(error);}
+                    check((Integer)get(get(activity,"paint"),"wetness")==100&&(Boolean)get(get(activity,"paint"),"wetCanvas"),"Wetness drag reaches full strength and wets the canvas");
                     droplet.performClick();
-                    event(bar,start,MotionEvent.ACTION_DOWN,bar.getWidth()/2f,bar.getHeight()/2f,.3f,MotionEvent.TOOL_TYPE_FINGER);
-                    event(bar,start,MotionEvent.ACTION_UP,bar.getWidth()/2f,bar.getHeight()/2f,0,MotionEvent.TOOL_TYPE_FINGER);
-                    check(droplet.isSelected(),"Changing the bar enables wet mode without a droplet tap");
+                    check(!droplet.isSelected()&&(Boolean)get(get(activity,"paint"),"wetCanvas"),"The droplet turns watercolor mode off and leaves the canvas wet");
                     try {
-                        int preferred=(Integer)field(get(activity,"paint"),"wetness");
-                        droplet.performClick();
-                        check(!droplet.isSelected()&&(Integer)field(get(activity,"paint"),"wetness")==preferred,"Droplet off retains preferred strength");
-                        // A tap at exactly the retained value must still enable wet mode.
-                        event(bar,start,MotionEvent.ACTION_DOWN,bar.getWidth()/2f,bar.getHeight()/2f,.3f,MotionEvent.TOOL_TYPE_FINGER);
-                        event(bar,start,MotionEvent.ACTION_UP,bar.getWidth()/2f,bar.getHeight()/2f,0,MotionEvent.TOOL_TYPE_FINGER);
-                        check(droplet.isSelected()&&(Integer)field(get(activity,"paint"),"wetness")==preferred,"Same-value slider tap enables wet mode");
-                        droplet.performClick();
                         android.content.SharedPreferences prefs=(android.content.SharedPreferences)field(activity,"preferences");
-                        check(!prefs.getBoolean("wet_canvas",true)&&prefs.getInt("canvas_wetness",0)==preferred,"Droplet off preserves saved wetness");
+                        check(!prefs.getBoolean("watercolor",true)&&prefs.getBoolean("wet_canvas",false)&&prefs.getInt("canvas_wetness",0)==100,"Watercolor mode and wetness are saved apart");
                     } catch(Exception error){throw new IllegalStateException(error);}
+                    event(bar,start,MotionEvent.ACTION_DOWN,bar.getWidth()/2f,bar.getHeight(),.3f,MotionEvent.TOOL_TYPE_FINGER);
+                    event(bar,start,MotionEvent.ACTION_UP,bar.getWidth()/2f,bar.getHeight(),0,MotionEvent.TOOL_TYPE_FINGER);
                     findButton(activity,"Opaque paint").performClick();
                 });
             }
             check(Arrays.equals(beforeControls,blank.snapshot())&&!blank.canUndo(),"Canvas controls never enter pixels or history");
             onMain(test, () -> {
-                findButton(activity,"Wet canvas").performClick();
+                event(bar,start,MotionEvent.ACTION_DOWN,bar.getWidth()/2f,bar.getHeight()/2f,.3f,MotionEvent.TOOL_TYPE_FINGER);
+                event(bar,start,MotionEvent.ACTION_UP,bar.getWidth()/2f,bar.getHeight()/2f,0,MotionEvent.TOOL_TYPE_FINGER);
                 event(view,start,MotionEvent.ACTION_DOWN,100,100,.45f);
                 event(view,start,MotionEvent.ACTION_MOVE,300,100,.45f);
                 event(view,start,MotionEvent.ACTION_UP,300,100,0);
@@ -368,7 +367,7 @@ final class PaintChecks {
                 check(DotPattern.whiteCount(blank.tone(260,100))>DotPattern.whiteCount(30),"Settled mid-strength blending changes the visible dot density");
                 event(bar,start,MotionEvent.ACTION_DOWN,bar.getWidth()/2f,bar.getHeight(),.3f,MotionEvent.TOOL_TYPE_FINGER);
                 event(bar,start,MotionEvent.ACTION_UP,bar.getWidth()/2f,bar.getHeight(),0,MotionEvent.TOOL_TYPE_FINGER);
-                check(!findButton(activity,"Wet canvas").isSelected(),"Zero slider clears the wet-mode dot");
+                check(!(Boolean)get(get(activity,"paint"),"wetCanvas"),"Zero slider dries the canvas");
             });
             byte[] dried = blank.snapshot(); SystemClock.sleep(450);
             check(field(pad,"wet")==null&&Arrays.equals(dried,blank.snapshot()),"Zero wetness stops all queued animation");
@@ -382,10 +381,30 @@ final class PaintChecks {
                 event(view,start,MotionEvent.ACTION_DOWN,200,100,.45f);event(view,start,MotionEvent.ACTION_UP,200,100,0);
                 check(blank.tone(200,100)==255,"Dry opaque white covers paint");
             });
-            report.append("Outline droplet, slider activation, zero/off, remembered strength, fast selection, live adaptive blending, transparent/opaque white, drying and exact undo/redo pass.\n");
+            View droplet=findButton(activity,"Watercolor mode");
+            onMain(test, () -> {
+                event(bar,start,MotionEvent.ACTION_DOWN,bar.getWidth()/2f,bar.getHeight()/2f,.3f,MotionEvent.TOOL_TYPE_FINGER);
+                event(bar,start,MotionEvent.ACTION_UP,bar.getWidth()/2f,bar.getHeight()/2f,0,MotionEvent.TOOL_TYPE_FINGER);
+                set(get(activity,"paint"),"gray",30);
+                event(view,start,MotionEvent.ACTION_DOWN,400,300,.45f);event(view,start,MotionEvent.ACTION_MOVE,500,300,.45f);
+                event(view,start,MotionEvent.ACTION_UP,500,300,0);
+                check((Boolean)call(get(activity,"wetDroplet"),"moving",new Class<?>[0]),"Droplet ripples while the stroke's paint moves");
+                droplet.performClick();
+                check(!droplet.isSelected()&&(Boolean)get(get(activity,"paint"),"wetCanvas")&&get(pad,"wet")==null,
+                        "Tapping the rippling droplet dries the paint and leaves both modes as they were");
+                check(((ToolButton)droplet).overlay instanceof BlowDryer,"The droplet turns into the blow dryer");
+                droplet.performClick();
+                check(droplet.isSelected(),"Tapping the resting droplet turns watercolor mode on");
+                droplet.performClick();
+                event(bar,start,MotionEvent.ACTION_DOWN,bar.getWidth()/2f,bar.getHeight(),.3f,MotionEvent.TOOL_TYPE_FINGER);
+                event(bar,start,MotionEvent.ACTION_UP,bar.getWidth()/2f,bar.getHeight(),0,MotionEvent.TOOL_TYPE_FINGER);
+            });
+            SystemClock.sleep(1200);
+            onMain(test, () -> check(((ToolButton)droplet).overlay==null,"The blow dryer turns back into the droplet"));
+            report.append("Outline droplet, slider activation, zero/off, remembered strength, fast selection, live adaptive blending, transparent/opaque white, drying, droplet blow dryer and exact undo/redo pass.\n");
         } finally {
             onMain(test, () -> {
-                feedback.enabled=originalFast;set(get(activity,"paint"),"wetCanvas",false);set(get(activity,"paint"),"transparentPaint",false);
+                feedback.enabled=originalFast;set(get(activity,"paint"),"wetCanvas",false);set(get(activity,"paint"),"transparentPaint",false);set(get(activity,"paint"),"watercolor",false);
                 call(activity,"refreshPaintModes",new Class<?>[0]);
                 call(pad,"replace",new Class<?>[]{ToneDocument.class},new ToneDocument(blank.width,blank.height));
             });
@@ -1080,7 +1099,7 @@ final class PaintChecks {
             View wetness=(View)field(activity,"wetnessBar");
             before=feedback.submitted;
             test.runOnMainSync(() -> {
-                findButton(activity,"Wet canvas").performClick();
+                findButton(activity,"Watercolor mode").performClick();
                 findButton(activity,"Transparent paint").performClick();
                 long now=SystemClock.uptimeMillis();
                 event(wetness,now,MotionEvent.ACTION_DOWN,wetness.getWidth()/2f,wetness.getHeight(),.2f);
@@ -1091,7 +1110,7 @@ final class PaintChecks {
             check(feedback.submitted>=before+4,"Wetness fill and paint-mode dots reach direct display");
             check(frames.get()==0,"Wet controls must not queue a later Android frame: "+frames.get());
             test.runOnMainSync(() -> {
-                findButton(activity,"Wet canvas").performClick();findButton(activity,"Opaque paint").performClick();
+                findButton(activity,"Watercolor mode").performClick();findButton(activity,"Opaque paint").performClick();
             });
             // An unrelated redraw must refresh the retained Android commands too.
             test.runOnMainSync(root::invalidate);test.waitForIdleSync();SystemClock.sleep(300);

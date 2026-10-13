@@ -6,6 +6,8 @@ final class FloodFill {
     private final int source, tolerance, first;
     private int target, repaint = -1;
     private final boolean gradient;
+    /** Finds the region without painting it, for a watercolor wash to lay. */
+    private final boolean regionOnly;
     private final ToolSettings.Gradient type;
     private final float startX, startY, dx, dy, lengthSquared;
     private final java.util.BitSet visited;
@@ -15,7 +17,11 @@ final class FloodFill {
         this(document,x,y,target,0);
     }
     FloodFill(ToneDocument document, int x, int y, int target, int tolerancePercent) {
-        this(document,x,y,target,tolerancePercent,false,x,y,x,y,target,ToolSettings.Gradient.LINEAR);
+        this(document,x,y,target,tolerancePercent,false,false,x,y,x,y,target,ToolSettings.Gradient.LINEAR);
+    }
+    /** A flat fill that only finds its region: see {@link #region}. */
+    static FloodFill region(ToneDocument document, int x, int y, int tolerancePercent) {
+        return new FloodFill(document,x,y,255,tolerancePercent,false,true,x,y,x,y,255,ToolSettings.Gradient.LINEAR);
     }
     FloodFill(ToneDocument document, int x, int y, int first, int tolerancePercent,
               float startX, float startY, float endX, float endY, int second) {
@@ -23,23 +29,23 @@ final class FloodFill {
     }
     FloodFill(ToneDocument document, int x, int y, int first, int tolerancePercent,
               float startX, float startY, float endX, float endY, int second, ToolSettings.Gradient type) {
-        this(document,x,y,first,tolerancePercent,true,startX,startY,endX,endY,second,type);
+        this(document,x,y,first,tolerancePercent,true,false,startX,startY,endX,endY,second,type);
     }
     private FloodFill(ToneDocument document, int x, int y, int first, int tolerancePercent,
-                      boolean gradient, float startX, float startY, float endX, float endY, int second, ToolSettings.Gradient type) {
+                      boolean gradient, boolean regionOnly, float startX, float startY, float endX, float endY, int second, ToolSettings.Gradient type) {
         if(type==null) throw new IllegalArgumentException("Invalid gradient type");
         if(first<ToneDocument.ERASE || first>255 || second<ToneDocument.ERASE || second>255)
             throw new IllegalArgumentException("Invalid fill color");
         this.type=type;
         if(tolerancePercent<0||tolerancePercent>100)throw new IllegalArgumentException("Invalid fill tolerance");
-        this.document = document; this.target = second; this.first = first; this.gradient = gradient;
+        this.document = document; this.target = second; this.first = first; this.gradient = gradient; this.regionOnly = regionOnly;
         this.startX=startX; this.startY=startY; dx=endX-startX; dy=endY-startY;
         lengthSquared=dx*dx+dy*dy;
         tolerance=Math.round(tolerancePercent*255f/100);
         visited=new java.util.BitSet(document.width*document.height);
-        source = document.tone(x,y); document.begin();
+        source = document.layerTone(x,y); document.begin();
         spans = new long[Math.min(256, document.width * document.height)];
-        if (gradient || target==ToneDocument.ERASE || source != target || tolerance>0 || document.opacity(x,y)<255) schedule(x,y);
+        if (regionOnly || gradient || target==ToneDocument.ERASE || source != target || tolerance>0 || document.opacity(x,y)<255) schedule(x,y);
     }
     boolean advance(int budget) {
         int work = 0;
@@ -72,6 +78,7 @@ final class FloodFill {
         if(target!=tone) { target=tone; repaint=0; }
     }
     private void paintAt(int x,int y) {
+        if(regionOnly) return;
         if(!gradient || first==target) {
             document.paintTone(x,y,target==ToneDocument.ERASE?255:target,target==ToneDocument.ERASE?0:255);
             return;
@@ -89,7 +96,7 @@ final class FloodFill {
     }
     private boolean matches(int x,int y) {
         return (visited==null || !visited.get(y*document.width+x))
-                && Math.abs(document.tone(x,y)-source)<=tolerance;
+                && Math.abs(document.layerTone(x,y)-source)<=tolerance;
     }
     private int schedule(int x, int y) {
         int left = x, right = x+1;
@@ -102,6 +109,11 @@ final class FloodFill {
         spans[size++] = ((long)(y * document.width + left) << 32) | (right & 0xffffffffL);
         return right;
     }
+    /**
+     * For a fill made by {@link #region(ToneDocument, int, int, int)}, the pixels it covers, indexed
+     * row by row, once {@link #advance} returns true; null for a fill that paints.
+     */
+    java.util.BitSet region() { return regionOnly ? visited : null; }
     boolean finish() { if (size != 0 || repaint >= 0) throw new IllegalStateException("Fill incomplete"); return document.finish(); }
     void cancel() { document.cancel(); size = 0; repaint = -1; }
 }

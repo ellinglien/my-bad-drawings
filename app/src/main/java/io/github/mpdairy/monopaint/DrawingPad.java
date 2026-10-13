@@ -27,7 +27,7 @@ import android.view.View;
  * <li>eyedropper sampling while the color picker is active.</li>
  * </ul>
  * Two fingers pinch and pan when navigation is unlocked. Wet paint keeps blending in
- * idle time between input events.
+ * idle time between input events, except under a watercolor brush, which waits for pen-up.
  */
 @SuppressLint("ViewConstructor")
 final class DrawingPad extends View {
@@ -84,6 +84,8 @@ final class DrawingPad extends View {
     // Shapes
     private ShapePreview shapeStroke;
     private float shapeX, shapeY;
+    /** This gesture's shape or flat fill is laid as a watercolor wash: see {@link WatercolorWash}. */
+    private boolean washing;
 
     // Moving previews: a shape or the gradient guide, drawn once per display frame
     private boolean previewFrameScheduled;
@@ -266,11 +268,24 @@ final class DrawingPad extends View {
         display.eraseColor(Color.WHITE);
         if (document != null) {
             ViewportBitmap.compose(document, display, viewportBitmap == null);
+            drawMask();
             document.clearDirty();
         }
         pending.clear();
         if (viewportBitmap != null) viewportBitmap.update(display, pageToView, null);
         redrawGradientGuide();
+    }
+    /** Draws the masking fluid's hatching over the freshly composed page. */
+    private void drawMask() {
+        if (!document.hasMask()) return;
+        int hatch = ToneDocument.HATCH;
+        // Visit only the pixels on the lines: each row's lines start where x + y is a multiple of the spacing.
+        for (int y = 0; y < document.height; y++)
+            for (int start = (hatch - y % hatch) % hatch - hatch; start < document.width; start += hatch)
+                for (int x = Math.max(0, start); x < Math.min(document.width, start + ToneDocument.HATCH_LINE); x++) {
+                    int line = document.maskHatch(x, y);
+                    if (line >= 0) display.setPixel(x, y, line == 0 ? Color.BLACK : Color.WHITE);
+                }
     }
     /** Rebuild size-dependent display resources after canvas expansion or its undo. */
     void canvasResized() {
@@ -306,7 +321,8 @@ final class DrawingPad extends View {
         if (renderPixels.length < count) renderPixels = new int[count];
         if (viewportBitmap == null) document.render(renderPixels, dirty.left, dirty.top, dirty.width(), dirty.height());
         else for (int y = dirty.top, i = 0; y < dirty.bottom; y++) for (int x = dirty.left; x < dirty.right; x++) {
-            int tone = document.compositeTone(x, y); renderPixels[i++] = Color.rgb(tone, tone, tone);
+            int hatch = document.maskHatch(x, y), tone = hatch >= 0 ? hatch : document.compositeTone(x, y);
+            renderPixels[i++] = Color.rgb(tone, tone, tone);
         }
         display.setPixels(renderPixels, 0, dirty.width(), dirty.left, dirty.top, dirty.width(), dirty.height());
     }
@@ -556,30 +572,36 @@ final class DrawingPad extends View {
         pagePoint(event.getX(index), event.getY(index));
         if (samplePoint[0] < 0 || samplePoint[1] < 0
                 || samplePoint[0] >= document.width || samplePoint[1] >= document.height) return false;
-        if (!document.layerVisible(document.activeLayer())) {
+        PaintState paint = app.paint;
+        // Masking fluid lies over every layer, hidden ones too.
+        boolean fluid = paint.maskingFluid;
+        if (!fluid && !document.layerVisible(document.activeLayer())) {
             app.message("This layer is hidden. Open Layers to show it or select another layer."); return false;
         }
-        PaintState paint = app.paint;
         // A stylus's eraser end, or a stroke begun with its side button held, erases with
         // the Eraser tool, whatever tool is selected.
         boolean penEraser = event.getToolType(index) == MotionEvent.TOOL_TYPE_ERASER
                 || (event.getButtonState() & MotionEvent.BUTTON_STYLUS_PRIMARY) != 0;
         ToolSettings settings = penEraser ? app.library.builtin(ToolSettings.Tool.ERASER) : app.library.current();
         boolean erasing = paint.eraseMode && settings.supportsEraseMode();
-        // Brushes paint into a wet canvas; the brush pens, and brushes whose transparent
-        // paint flows, bring their own water, which on a dry canvas wets only where it lands.
-        boolean wets = !erasing && (settings.tool.water
-                || settings.isBrush() && (paint.wetCanvas || paint.transparentPaint && settings.flows));
+        // Brushes paint into a wet canvas; the brush pens, and brushes, shapes and fills in
+        // watercolor mode, bring their own water, which on a dry canvas wets only where it lands.
+        // Masking fluid is laid dry, opaque and in full.
+        boolean watercolor = !erasing && !fluid && paint.transparentPaint && paint.watercolor;
+        washing = watercolor && (settings.tool == ToolSettings.Tool.SHAPES || settings.tool == ToolSettings.Tool.FILL);
+        boolean wets = !erasing && !fluid && (settings.tool.water || washing
+                || settings.isBrush() && (paint.wetCanvas || watercolor));
         if (!wets || wet != null && wet.coversCanvas() != paint.wetCanvas) dryWet();
-        if (wets && wet == null) wet = paint.wetCanvas ? new WetWatercolor(document, paint.wetness) : new WetWatercolor(document);
+        if (wets) wetPaint();
+        document.paintMaskingFluid(fluid);
         pointer = event.getPointerId(index);
         getParent().requestDisallowInterceptTouchEvent(true);
-        int shade = erasing ? ToneDocument.ERASE : paint.gray;
+        int gray = fluid ? 0 : paint.gray, shade = erasing ? ToneDocument.ERASE : gray;
         if (settings.tool == ToolSettings.Tool.SHAPES) { beginShape(settings, shade); return true; }
         if (settings.tool == ToolSettings.Tool.FILL) { beginFill(settings, shade); return true; }
         cancelWetCallback();
-        stroke = ToolStrokes.create(document, settings, paint.gray, wet, paint.transparentPaint, erasing, app.prefs.smoothEdges(),
-                settings.tool.flowing ? paint.brushInk : paint.brushLoad);
+        stroke = ToolStrokes.create(document, settings, gray, wet, paint.transparentPaint && !fluid, erasing, app.prefs.smoothEdges(),
+                settings.tool.flowing ? paint.brushInk : watercolor ? paint.brushLoad : null);
         // Supernote encodes signed X degrees in ORIENTATION, Y in TILT.
         sampleEvent(event, index, -1);
         return true;
@@ -653,7 +675,7 @@ final class DrawingPad extends View {
         }
         if (stroke == null) return;
         boolean changed = stroke.finish(); stroke = null; pointer = -1;
-        renderDirty(); flush(true);
+        renderDirty(); flush(true); app.showBrushInk();
         getParent().requestDisallowInterceptTouchEvent(false);
         if (changed) app.recovery();
         scheduleWet();
@@ -679,9 +701,17 @@ final class DrawingPad extends View {
         }
         if (!up) return;
         drawPreviewFrame(); endFastPreview();
+        if (washing) {
+            int[] spans = shapeStroke.spans();
+            renderShape(shapeStroke.cancel(display, viewportBitmap != null)); shapeStroke = null; pointer = -1;
+            getParent().requestDisallowInterceptTouchEvent(false);
+            wash(() -> WatercolorWash.spans(wet, spans, document.width, document.height, app.paint.gray));
+            return;
+        }
         boolean changed = shapeStroke.finish(); shapeStroke = null; pointer = -1;
-        // The committed geometry matches the preview exactly; keep its native raster.
-        document.clearDirty();
+        // The committed geometry matches the preview exactly; keep its native raster,
+        // unless masking fluid kept the shape from some of it, or the shape was masking fluid.
+        if (document.hasMask()) { renderDirty(); flush(true); } else document.clearDirty();
         getParent().requestDisallowInterceptTouchEvent(false);
         if (changed) app.recovery();
     }
@@ -713,8 +743,10 @@ final class DrawingPad extends View {
     private void beginFill(ToolSettings settings, int shade) {
         fillGesture = true;
         fillStartX = fillEndX = samplePoint[0]; fillStartY = fillEndY = samplePoint[1];
-        fillOriginalGray = app.paint.gray; fillShade = shade; fillGradient = settings.gradient;
-        fillTolerance = settings.gradient == ToolSettings.Gradient.FLAT ? 0 : settings.tolerance;
+        // Masking fluid has one shade, so it fills flat.
+        fillGradient = app.paint.maskingFluid ? ToolSettings.Gradient.FLAT : settings.gradient;
+        fillOriginalGray = app.paint.gray; fillShade = shade;
+        fillTolerance = fillGradient == ToolSettings.Gradient.FLAT ? 0 : settings.tolerance;
         if (!showsGradientGuide()) return;
         beginFastPreview(); drawPreviewFrame();
     }
@@ -732,7 +764,8 @@ final class DrawingPad extends View {
         float[] axis = {fillStartX, fillStartY, fillEndX, fillEndY}; pageToView.mapPoints(axis);
         if (fillGradient == ToolSettings.Gradient.FLAT || Math.hypot(axis[2]-axis[0], axis[3]-axis[1]) < dp(8)) {
             if (fillGradient != ToolSettings.Gradient.FLAT) clearGradientGuide();
-            fill = new FloodFill(document, (int)fillStartX, (int)fillStartY, fillShade, fillTolerance);
+            fill = washing ? FloodFill.region(document, (int)fillStartX, (int)fillStartY, fillTolerance)
+                    : new FloodFill(document, (int)fillStartX, (int)fillStartY, fillShade, fillTolerance);
             app.toolbar.operationStatus.setText("Filling…"); post(fillStep);
         } else {
             // Keep only the direction guide until the second color gesture begins.
@@ -745,9 +778,24 @@ final class DrawingPad extends View {
     private void advanceFill() {
         if (fill == null) return;
         if (!advanceFor5ms(fill)) { postDelayed(fillStep, 1); return; }
-        boolean changed = fill.finish(); fill = null;
-        renderDirty(); flush(true); app.toolbar.operationStatus.setText("");
+        boolean changed = fill.finish();
+        java.util.BitSet region = fill.region(); fill = null;
+        app.toolbar.operationStatus.setText("");
+        if (region != null) { wash(() -> WatercolorWash.pixels(wet, region, document.width, document.height, fillShade)); return; }
+        renderDirty(); flush(true);
         if (changed) app.recovery();
+    }
+    /**
+     * Lays a shape's or flat fill's wash as one stroke of the wet paint, shown at once as a
+     * glaze, as a watercolor brush's is, and run once there is time.
+     */
+    private void wash(Runnable queue) {
+        wetPaint(); document.begin(); wet.beginStroke();
+        queue.run();
+        boolean changed = wet.finishStroke();
+        renderDirty(); flush(true);
+        if (changed) app.recovery();
+        scheduleWet();
     }
     /** Runs a fill for one 5 ms slice; true when it has finished. */
     private static boolean advanceFor5ms(FloodFill fill) {
@@ -834,7 +882,10 @@ final class DrawingPad extends View {
         }
         if (up) {
             pickPointer = -1; getParent().requestDisallowInterceptTouchEvent(false);
-            if (app.pickedShade) { app.setEraseMode(false); app.setPickingShade(false); applyGradient(); app.saveToolState(); }
+            if (app.pickedShade) {
+                app.setEraseMode(false); app.setMaskingFluid(false); app.setPickingShade(false); applyGradient();
+                app.loadInk(app.paint.gray); app.saveToolState();
+            }
         }
     }
 
@@ -943,18 +994,27 @@ final class DrawingPad extends View {
         else scheduleWet(WetWatercolor.FRAME_MS);
     }
     private void scheduleWet(int delayMillis) {
-        if (wet != null && wet.isAnimating() && app.resumed && hasWindowFocus() && !app.loading && !navigating) {
+        if (wet != null && wet.isAnimating() && !wetHeld() && app.resumed && hasWindowFocus() && !app.loading && !navigating) {
             // Start reading the tilt now, so it is ready when the paint first moves.
             app.canvasGravity.listen(true);
             if (!wetScheduled) { wetScheduled = true; postDelayed(wetStep, delayMillis); }
+            if (wet.running()) app.wetDroplet.start();
         }
     }
+    /** The wet paint, started on the canvas the wet canvas setting asks for if there is none. */
+    private void wetPaint() {
+        if (wet == null) wet = app.paint.wetCanvas ? new WetWatercolor(document, app.paint.wetness) : new WetWatercolor(document);
+    }
+    /** The stroke being drawn keeps wet paint still until it is finished. */
+    private boolean wetHeld() { return stroke != null && stroke.holdsWetPaint(); }
+    /** About how much wet paint is left to move, or 0 when it isn't moving. */
+    int wetWork() { return wetScheduled && wet != null ? Math.max(1, wet.remainingWork()) : 0; }
     private void cancelWetCallback() {
         removeCallbacks(wetStep); wetQueue.removeIdleHandler(wetIdle); wetScheduled = false;
     }
     private void advanceWet() {
         wetScheduled = false;
-        if (wet == null || !app.resumed || !hasWindowFocus() || app.loading || navigating) {
+        if (wet == null || wetHeld() || !app.resumed || !hasWindowFocus() || app.loading || navigating) {
             app.canvasGravity.listen(false); return;
         }
         boolean drawing = stroke != null;
@@ -1007,7 +1067,7 @@ final class DrawingPad extends View {
         // Running water's last changes may not have reached the panel yet.
         if (!laid && wet != null && wet.flowing()) { renderDirty(); flush(true); }
         app.canvasGravity.listen(false);
-        wet = null;
+        wet = null; if (app.wetDroplet != null) app.wetDroplet.dried();
         if (wetChanged) { wetChanged = false; app.recovery(); }
     }
 
