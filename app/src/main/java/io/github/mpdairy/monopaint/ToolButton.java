@@ -103,7 +103,7 @@ final class ToolButton extends Button {
     Rect markerArea() {
         if (selectionOutline || unmarkedIcon != null) return new Rect(0, 0, getWidth(), getHeight());
         if (markerBelow) {
-            RectF area = new RectF(getWidth()/2f-dp(3), getHeight()-dp(7), getWidth()/2f+dp(3), getHeight()-dp(1));
+            RectF area = belowSquare();
             Matrix rotation = new Matrix();
             rotation.setRotate(-host.toolbarTurn(), getWidth()/2f, getHeight()/2f);
             rotation.mapRect(area);
@@ -146,18 +146,27 @@ final class ToolButton extends Button {
         if (markerBelow) {
             // Turn with the upright icon, so the square stays below it for either hand.
             canvas.save(); canvas.rotate(-host.toolbarTurn(), getWidth()/2f, getHeight()/2f);
-            canvas.drawRect(getWidth()/2f-dp(3), getHeight()-dp(7), getWidth()/2f+dp(3), getHeight()-dp(1), markerPaint);
+            canvas.drawRect(belowSquare(), markerPaint);
             canvas.restore(); return;
         }
         float[] center = markerPoint();
         markerPaint.setColor(Color.WHITE); canvas.drawCircle(center[0], center[1], dp(6), markerPaint);
         markerPaint.setColor(Color.BLACK); canvas.drawCircle(center[0], center[1], dp(4), markerPaint);
     }
+    /**
+     * The {@link #markerBelow} square before it turns with the icon: just inside the edge it
+     * turns onto, so it stays within a narrow button turned across the strip too.
+     */
+    private RectF belowSquare() {
+        float x = getWidth()/2f, y = getHeight()/2f;
+        float reach = (host.toolbarTurn() % 180 == 0 ? getHeight() : getWidth())/2f;
+        return new RectF(x-dp(3), y+reach-dp(7), x+dp(3), y+reach-dp(1));
+    }
     /** A point the selection marker paints solid black, in this view's coordinates. */
     float[] markerPoint() {
         if (selectionOutline) return new float[]{getWidth()/2f, dp(PressOutline.BOX_INSET_DP)};
         if (!markerBelow) return new float[]{markerLeft ? dp(12) : getWidth()-dp(12), dp(12)};
-        float[] center = {getWidth()/2f, getHeight()-dp(4)};
+        float[] center = {getWidth()/2f, belowSquare().centerY()};
         Matrix turn = new Matrix(); turn.setRotate(-host.toolbarTurn(), getWidth()/2f, getHeight()/2f); turn.mapPoints(center);
         return center;
     }

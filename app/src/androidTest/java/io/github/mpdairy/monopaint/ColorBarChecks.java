@@ -52,6 +52,10 @@ final class ColorBarChecks {
                 });
                 test.waitForIdleSync();SystemClock.sleep(200);
                 ControlFeedbackChecks.wetness(test,app);
+                // A narrow button's dot turns with its icon across the strip and must stay inside it.
+                for(ToolButton button:new ToolButton[]{app.maskButton,app.eraseButton,app.eyedropperButton})
+                    main(test,() -> check(new Rect(0,0,button.getWidth(),button.getHeight()).contains(button.markerArea()),
+                            button.getContentDescription()+" dot stays inside its button in rotation "+quarter+(right?" right":" left")));
                 for(int tool:new int[]{MotionEvent.TOOL_TYPE_STYLUS,MotionEvent.TOOL_TYPE_FINGER}) {
                     long start=SystemClock.uptimeMillis();
                     // Include reversals, black/white endpoints and an immediate release.
