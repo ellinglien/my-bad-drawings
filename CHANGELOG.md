@@ -6,6 +6,14 @@ with each change; when cutting a release, turn that section into
 
 ## Unreleased
 
+## 0.98.1
+
+- Supernote firmware 3.30.45 is now tested on both the Manta and the Nomad, so
+  MonoPaint no longer says it's untested at startup, and Settings shows it as
+  tested.
+- In landscape, the Masking fluid button shows its dot again while it's
+  selected.
+
 ## 0.98
 
 - **Watercolor mode** is now the droplet in the color bar, for every tool
