@@ -273,6 +273,7 @@ public final class PaintActivity extends Activity implements ControlHost {
     @Override public boolean busy() { return loading || saving || pad == null || pad.document == null || pad.fill != null || pad.gradientCommit; }
     @Override public boolean pageActionPending() { return pageActionPending; }
     @Override public int toolbarTurn() { return toolbarTurn; }
+    @Override public boolean colorMarkersOnTop() { return landscape && !toolboxRight; }
     @Override public SelectionFeedback selectionFeedback() { return selectionFeedback; }
 
     // Controls

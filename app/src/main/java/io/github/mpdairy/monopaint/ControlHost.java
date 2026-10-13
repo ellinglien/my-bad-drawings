@@ -8,6 +8,11 @@ interface ControlHost {
     boolean pageActionPending();
     /** Degrees the header strip is turned. Upright icons counter-rotate by this amount. */
     int toolbarTurn();
+    /**
+     * Whether the color bar's markers run along the top of its strip instead of the bottom,
+     * so they face the canvas wherever the turned bar sits.
+     */
+    boolean colorMarkersOnTop();
     /** Fast e-ink presentation for small control changes. */
     SelectionFeedback selectionFeedback();
 }

@@ -88,7 +88,7 @@ final class ShadePicker extends View {
         int saved = canvas.save();
         // Black stays at the bottom; the black marker faces the canvas
         // whether the landscape palette is on the left or the right.
-        if (app.landscape) canvas.scale(-1, app.toolboxRight ? 1 : -1, getWidth()/2f, getHeight()/2f);
+        if (app.landscape) canvas.scale(-1, app.colorMarkersOnTop() ? -1 : 1, getWidth()/2f, getHeight()/2f);
         int inset = dp(5);
         canvas.drawBitmap(strip, inset, inset, null);
         marker.setColor(Color.BLACK); marker.setStyle(Paint.Style.STROKE); marker.setStrokeWidth(1);
@@ -129,7 +129,7 @@ final class ShadePicker extends View {
     /** Keep moving ink off the dotted ramp and capture only its small white gutter. */
     Rect markerArea() {
         int height = Math.min(getHeight(), dp(8));
-        return app.landscape && !app.toolboxRight
+        return app.colorMarkersOnTop()
                 ? new Rect(0, 0, getWidth(), height)
                 : new Rect(0, getHeight() - height, getWidth(), getHeight());
     }

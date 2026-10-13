@@ -3,7 +3,6 @@ package io.github.mpdairy.monopaint;
 import android.annotation.SuppressLint;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -102,13 +101,7 @@ final class ToolButton extends Button {
     /** The pixels that change when {@link #marked} changes. */
     Rect markerArea() {
         if (selectionOutline || unmarkedIcon != null) return new Rect(0, 0, getWidth(), getHeight());
-        if (markerBelow) {
-            RectF area = belowSquare();
-            Matrix rotation = new Matrix();
-            rotation.setRotate(-host.toolbarTurn(), getWidth()/2f, getHeight()/2f);
-            rotation.mapRect(area);
-            Rect bounds = new Rect(); area.roundOut(bounds); return bounds;
-        }
+        if (markerBelow) { Rect bounds = new Rect(); belowSquare().roundOut(bounds); return bounds; }
         return new Rect(markerLeft ? 0 : Math.max(0, getWidth()-dp(24)), 0,
                 markerLeft ? Math.min(getWidth(), dp(24)) : getWidth(), Math.min(getHeight(), dp(24)));
     }
@@ -143,32 +136,25 @@ final class ToolButton extends Button {
         if (press.pressed || (selectionOutline && marked)) press.drawBox(canvas);
         if (selectionOutline || unmarkedIcon != null || !marked || (!alwaysDot && !host.selectionFeedback().enabled)) return;
         markerPaint.setColor(Color.BLACK);
-        if (markerBelow) {
-            // Turn with the upright icon, so the square stays below it for either hand.
-            canvas.save(); canvas.rotate(-host.toolbarTurn(), getWidth()/2f, getHeight()/2f);
-            canvas.drawRect(belowSquare(), markerPaint);
-            canvas.restore(); return;
-        }
+        if (markerBelow) { canvas.drawRect(belowSquare(), markerPaint); return; }
         float[] center = markerPoint();
         markerPaint.setColor(Color.WHITE); canvas.drawCircle(center[0], center[1], dp(6), markerPaint);
         markerPaint.setColor(Color.BLACK); canvas.drawCircle(center[0], center[1], dp(4), markerPaint);
     }
     /**
-     * The {@link #markerBelow} square before it turns with the icon: just inside the edge it
-     * turns onto, so it stays within a narrow button turned across the strip too.
+     * The {@link #markerBelow} square, where the shade strip's marker runs: along the color
+     * bar's canvas side, so selecting this control looks like the marker moved onto it. It
+     * stays with the bar as the bar turns, beside the upright icon in landscape.
      */
     private RectF belowSquare() {
-        float x = getWidth()/2f, y = getHeight()/2f;
-        float reach = (host.toolbarTurn() % 180 == 0 ? getHeight() : getWidth())/2f;
-        return new RectF(x-dp(3), y+reach-dp(7), x+dp(3), y+reach-dp(1));
+        float top = host.colorMarkersOnTop() ? dp(1) : getHeight()-dp(7);
+        return new RectF(getWidth()/2f-dp(3), top, getWidth()/2f+dp(3), top+dp(6));
     }
     /** A point the selection marker paints solid black, in this view's coordinates. */
     float[] markerPoint() {
         if (selectionOutline) return new float[]{getWidth()/2f, dp(PressOutline.BOX_INSET_DP)};
         if (!markerBelow) return new float[]{markerLeft ? dp(12) : getWidth()-dp(12), dp(12)};
-        float[] center = {getWidth()/2f, belowSquare().centerY()};
-        Matrix turn = new Matrix(); turn.setRotate(-host.toolbarTurn(), getWidth()/2f, getHeight()/2f); turn.mapPoints(center);
-        return center;
+        return new float[]{getWidth()/2f, belowSquare().centerY()};
     }
     /** Favorites show their number as dots, so similar tools stay distinguishable. */
     private void drawPresetDots(Canvas canvas) {

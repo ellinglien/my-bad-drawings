@@ -183,7 +183,7 @@ final class ToolbarChecks {
                 check(doc.compositeTone(200,200)==expected,"Next brush stroke uses picked shade");
                 check(doc.undo() && doc.compositeTone(200,200)==255,"Sampling adds no undo action");
             });
-            report.append("PASS: toolbar icons, Layers visibility, saved order, rotated move targets, always-on instant selection, last-tool guard, hidden settings and favorites; eyedropper layered shade, all rotations and hands, hidden selected layer, cancellation, no marks, next stroke and undo; marker transfer below upright icon, hidden color indicators, exact cancel restoration, normal and instant feedback.\n");
+            report.append("PASS: toolbar icons, Layers visibility, saved order, rotated move targets, always-on instant selection, last-tool guard, hidden settings and favorites; eyedropper layered shade, all rotations and hands, hidden selected layer, cancellation, no marks, next stroke and undo; marker transfer to the color marker's side, hidden color indicators, exact cancel restoration, normal and instant feedback.\n");
         } finally {
             main(test,() -> {
                 if(dialog[0]!=null)dialog[0].dismiss();
@@ -261,6 +261,12 @@ final class ToolbarChecks {
                     Matrix panelToRoot=new Matrix();PanelCoordinates.fromView(root).invert(panelToRoot);
                     Matrix eyeToRoot=PanelCoordinates.fromView(eye);eyeToRoot.postConcat(panelToRoot);
                     float[] center={eye.getWidth()/2f,eye.getHeight()/2f};eyeToRoot.mapPoints(center);
+                    // The shade strip's marker side, across the bar: the eyedropper's marker must take the same side.
+                    Rect strip=(Rect)call(shade,"markerArea");
+                    Matrix shadeToRoot=PanelCoordinates.fromView(shade);shadeToRoot.postConcat(panelToRoot);
+                    float[] across={strip.exactCenterX(),strip.exactCenterY(),shade.getWidth()/2f,shade.getHeight()/2f};shadeToRoot.mapPoints(across);
+                    float acrossX=across[0]-across[2],acrossY=across[1]-across[3],acrossLength=(float)Math.hypot(acrossX,acrossY);
+                    acrossX/=acrossLength;acrossY/=acrossLength;
                     int changes=0;
                     float density=activity.getResources().getDisplayMetrics().density;
                     for(int y=0;y<eye.getHeight();y++) for(int x=0;x<eye.getWidth();x++) {
@@ -268,8 +274,9 @@ final class ToolbarChecks {
                         check((eyeArmed.getPixel(x,y)&0xffffff)==0,"Eyedropper adds only a black square");
                         check(declared.contains(x,y),"Instant feedback patch contains every marker pixel");
                         float[] point={x+.5f,y+.5f};eyeToRoot.mapPoints(point);
-                        check(Math.abs(point[0]-center[0])<=4*density && point[1]>center[1]+15*density,
-                                "Marker sits below the upright icon in the current orientation and hand");
+                        float dx=point[0]-center[0],dy=point[1]-center[1],out=dx*acrossX+dy*acrossY;
+                        check(Math.abs(dx*acrossY-dy*acrossX)<=4*density && out>15*density,
+                                "Marker sits on the color marker's side of the bar in the current orientation and hand");
                         changes++;
                     }
                     check(changes>=25*density*density && changes<=49*density*density,"Small square marker has expected size");
