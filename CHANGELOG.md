@@ -6,6 +6,9 @@ with each change; when cutting a release, turn that section into
 
 ## Unreleased
 
+- With the **wet brush pen**, the Eraser color now erases with the pen's
+  footprint, like other tools. To clean the brush, tap white.
+
 ## 0.98.2
 
 - In landscape, the dots for the Eraser color, the Eyedropper and Masking fluid

@@ -43,14 +43,14 @@ final class ToolSettings {
         final String label;
         /** Brushes share brush heads, wet canvas and transparent paint; they display as one Brush tool. */
         final boolean brush;
-        /** Tools that apply the selected color can erase with their own footprint instead. */
+        /** Tools that apply the selected color, the wet brush pen's dip too, can erase with their own footprint instead. */
         final boolean erasable;
         /** Lays down its own clear water, wet canvas or not. Tilt sets its size; pressure its pull. */
         final boolean water;
         /** Its water stays wet and carries ink like ink in water, faster where the water is fresher. */
         final boolean flowing;
         Tool(String label, Kind kind) {
-            this.label = label; brush = kind == Kind.BRUSH; erasable = kind == Kind.BRUSH || kind == Kind.COLORED;
+            this.label = label; brush = kind == Kind.BRUSH; erasable = kind == Kind.BRUSH || kind == Kind.COLORED || kind == Kind.FLOWING_WATER;
             flowing = kind == Kind.FLOWING_WATER; water = kind == Kind.WATER || flowing;
         }
         private enum Kind { BRUSH, COLORED, COLORLESS, WATER, FLOWING_WATER }

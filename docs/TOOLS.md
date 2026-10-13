@@ -7,7 +7,7 @@ Tap a tool to select it. Tap it again to open its settings.
 | Tool | What it does |
 |:-:|---|
 | <img src="icons/brush.svg" width="24"><br>**Brush** | Pressure-sensitive paintbrush. |
-| <img src="icons/brush_pen.svg" width="24"><br>**Brush pen** | Clear water that drags paint around. Choose Dry or Wet in its settings: the wet one's ink keeps running through its water. Tap a color, or pick one with the Eyedropper, to dip the wet one in that ink; it gives it out as you paint and picks up what it passes over, and each time you lift it the color bar's marker slides to the ink it has left. The Eraser color cleans it. |
+| <img src="icons/brush_pen.svg" width="24"><br>**Brush pen** | Clear water that drags paint around. Choose Dry or Wet in its settings: the wet one's ink keeps running through its water. Tap a color, or pick one with the Eyedropper, to dip the wet one in that ink; it gives it out as you paint and picks up what it passes over, and each time you lift it the color bar's marker slides to the ink it has left. Tap white to clean it; the Eraser color erases with it, as with other tools. |
 | <img src="icons/pencil.svg" width="24"><br>**Pencil** | Textured pencil. Lean it for broader strokes. |
 | <img src="icons/airbrush.svg" width="24"><br>**Airbrush** | Soft spray. Go over an area again to build up color. |
 | <img src="icons/fill.svg" width="24"><br>**Fill** | Flat or gradient flood fill. |

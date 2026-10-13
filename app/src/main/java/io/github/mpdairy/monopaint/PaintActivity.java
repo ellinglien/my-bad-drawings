@@ -785,11 +785,11 @@ public final class PaintActivity extends Activity implements ControlHost {
     void loadInk(int value) {
         pad.layQueuedPaint();
         paint.brushLoad.tint(value);
-        if (cleansBrush()) paint.brushInk.load(value);
+        if (holdsInk()) paint.brushInk.load(value);
     }
-    /** With the wet brush pen, the color bar's marker slides to the ink it holds now, after a stroke or cleaning. */
+    /** With the wet brush pen, the color bar's marker slides to the ink it holds now, after a stroke. */
     void showBrushInk() {
-        if (!cleansBrush() || paint.eraseMode || paint.maskingFluid || pickingShade) return;
+        if (!holdsInk() || paint.eraseMode || paint.maskingFluid || pickingShade) return;
         int shade = 255 - Math.round(paint.brushInk.fullness() * 255), from = paint.gray;
         if (shade == from) return;
         // The marker still shows the old shade until it slides.
@@ -808,7 +808,6 @@ public final class PaintActivity extends Activity implements ControlHost {
         if (paletteEditor != null) paletteEditor.commitColors();
     }
     private void toggleEraseMode() {
-        if (cleansBrush()) { cleanBrush(); return; }
         if (busy() || !library.current().supportsEraseMode()) return;
         // A pending gradient fades to transparent instead of waiting for a color.
         boolean gradient = pad.hasGradient();
@@ -824,24 +823,15 @@ public final class PaintActivity extends Activity implements ControlHost {
     }
     void refreshEraseControl() {
         if (eraseButton == null) return;
-        boolean supported = library.current().supportsEraseMode(), cleans = cleansBrush();
+        boolean supported = library.current().supportsEraseMode();
         if (!supported && paint.eraseMode) { setEraseMode(false); return; }
-        eraseButton.setEnabled(supported || cleans);
-        eraseButton.setAlpha(supported || cleans ? 1f : .3f);
-        eraseButton.setContentDescription(cleans ? "Clean the brush" : supported ? "Erase with current tool" : "This tool does not use a color");
-        eraseButton.mark(paint.eraseMode && !pickingShade || cleans && brushCleaned);
+        eraseButton.setEnabled(supported);
+        eraseButton.setAlpha(supported ? 1f : .3f);
+        eraseButton.setContentDescription(supported ? "Erase with current tool" : "This tool does not use a color");
+        eraseButton.mark(paint.eraseMode && !pickingShade);
     }
-    /** With the wet brush pen, the eraser cleans the ink the brush has soaked up instead. */
-    private boolean cleansBrush() { return library.current().tool == ToolSettings.Tool.WET_BRUSH_PEN; }
-    /** Whether the eraser shows its dot for a moment after cleaning the brush. */
-    private boolean brushCleaned;
-    private final Runnable brushCleanShown = () -> { brushCleaned = false; refreshEraseControl(); };
-    private void cleanBrush() {
-        paint.brushInk.clean(); showBrushInk(); saveToolState();
-        brushCleaned = true; refreshEraseControl();
-        eraseButton.removeCallbacks(brushCleanShown);
-        eraseButton.postDelayed(brushCleanShown, 500);
-    }
+    /** The wet brush pen holds the ink it is dipped in, or soaks up, between strokes; white cleans it. */
+    private boolean holdsInk() { return library.current().tool == ToolSettings.Tool.WET_BRUSH_PEN; }
     void setPickingShade(boolean picking) {
         if (pickingShade == picking) return;
         if (picking) { hideGradientHint(); pickOriginalShade = paint.gray; pickedShade = false; }

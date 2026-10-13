@@ -14,6 +14,7 @@ public final class ToolChecks {
         beforeOilField(0x54535045, 62); beforeOilField(0x54535046, 66); beforeOilField(0x54535047, 70);
         ToolSettings wetPen=ToolSettings.defaults(ToolSettings.Tool.WET_BRUSH_PEN);
         check(wetPen.tool.water && wetPen.tool.flowing && !ToolSettings.Tool.BRUSH_PEN.flowing && wetPen.pull(.45f)==1,"The wet brush pen lays fully fresh flowing water at full pressure");
+        check(wetPen.supportsEraseMode(),"The wet brush pen, dipped in a color, erases like other colored tools");
     }
     /** A format whose records stop after {@code kept} bytes, before the newer oil paint fields. */
     private static void beforeOilField(int version, int kept) throws Exception {
