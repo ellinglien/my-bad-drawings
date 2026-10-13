@@ -6,6 +6,16 @@ with each change; when cutting a release, turn that section into
 
 ## Unreleased
 
+## 0.98.2
+
+- In landscape, the dots for the Eraser color, the Eyedropper and Masking fluid
+  sit beside their icons, on the same side as the color bar's marker, so
+  picking one looks like the color marker moved onto it.
+- Turning the tablet to landscape for the first time no longer shrinks the
+  painting: an expanded page still opens at 100%.
+- The blow dryer shakes and blows air as it dries the paint, with no box
+  around it.
+
 ## 0.98.1
 
 - Supernote firmware 3.30.45 is now tested on both the Manta and the Nomad, so
