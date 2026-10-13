@@ -1111,6 +1111,11 @@ final class PaintChecks {
             check(frames.get()==0,"Wet controls must not queue a later Android frame: "+frames.get());
             test.runOnMainSync(() -> {
                 findButton(activity,"Watercolor mode").performClick();findButton(activity,"Opaque paint").performClick();
+                // The droplet leaves the canvas wet: only the slider at zero dries it for later checks.
+                long now=SystemClock.uptimeMillis();
+                event(wetness,now,MotionEvent.ACTION_DOWN,wetness.getWidth()/2f,wetness.getHeight(),.2f);
+                event(wetness,now,MotionEvent.ACTION_UP,wetness.getWidth()/2f,wetness.getHeight(),0);
+                check(!(Boolean)get(get(activity,"paint"),"wetCanvas"),"Zero wetness dries the canvas again");
             });
             // An unrelated redraw must refresh the retained Android commands too.
             test.runOnMainSync(root::invalidate);test.waitForIdleSync();SystemClock.sleep(300);

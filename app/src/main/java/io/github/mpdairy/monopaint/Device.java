@@ -13,10 +13,10 @@ import android.view.Display;
 final class Device {
     /** The smaller Supernote. */
     static final Device NOMAD = new Device("Nomad", 1404, 1872, true, true, 6, null, 1, 0,
-            "Chauvet.E103.2606141001.2389_release");
+            "Chauvet.E103.2606141001.2389_release", "Chauvet.E103.2610091001.2545_release");
     /** The larger Supernote, which can also preview the Nomad's layout at physical size. */
     static final Device MANTA = new Device("Manta", 1920, 2560, false, false, 24, NOMAD, -1, 0,
-            "Chauvet.E103.2606141001.2389_release");
+            "Chauvet.E103.2606141001.2389_release", "Chauvet.E103.2610091001.2545_release");
     /** Any other tablet, or a Supernote panel no profile matches. */
     static final Device OTHER = new Device("Android", 0, 0, false, false, 24, null, -1, -1);
     static final Device[] SUPERNOTES = {MANTA, NOMAD};
