@@ -6,6 +6,8 @@ with each change; when cutting a release, turn that section into
 
 ## Unreleased
 
+## 0.98.3
+
 - With the **wet brush pen**, the Eraser color now erases with the pen's
   footprint, like other tools. To clean the brush, tap white.
 

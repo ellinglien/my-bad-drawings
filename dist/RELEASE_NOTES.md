@@ -1,12 +1,7 @@
-MonoPaint 0.98.2 fixes the color bar dots in landscape and keeps paintings full size when you first turn the tablet.
+MonoPaint 0.98.3 lets the wet brush pen erase.
 
-- **In landscape, the Eraser color, Eyedropper and Masking fluid dots sit beside
-  their icons**, on the same side as the color bar's marker, so picking one looks
-  like the color marker moved onto it.
-- **Turning the tablet to landscape for the first time no longer shrinks the
-  painting**: an expanded page still opens at 100%.
-- **The blow dryer shakes and blows air** as it dries the paint, with no box
-  around it.
+- **The wet brush pen erases with the Eraser color**, like other tools. To
+  clean it, tap white.
 
 Supernote firmware 3.30.45 is tested on both the Manta and the Nomad. New in
 0.98: Watercolor mode with a wet canvas and blow dryer, masking fluid, the wet
