@@ -165,6 +165,10 @@ final class DrawingPad extends View {
     void updateViewport() {
         if (display == null || getWidth() <= 0 || getHeight() <= 0) return;
         int width = display.getWidth(), height = display.getHeight();
+        // A turn opens the page afresh, so wait for the canvas's turned size: deciding on the
+        // old one would spend the opening and fit the page instead of showing it at 100%.
+        // The orientation frame updates the viewport again once the turned layout is done.
+        if (pageRotation != app.appRotation && isLayoutRequested()) return;
         if (pageRotation != app.appRotation) viewport.reset();
         pageRotation = app.appRotation;
         boolean swapped = pageRotation == Surface.ROTATION_90 || pageRotation == Surface.ROTATION_270;
