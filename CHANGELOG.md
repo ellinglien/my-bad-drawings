@@ -4,7 +4,51 @@ User-facing changes since the last release. Add an entry under **Unreleased**
 with each change; when cutting a release, turn that section into
 `dist/RELEASE_NOTES.md` and retitle it with the new version.
 
-## Unreleased (since 0.97)
+## Unreleased
+
+## 0.98
+
+- **Watercolor mode** is now the droplet in the color bar, for every tool
+  instead of an option on each brush. The droplet is solid while it's on and
+  dashed while it's off. With transparent paint, brushes paint
+  watercolor as before, and shapes and flat fills now lay their whole area as a
+  watercolor wash that blends and runs downhill too. Pencils, the airbrush and
+  gradient fills paint as usual. The wetness slider beside the droplet now
+  wets the canvas all by itself: slide it up for a wet canvas, or all the way
+  down to dry it. Turn Watercolor mode on again with the droplet if your brushes
+  had it on.
+- On a wet canvas, watercolor glazes over the paint beneath it: most of that
+  paint stays put and shows through, and some comes loose to bleed and run with
+  the new wash, more the higher the wetness slider.
+- Tap a color with the **wet brush pen** to dip it in that ink, instead of
+  switching back to your brush; the Eyedropper dips it too. It gives the ink
+  out as you paint and picks up what it passes over, and each time you lift it
+  the color bar's marker slides to the ink it has left; tap a color to dip it
+  again. The Eraser color still cleans it, and the marker slides to white.
+
+- While wet paint is still moving, the **Watercolor mode** droplet's outline
+  ripples: quickly while lots of paint is blending or running, slower and
+  slower as it settles, until the droplet comes to rest. It waits while you draw. The dry brush pen's water settling
+  for a moment after you lift it doesn't count.
+- The brush in **Watercolor mode** paints a flat glaze while the pen is down,
+  and the paint blends and runs only once you lift it, so a stroke goes where
+  you put it. Rubbing no longer lifts dried paint under its wash; use the wet
+  brush pen for that.
+- **Masking fluid**, in the color bar beside the Watercolor mode droplet.
+  Tap it and paint with any brush, pencil, fill or shape to lay masking fluid;
+  it shows as bold diagonal hatching and isn't part of your painting. Then paint
+  right over it: opaque paint, transparent glazes, erasing, and wet paint
+  seeping across the canvas all stop at its edge, on every layer. Thin fluid,
+  like the faded edge of a soft brush, lets some paint through. Turn on the
+  Eraser color while Masking fluid is selected to rub fluid off with your tool.
+  To peel it all off, hold the Masking fluid button until a Peel button pops
+  out below it, then slide the pen onto Peel and lift (or lift, then tap Peel).
+  Peeling can be undone, and Clear page peels the fluid too. Pick any shade
+  to go back to painting.
+
+- The Wet canvas water drop is a little taller and skinnier, and the drop and
+  Masking fluid buttons take only the room they need, so the shade strip is
+  wider.
 
 - Supernote firmware 3.30.45 works with MonoPaint. On the Manta, the marker
   under the color bar follows the pen again instead of trailing behind it like
@@ -22,13 +66,21 @@ with each change; when cutting a release, turn that section into
   water, so it can't bleed into the new wash through gaps you missed. Paint you
   just laid is still wet enough to bleed into.
 
+- Big watercolor washes run much faster. Every frame of wet paint now shares
+  more of its work across the tablet's cores, so a wash covering the whole page
+  moves about twice as fast and looks exactly the same as before. A wash that
+  big (about a fifth of the page or more) also takes bigger steps: it dries and
+  runs downhill in half as many frames, with a little less fine bleeding. A
+  page full of watercolor you tilt now runs and settles in about 20 seconds
+  instead of a minute and a half on the Nomad.
+
 - On the Manta, the page button at the top right drops down a column of quick
   page action icons: add a page, **duplicate the page** (a copy goes right after
   it and becomes the current page: on page 5 of 8, the copy becomes page 6 of
   9), **delete the page**, **clear the page** and **clear the current layer**.
   Deleting a page asks first; clearing can be undone. On the Nomad, the Pages
   box shows them too: the page arrows and add page on top, the rest below.
-  These replace the Clear button, which made room for the Blow dryer.
+  These replace the Clear button.
 
 - The flat brush keeps up with the pen in transparent watercolor paint, as fast
   as the round and filbert brushes, and lays its watercolor the same as before.
@@ -49,12 +101,13 @@ with each change; when cutting a release, turn that section into
 
 - Transparent paint keeps up with the pen: a transparent brush now lays its
   paint as fast as an opaque one, so big strokes no longer lag behind.
-- The **Blow dryer** is back, in the color bar right beside Wet canvas, so it
-  stays at hand even with the toolbar hidden. Tap it to dry all wet paint at
-  once: watercolor, wet canvas paint and wet brush pen ink stop running and
-  stay as they are. Wet canvas stays on, so your next stroke still blends into
-  the paint it touches. It blows a little air for a moment, and the tool you
-  were using stays selected.
+- The **Blow dryer** is back, inside the Watercolor mode droplet, so it stays
+  at hand even with the toolbar hidden. While the droplet ripples, tap it to
+  dry all wet paint at once: watercolor, wet canvas paint and wet brush pen ink
+  stop running and stay as they are. It turns into a blow dryer that
+  blows a little air for a moment, then the droplet comes back. Watercolor mode and
+  the wetness slider stay as they were, and the tool you were using stays
+  selected.
 - Watercolor keeps up with the pen too: a big watercolor stroke shows right
   away as its color glazed over the page, then turns into watercolor (lifting,
   soaking and flowing) a moment later, catching up as soon as the tablet has
@@ -92,7 +145,7 @@ with each change; when cutting a release, turn that section into
   each brush dab over it soaks it a little, so a couple of passes over line
   art leave it alone, but keep scrubbing a spot and the brush lifts it. It never
   drains into the wash by itself. Paint that's still wet mixes
-  freely, and on a wet canvas everything lifts at once. With the option off,
+  freely. With the option off,
   transparent paint works as before.
 - The brush's **Oil paint** option is now **Oil paint mode when opaque**: it
   only applies to opaque paint, so transparent paint never runs out.

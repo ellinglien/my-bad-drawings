@@ -2,8 +2,9 @@
 
 <img src="app/src/main/res/mipmap-nodpi/ic_launcher.png" alt="MonoPaint brush logo" width="96" height="96">
 
-A small drawing app for **Supernote Manta**. Pressure-sensitive brushes, textured
-pencil, dotted grayscale shading, and a blending stump for sketching on e-ink.
+A small drawing app for the **Supernote Manta** and **Nomad**. Pressure-sensitive
+brushes, watercolor that runs when you tilt the tablet, textured pencil, dotted
+grayscale shading, and a blending stump for sketching on e-ink.
 
 [Download the latest APK](https://github.com/mpdairy/monopaint/releases/latest/download/monopaint.apk)
 · [All releases and release notes](https://github.com/mpdairy/monopaint/releases)
@@ -11,12 +12,14 @@ pencil, dotted grayscale shading, and a blending stump for sketching on e-ink.
 ## What it does
 
 - Round, Flat and Filbert brushes with pressure and tilt, plus oil paint that runs out and smudges.
-- Wet canvas blending (with optional gravity), and a brush pen that pushes paint around with water.
+- Watercolor mode for brushes, shapes and fills: washes that blend, bleed and run downhill as you tilt, plus a blow dryer to stop them.
+- A wetness slider for a wet canvas, and dry and wet brush pens that push paint around with water.
+- Masking fluid that keeps paint off an area until you peel it.
 - Pencil, airbrush, eraser, blending stump, flat and gradient fills, and shapes.
 - 65 grayscale shades, an eyedropper, a swatch palette, and an eraser color for any tool.
-- Up to 8 layers per page, multiple pages, undo/redo, and custom saved tools.
+- Up to 8 layers per page, multiple pages you can duplicate, undo/redo (or tap with two or three fingers), and custom saved tools.
 - Portrait or landscape for either drawing hand, plus lockable pinch zoom.
-- Saves locally with automatic recovery. No account or network access.
+- Saves as you work, locally. No account or network access.
 
 **[Tool and feature guide](docs/TOOLS.md)**: what every icon does and how to use it.
 
@@ -59,7 +62,7 @@ details and PNG conversion.
 ## Current limits
 
 This is an early, unofficial app tested on the **Supernote Manta (1920 × 2560)**
-and **Nomad (1404 × 1872)**, both arm64. Other tablets are unverified: the fast
+and **Nomad (1404 × 1872)**, both arm64, including Supernote firmware 3.30.45. Other tablets are unverified: the fast
 e-ink path needs a supported Supernote screen, and other tablets use the slower
 Android drawing fallback. Undo history does not survive a restart.
 

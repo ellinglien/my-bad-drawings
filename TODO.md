@@ -249,7 +249,7 @@ tablets (e.g. Wacom), so these changes should not assume Supernote.
   key never reaches GitHub; simplify `.github/workflows/release.yml` to match.
   Leave git history alone; rewriting it would break existing clones.
 
-- [ ] **0.98 bridge release (old ID, old debug key).** This is the last release as
+- [ ] **0.99 bridge release (old ID, old debug key).** This is the last release as
   `dev.tilesmile.supernote.paint`, so it updates the old app in place. Private
   data the new app can't reach includes paintings from 0.95 and earlier, paintings
   from users who never allowed file access, and everyone's private autosave,
@@ -263,7 +263,7 @@ tablets (e.g. Wacom), so these changes should not assume Supernote.
   `~/.config/monopaint/monopaint-release.p12`, alias `monopaint`, 4096-bit RSA,
   valid to 2126; cert SHA-256 `D2:60:0B:4D:…:8E:6E:7F:D7:28`. Credentials are in
   `~/.config/monopaint/release.env`; the user keeps the password and a keystore
-  copy in LastPass. Leave `.env.release` on the debug key until the 0.98 bridge
+  copy in LastPass. Leave `.env.release` on the debug key until the 0.99 bridge
   ships, then point it at `release.env` for 1.0.
 
 - [ ] **1.0 under the new ID `io.github.mpdairy.monopaint` (name confirmed).**
@@ -272,7 +272,7 @@ tablets (e.g. Wacom), so these changes should not assume Supernote.
   Remove the `dev.tilesmile.supernote.PaintActivity` alias. Update README,
   BUILDING.md and the `adb`/instrumentation commands that name the old ID.
   On launch, detect the old package (needs a `<queries>` entry) and prompt:
-  "Update your old MonoPaint to 0.98 and open it once to move paintings and
+  "Update your old MonoPaint to 0.99 and open it once to move paintings and
   presets, then uninstall it." Import the transfer file on first run.
   Put a move warning at the top of the README and release notes.
 
