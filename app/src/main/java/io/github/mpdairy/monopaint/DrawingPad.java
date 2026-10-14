@@ -604,8 +604,10 @@ final class DrawingPad extends View {
         if (settings.tool == ToolSettings.Tool.SHAPES) { beginShape(settings, shade); return true; }
         if (settings.tool == ToolSettings.Tool.FILL) { beginFill(settings, shade); return true; }
         cancelWetCallback();
+        // With opaque paint the wet brush pen keeps the selected ink: each stroke starts dipped in it again.
+        if (settings.holdsInk() && !paint.transparentPaint && !erasing) paint.brushInk.load(gray);
         stroke = ToolStrokes.create(document, settings, gray, wet, paint.transparentPaint && !fluid, erasing, app.prefs.smoothEdges(),
-                settings.tool.flowing ? paint.brushInk : watercolor ? paint.brushLoad : null);
+                settings.tool.flowing ? (settings.holdsInk() ? paint.brushInk : null) : watercolor ? paint.brushLoad : null);
         // Supernote encodes signed X degrees in ORIENTATION, Y in TILT.
         sampleEvent(event, index, -1);
         return true;

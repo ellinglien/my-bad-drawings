@@ -87,6 +87,13 @@ final class ToolControls {
         form.percent("Strength", s -> s.strength, ToolSettings::strength);
         form.percent("Pressure response", "Pressure", s -> s.pressureResponse, ToolSettings::pressureResponse);
         if (!current.tool.flowing) form.percent("Carry original paint", s -> s.carry, ToolSettings::carry);
+        else {
+            form.hint("Pressure sets the size; tilt points the way it spreads from the tip.");
+            form.check("Hold ink between strokes", ToolSettings::holdsInk, (s, holds) -> s.clearWater(!holds));
+            form.hint("Off: clear water only. It lifts what it touches and lets it run out through the water.");
+            form.percent("Coverage", s -> s.coverage, ToolSettings::coverage);
+            form.hint("With opaque paint: how much of what's beneath each stroke covers with its color.");
+        }
     }
 
     private static void airbrush(SettingsForm form, float textSize) {

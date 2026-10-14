@@ -771,8 +771,8 @@ public final class PaintActivity extends Activity implements ControlHost {
         setPickingShade(false);
         if (!pad.hasGradient()) pad.finishStroke();
         setEraseMode(false); setMaskingFluid(false);
-        // The dry brush pen lays no color: choosing one goes back to the brush last in use.
-        if (library.current().tool.water && !library.current().tool.flowing) toolbar.returnToBrush();
+        // A brush pen holding no ink lays no color: choosing one goes back to the brush last in use.
+        if (library.current().tool.water && !library.current().holdsInk()) toolbar.returnToBrush();
         if (paint.gray != value) updateColorBar(() -> paint.gray = value);
         loadInk(value);
         if (pad.hasGradient()) pad.previewGradient(value);
@@ -787,9 +787,12 @@ public final class PaintActivity extends Activity implements ControlHost {
         paint.brushLoad.tint(value);
         if (holdsInk()) paint.brushInk.load(value);
     }
-    /** With the wet brush pen, the color bar's marker slides to the ink it holds now, after a stroke. */
+    /**
+     * With the wet brush pen, the color bar's marker slides to the ink it holds now, after a stroke;
+     * with opaque paint it stays, since the next stroke starts dipped in the selected ink again.
+     */
     void showBrushInk() {
-        if (!holdsInk() || paint.eraseMode || paint.maskingFluid || pickingShade) return;
+        if (!holdsInk() || !paint.transparentPaint || paint.eraseMode || paint.maskingFluid || pickingShade) return;
         int shade = 255 - Math.round(paint.brushInk.fullness() * 255), from = paint.gray;
         if (shade == from) return;
         // The marker still shows the old shade until it slides.
@@ -831,7 +834,7 @@ public final class PaintActivity extends Activity implements ControlHost {
         eraseButton.mark(paint.eraseMode && !pickingShade);
     }
     /** The wet brush pen holds the ink it is dipped in, or soaks up, between strokes; white cleans it. */
-    private boolean holdsInk() { return library.current().tool == ToolSettings.Tool.WET_BRUSH_PEN; }
+    private boolean holdsInk() { return library.current().holdsInk(); }
     void setPickingShade(boolean picking) {
         if (pickingShade == picking) return;
         if (picking) { hideGradientHint(); pickOriginalShade = paint.gray; pickedShade = false; }

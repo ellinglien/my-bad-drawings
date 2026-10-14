@@ -13,15 +13,22 @@ public final class ToolChecks {
         brushPenMigration(0x54535041, 10); brushPenMigration(0x54535042, 11);
         beforeOilField(0x54535045, 62); beforeOilField(0x54535046, 66); beforeOilField(0x54535047, 70);
         ToolSettings wetPen=ToolSettings.defaults(ToolSettings.Tool.WET_BRUSH_PEN);
-        check(wetPen.tool.water && wetPen.tool.flowing && !ToolSettings.Tool.BRUSH_PEN.flowing && wetPen.pull(.45f)==1,"The wet brush pen lays fully fresh flowing water at full pressure");
+        check(wetPen.tool.water && wetPen.tool.flowing && !ToolSettings.Tool.BRUSH_PEN.flowing && wetPen.pull(.1f)==wetPen.pull(.45f) && wetPen.pull(.45f)==wetPen.strength/100f,"The wet brush pen lays the same water, set by strength, at any pressure");
         check(wetPen.supportsEraseMode(),"The wet brush pen, dipped in a color, erases like other colored tools");
+        check(wetPen.holdsInk() && !wetPen.clearWater(true).holdsInk() && !ToolSettings.defaults(ToolSettings.Tool.BRUSH_PEN).holdsInk(),"Only the wet brush pen holds ink, unless it lays clear water");
+        check(!ToolSettings.defaults(ToolSettings.Tool.BRUSH).clearWater(true).clearWater,"Only the wet brush pen lays clear water");
+        ToolLibrary library=new ToolLibrary();library.select(ToolSettings.Tool.WET_BRUSH_PEN);library.edit(library.current().clearWater(true).coverage(80));library.add("Spill");
+        ToolLibrary restored=ToolLibrary.decode(library.encode());
+        check(restored.builtin(ToolSettings.Tool.WET_BRUSH_PEN).clearWater && restored.current().clearWater && restored.current().coverage==80 && restored.current().equals(library.current()),"Clear water and coverage persist");
+        check(ToolSettings.defaults(ToolSettings.Tool.WET_BRUSH_PEN).coverage==ToolSettings.DEFAULT_COVERAGE,"Opaque wet paint covers half at first");
+        check(!restored.builtin(ToolSettings.Tool.BRUSH).clearWater,"Other tools still read the shared flag as unset");
     }
     /** A format whose records stop after {@code kept} bytes, before the newer oil paint fields. */
     private static void beforeOilField(int version, int kept) throws Exception {
         ToolLibrary library=new ToolLibrary();library.select(ToolSettings.Tool.BRUSH);library.edit(library.current().oilPaint(true).paintLoad(30));library.add("Oil");
         java.io.DataInputStream in=new java.io.DataInputStream(new java.io.ByteArrayInputStream(library.encode()));
         java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();java.io.DataOutputStream out=new java.io.DataOutputStream(bytes);
-        in.readInt();out.writeInt(version);byte[] record=new byte[kept];int skipped=71-kept;
+        in.readInt();out.writeInt(version);byte[] record=new byte[kept];int skipped=75-kept;
         for(int i=0;i<25;i++){in.readFully(record);in.skipBytes(skipped);out.write(record);}
         out.writeUTF(in.readUTF());int count=in.readInt();out.writeInt(count);
         for(int i=0;i<count;i++){out.writeUTF(in.readUTF());out.writeUTF(in.readUTF());in.readFully(record);in.skipBytes(skipped);out.write(record);}
@@ -35,9 +42,9 @@ public final class ToolChecks {
         java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();java.io.DataOutputStream out=new java.io.DataOutputStream(bytes);
         // Those formats predate the carry and oil paint fields that end each record.
         in.readInt();out.writeInt(version);byte[] record=new byte[54];
-        for(int i=0;i<25;i++){in.readFully(record);in.skipBytes(17);if(i<tools || i>=12)out.write(record);}
+        for(int i=0;i<25;i++){in.readFully(record);in.skipBytes(21);if(i<tools || i>=12)out.write(record);}
         out.writeUTF(in.readUTF());int count=in.readInt();out.writeInt(count);
-        for(int i=0;i<count;i++){out.writeUTF(in.readUTF());out.writeUTF(in.readUTF());in.readFully(record);in.skipBytes(17);out.write(record);}
+        for(int i=0;i<count;i++){out.writeUTF(in.readUTF());out.writeUTF(in.readUTF());in.readFully(record);in.skipBytes(21);out.write(record);}
         check(in.read()==-1,"Previous format fixture consumes every byte");
         ToolLibrary restored=ToolLibrary.decode(bytes.toByteArray());
         check(restored.current().equals(library.current()) && restored.activeId().equals(library.activeId()),"Previous format retains the selected favorite");
@@ -92,10 +99,10 @@ public final class ToolChecks {
         java.io.DataInputStream in=new java.io.DataInputStream(new java.io.ByteArrayInputStream(library.encode()));
         java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();java.io.DataOutputStream out=new java.io.DataOutputStream(bytes);
         in.readInt();out.writeInt(0x5453503d);byte[] record=new byte[47];
-        for(int i=0;i<25;i++){in.readFully(record);if(i<8 || i>11)out.write(record);in.readUnsignedByte();in.skipBytes(23);}
+        for(int i=0;i<25;i++){in.readFully(record);if(i<8 || i>11)out.write(record);in.readUnsignedByte();in.skipBytes(27);}
         out.writeUTF(in.readUTF());int count=in.readInt();out.writeInt(count);
         for(int i=0;i<count;i++) {
-            out.writeUTF(in.readUTF());out.writeUTF(in.readUTF());in.readFully(record);out.write(record);in.readUnsignedByte();in.skipBytes(23);
+            out.writeUTF(in.readUTF());out.writeUTF(in.readUTF());in.readFully(record);out.write(record);in.readUnsignedByte();in.skipBytes(27);
         }
         check(in.read()==-1,"Legacy fixture consumes every record");return bytes.toByteArray();
     }

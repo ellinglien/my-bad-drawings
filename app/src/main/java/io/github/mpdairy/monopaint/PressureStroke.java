@@ -222,6 +222,11 @@ final class PressureStroke implements DrawingStroke {
         applyMask(left,top,cropX,cropY,w,h,pull,null);
     }
     /** @param hits null, or the buffer for a run drawn with {@link #hitPaint}, whose alpha counts stamps */
+    /** Opaque paint makes a wet brush pen's water carry its shade, covering what it lands on: the ink it holds, or else the selected one. -1 for clear water. */
+    private int cover() {
+        if (transparent || !settings.tool.flowing) return -1;
+        return ink == null ? gray : Math.round(255 * (1 - ink.fullness()));
+    }
     private void applyMask(int left,int top,int cropX,int cropY,int w,int h,float pull,byte[] hits) {
         mask.getPixels(pixels, 0, w, cropX, cropY, w, h);
         if (hits != null) for (int i = 0; i < w * h; i++) {
@@ -229,7 +234,7 @@ final class PressureStroke implements DrawingStroke {
             if (pixels[i] != 0) pixels[i] = 0xFF000000;
         }
         if(erasing || settings.tool==ToolSettings.Tool.ERASER) document.eraseMask(pixels,w,left,top,w,h);
-        else if (wet != null && settings.tool.water) wet.waterMask(pixels, w, left, top, w, h, pull, settings.tool.flowing, settings.carry / 100f, ink);
+        else if (wet != null && settings.tool.water) wet.waterMask(pixels, w, left, top, w, h, pull, settings.tool.flowing, settings.carry / 100f, ink, cover(), settings.coverage / 100f);
         // Fully fresh water, which pressure does not thin: it sizes the brush instead.
         // The brush's ink is tinted with the selected shade, the lightest it lays.
         // Shown at once as a glaze; the wet paint lays it in full when there is time.

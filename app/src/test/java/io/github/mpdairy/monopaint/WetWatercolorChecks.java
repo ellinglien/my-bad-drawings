@@ -6,7 +6,7 @@ import java.util.Arrays;
 public final class WetWatercolorChecks {
     public static void main(String[] args) throws Exception {
         blendingAndHistory(); dryPaperAndLinework(); dryGaps(); drying(); pausedStrokes(false); pausedStrokes(true);
-        liveStroke(); boundedSlices(); adaptiveBudget(); presets(); gravity(); brushPen(false); brushPen(true); carriedPaint(255); carriedPaint(128); wetBrushPen(); brushInk(); smoothFlow(); flowingGravity(); flowingGlaze(); queuedGlaze(); stuckPaint(); washOverWash(); pacing(); flowingSlices(); hugeWash(); regionWash(); inkLoading(); running(); canvasGlaze();
+        liveStroke(); boundedSlices(); adaptiveBudget(); presets(); gravity(); brushPen(false); brushPen(true); carriedPaint(255); carriedPaint(128); wetBrushPen(); brushInk(); smoothFlow(); plainWaterThins(); flowingGravity(); flowingGlaze(); queuedGlaze(); stuckPaint(); washOverWash(); pacing(); flowingSlices(); hugeWash(); regionWash(); inkLoading(); running(); canvasGlaze();
         System.out.println("PASS: live wet blending, gravity drift, brush pen seeping and sharp dry edges, wet brush pen ink flow by freshness, adaptive work limits, bounded spatial/time slices, pause/resume, retained water, dry boundaries/linework, queued watercolor dabs, shape and fill washes, dipped ink, drying, exact undo/redo, saved tones and TSP9 migration");
     }
     private static void check(boolean pass, String message) { if (!pass) throw new AssertionError(message); }
@@ -435,6 +435,29 @@ public final class WetWatercolorChecks {
      * A broad, fast flowing stroke from a black block across white: ink running between
      * tiles must not leave square steps on the 16 px tile grid.
      */
+    /**
+     * Ink running through clear water from the wet brush pen holding none adds up: lifted
+     * paint at most gives out its hidden reserve, so it ends with no more than twice the ink
+     * it started with. Blending the tile-scale spread made over twice that, darkening the wash.
+     */
+    private static void plainWaterThins() {
+        ToneDocument doc = new ToneDocument(256, 256);
+        doc.begin();
+        for (int y = 0; y < 256; y++) for (int x = 0; x < 256; x++) if (x % 48 < 4 || (x > 100 && x < 140 && y > 100 && y < 130)) doc.paintTone(x, y, 0);
+        doc.finish();
+        long before = 0; for (int y = 0; y < 256; y++) for (int x = 0; x < 256; x++) before += 255 - doc.tone(x, y);
+        WetWatercolor wet = new WetWatercolor(doc);
+        int[] mask = new int[32 * 32]; Arrays.fill(mask, 0xff000000);
+        for (int stroke = 0; stroke < 6; stroke++) {
+            doc.begin(); wet.beginStroke();
+            for (int x = 0; x <= 224; x += 6) wet.waterMask(mask, 32, x, 16 + stroke * 36 + (int)(Math.sin(x * .05 + stroke) * 12), 32, 32, 1, true);
+            wet.finishStroke();
+            for (int frame = 0; frame < 6; frame++) { wet.advance(false); while (wet.framePending()) wet.advance(false); }
+        }
+        settle(wet);
+        long after = 0; for (int y = 0; y < 256; y++) for (int x = 0; x < 256; x++) after += 255 - doc.tone(x, y);
+        check(after <= before * 2, "Clear water thins lifted paint into itself without making ink (" + after / (float)before + "x the ink)");
+    }
     private static void smoothFlow() {
         ToneDocument doc = new ToneDocument(256, 128);
         doc.begin(); for (int y = 0; y < 128; y++) for (int x = 0; x < 48; x++) doc.paintTone(x, y, 0); doc.finish();

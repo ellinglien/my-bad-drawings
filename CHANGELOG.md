@@ -6,6 +6,23 @@ with each change; when cutting a release, turn that section into
 
 ## Unreleased
 
+- The **wet brush pen** has a **Hold ink between strokes** setting, on at
+  first. Turn it off for the first wet brush pen: it lays only clear water and
+  holds no ink, lifting the paint it touches and letting it thin out through
+  the wet area, so it looks really watery. Choosing a color with it goes back
+  to your brush.
+- The wet brush pen now sizes like a real one: press harder for a bigger
+  footprint, and tilt only points which way it spreads from the tip. It gives
+  out the same water however hard you press, set by **Strength**, which now
+  starts at 60%. Full strength evens out everything under the stroke; lower
+  keeps darks where they were. The dry brush pen works as before.
+- With **opaque** paint chosen in the top bar, the wet brush pen paints like
+  gouache: each stroke covers half of what's under it with its color, so white
+  pushes dark back while the paint stays wet and blends at the edges. Go over a
+  spot again to cover more. The pen's **Coverage** setting, 50% at first, sets
+  how much each stroke covers. With Hold ink on, the brush starts every stroke
+  dipped in the selected color again and the color bar's marker stays on it.
+
 ## 0.98.3
 
 - With the **wet brush pen**, the Eraser color now erases with the pen's
