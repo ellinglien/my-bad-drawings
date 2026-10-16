@@ -22,6 +22,11 @@ with each change; when cutting a release, turn that section into
   spot again to cover more. The pen's **Coverage** setting, 50% at first, sets
   how much each stroke covers. With Hold ink on, the brush starts every stroke
   dipped in the selected color again and the color bar's marker stays on it.
+- If the tablet's display refuses a fast update, for example as you unplug it,
+  MonoPaint reconnects a second later instead of drawing slowly until you
+  reopen it. It switches to standard drawing only if the display keeps failing.
+- The rippling watercolor droplet and the color bar's marker reuse one display
+  connection instead of opening a new one for every frame.
 
 ## 0.98.3
 

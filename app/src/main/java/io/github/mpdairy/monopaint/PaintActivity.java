@@ -1164,7 +1164,7 @@ public final class PaintActivity extends Activity implements ControlHost {
         super.onWindowFocusChanged(focus);
         if (pad == null) return;
         if (focus) { pad.post(pad::connectDisplay); showSaveError(); }
-        else { rotationPrompt.dismiss(); pad.finishStroke(); pad.disconnectDisplay(); }
+        else { rotationPrompt.dismiss(); pad.finishStroke(); pad.disconnectDisplay(); selectionFeedback.closeSession(); }
     }
     @Override protected void onDestroy() {
         destroyed = true;

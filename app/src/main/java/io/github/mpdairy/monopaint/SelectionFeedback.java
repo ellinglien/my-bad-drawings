@@ -20,6 +20,17 @@ final class SelectionFeedback {
     /** Panel area this session drew through the Nomad's fast pen plane (mode 9). */
     private final android.graphics.RectF fastInk = new android.graphics.RectF();
     private final Map<View, Rect> pending = new WeakHashMap<>();
+    /**
+     * The last control patch's session, kept for its next update: the droplet ripples and the
+     * color marker drags present the same patch many times a second. Android redraws the
+     * patch in between, so a reused session always refreshes rather than skipping pixels it
+     * believes unchanged.
+     */
+    private DirectEink session;
+    private View sessionOwner;
+    private final Rect sessionArea = new Rect();
+    private final android.graphics.Matrix sessionPanel = new android.graphics.Matrix();
+    private int sessionMode;
     private ViewTreeObserver observer;
     // Refresh cached Android drawing commands when another UI action needs a frame.
     // Registering this listener does not request a frame or delay a display write.
@@ -74,6 +85,12 @@ final class SelectionFeedback {
     void close() {
         if (observer != null && observer.isAlive()) observer.removeOnPreDrawListener(syncBeforeDraw);
         observer = null; pending.clear();
+        closeSession();
+    }
+    /** Releases the kept control session, e.g. while another window covers the controls. */
+    void closeSession() {
+        if (session != null) session.close();
+        session = null; sessionOwner = null;
     }
 
     /** Updates the whole control. */
@@ -97,7 +114,6 @@ final class SelectionFeedback {
     /** Presents the control's current pixels over {@code before}, which it recycles. */
     private void present(View owner, Rect area, Bitmap before) {
         Bitmap after = capture(owner, area);
-        DirectEink display = null;
         boolean presented = false;
         try {
             Rect dirty = difference(before, after);
@@ -107,8 +123,16 @@ final class SelectionFeedback {
             // Each session owns only this control patch. The canvas is never included.
             boolean fastBinary = DirectEink.fastBinaryControls() && opaqueBinary(after, dirty);
             int mode = fastBinary ? 9 : 7;
-            display = DirectEink.forView(owner,before,bitmapToView,fastBinary ? 1 : 0,mode);
-            if (display.present(after, dirty) > 0) {
+            android.graphics.Matrix toPanel = PanelCoordinates.fromView(owner);
+            boolean reused = session != null && sessionOwner == owner && sessionArea.equals(area)
+                    && sessionMode == mode && sessionPanel.equals(toPanel);
+            if (!reused) {
+                closeSession();
+                session = DirectEink.forView(owner,before,bitmapToView,fastBinary ? 1 : 0,mode);
+                sessionOwner = owner; sessionArea.set(area); sessionMode = mode; sessionPanel.set(toPanel);
+            }
+            DirectEink display = session;
+            if ((reused ? display.refresh(after, dirty) : display.present(after, dirty)) > 0) {
                 presented = true;
                 retainForNextDraw(owner, area);
                 submitted++;
@@ -116,7 +140,7 @@ final class SelectionFeedback {
                 lastBufferRegion = display.bufferRegion(dirty);
                 if (fastBinary) {
                     android.graphics.RectF panel = new android.graphics.RectF(dirty);
-                    bitmapToView.postConcat(PanelCoordinates.fromView(owner)); bitmapToView.mapRect(panel);
+                    bitmapToView.postConcat(toPanel); bitmapToView.mapRect(panel);
                     fastInk.union(panel);
                 }
             }
@@ -124,8 +148,8 @@ final class SelectionFeedback {
         } catch (RuntimeException error) {
             if (!loggedFailure) Log.w(ProbeActivity.TAG, "Selection feedback uses normal redraw", error);
             loggedFailure = true;
+            closeSession();
         } finally {
-            if (display != null) display.close();
             before.recycle();
             after.recycle();
             if (!presented) owner.invalidate(area);

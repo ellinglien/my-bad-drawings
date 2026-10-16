@@ -59,6 +59,14 @@ final class DrawingPad extends View {
     private int pointer = -1, retries;
     private long lastPresent;
     private boolean fallbackNotice;
+    /**
+     * The driver can refuse an update once, e.g. "Out of memory" as the tablet is unplugged.
+     * Reconnect after a moment, and draw through Android only once it keeps failing.
+     */
+    private static final int DISPLAY_ATTEMPTS = 3, RECONNECT_MS = 1000, STEADY_MS = 10_000;
+    private int displayFailures;
+    private long connectedAt;
+    private final Runnable reconnect = this::connectDisplay;
     private int drawCount;
     private int pagePresentCount;
     private final Runnable retry = () -> flush(true);
@@ -417,15 +425,25 @@ final class DrawingPad extends View {
             if (!input.prepareDocumentCanvas()) throw new IllegalStateException(input.status);
             direct = viewportBitmap == null ? DirectEink.forView(this, display, pageToView, 0, 7)
                     : DirectEink.forView(this, viewportBitmap.bitmap, new Matrix(), 0, 7);
+            connectedAt = SystemClock.uptimeMillis();
             refreshFastInk();
         } catch (RuntimeException | LinkageError error) {
             Log.w(ProbeActivity.TAG, "Using Android drawing presentation", error);
-            if (!fallbackNotice) { app.message("Fast display unavailable; using standard drawing"); fallbackNotice = true; }
+            displayFailed();
         }
+    }
+    /** Tries the fast display again shortly, unless it has failed {@link #DISPLAY_ATTEMPTS} times running. */
+    private void displayFailed() {
+        // A session that ran steadily before failing starts a new count.
+        if (connectedAt != 0 && SystemClock.uptimeMillis() - connectedAt > STEADY_MS) displayFailures = 0;
+        connectedAt = 0;
+        if (++displayFailures < DISPLAY_ATTEMPTS) { postDelayed(reconnect, RECONNECT_MS); return; }
+        if (!fallbackNotice) { app.message("Fast display unavailable; using standard drawing. Reopen the app to retry."); fallbackNotice = true; }
     }
     void disconnectDisplay() {
         cancelWetCallback();
         removeCallbacks(retry);
+        removeCallbacks(reconnect);
         if (previewDirect != null) { previewDirect.close(); previewDirect = null; previewArea.setEmpty(); }
         if (direct != null) { direct.close(); direct = null; }
         input.disable();
@@ -529,7 +547,7 @@ final class DrawingPad extends View {
             }
             Log.e(ProbeActivity.TAG, "Direct display failed", error);
             disconnectDisplay(); invalidate(); pending.clear();
-            app.saveError = "Fast display stopped; painting is kept. Reopen the app to retry.";
+            displayFailed();
         }
     }
 
