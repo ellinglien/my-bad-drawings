@@ -8,13 +8,17 @@ import android.view.View;
 import android.view.ViewTreeObserver;
 import java.util.Map;
 import java.util.WeakHashMap;
+import io.github.mpdairy.fasteink.FastEink;
+import io.github.mpdairy.fasteink.Mode;
+import io.github.mpdairy.fasteink.PanelCoordinates;
+import io.github.mpdairy.fasteink.Session;
 
 /** Synchronous control-only presentation, with Android redraw only as a fallback. */
 final class SelectionFeedback {
     boolean enabled = true;
     int submitted;
-    int lastDisplayMode;
-    /** The last submitted patch, in driver buffer coordinates ({@link DirectEink#bufferRegion}). */
+    Mode lastMode;
+    /** The last submitted patch, in driver buffer coordinates ({@link Session#bufferRegion}). */
     Rect lastBufferRegion;
     private boolean loggedFailure;
     /** Panel area this session drew through the Nomad's fast pen plane (mode 9). */
@@ -26,11 +30,11 @@ final class SelectionFeedback {
      * patch in between, so a reused session always refreshes rather than skipping pixels it
      * believes unchanged.
      */
-    private DirectEink session;
+    private Session session;
     private View sessionOwner;
     private final Rect sessionArea = new Rect();
     private final android.graphics.Matrix sessionPanel = new android.graphics.Matrix();
-    private int sessionMode;
+    private Mode sessionMode;
     private ViewTreeObserver observer;
     // Refresh cached Android drawing commands when another UI action needs a frame.
     // Registering this listener does not request a frame or delay a display write.
@@ -60,13 +64,13 @@ final class SelectionFeedback {
         if (!enabled || area.isEmpty() || !owner.hasWindowFocus() || !owner.isShown()
                 || owner.getDisplay() == null || !PanelCoordinates.fullyVisible(owner, area)) return;
         Bitmap pixels = capture(owner, area);
-        DirectEink display = null;
+        Session display = null;
         try {
             android.graphics.Matrix bitmapToView = new android.graphics.Matrix();
             bitmapToView.setTranslate(area.left, area.top);
-            display = DirectEink.forView(owner, pixels, bitmapToView, 0, 7);
+            display = Session.forView(owner, pixels, bitmapToView, Mode.GRAY);
             // Android's unchanged white pixels cannot describe residual physical ink.
-            if (display.refresh(pixels, new Rect(0, 0, pixels.getWidth(), pixels.getHeight())) < 0)
+            if (display.refresh(pixels, new Rect(0, 0, pixels.getWidth(), pixels.getHeight())) == Session.BUSY)
                 owner.invalidate(area);
         } catch (RuntimeException error) {
             owner.invalidate(area);
@@ -121,22 +125,22 @@ final class SelectionFeedback {
             android.graphics.Matrix bitmapToView = new android.graphics.Matrix();
             bitmapToView.setTranslate(area.left,area.top);
             // Each session owns only this control patch. The canvas is never included.
-            boolean fastBinary = DirectEink.fastBinaryControls() && opaqueBinary(after, dirty);
-            int mode = fastBinary ? 9 : 7;
+            boolean fastBinary = FastEink.supportsFastBinary() && FastEink.opaqueBinary(after, dirty);
+            Mode mode = fastBinary ? Mode.FAST_BINARY : Mode.GRAY;
             android.graphics.Matrix toPanel = PanelCoordinates.fromView(owner);
             boolean reused = session != null && sessionOwner == owner && sessionArea.equals(area)
                     && sessionMode == mode && sessionPanel.equals(toPanel);
             if (!reused) {
                 closeSession();
-                session = DirectEink.forView(owner,before,bitmapToView,fastBinary ? 1 : 0,mode);
+                session = Session.forView(owner,before,bitmapToView,mode);
                 sessionOwner = owner; sessionArea.set(area); sessionMode = mode; sessionPanel.set(toPanel);
             }
-            DirectEink display = session;
-            if ((reused ? display.refresh(after, dirty) : display.present(after, dirty)) > 0) {
+            Session display = session;
+            if ((reused ? display.refresh(after, dirty) : display.present(after, dirty)) == Session.PRESENTED) {
                 presented = true;
                 retainForNextDraw(owner, area);
                 submitted++;
-                lastDisplayMode = mode;
+                lastMode = mode;
                 lastBufferRegion = display.bufferRegion(dirty);
                 if (fastBinary) {
                     android.graphics.RectF panel = new android.graphics.RectF(dirty);
@@ -154,17 +158,6 @@ final class SelectionFeedback {
             after.recycle();
             if (!presented) owner.invalidate(area);
         }
-    }
-
-    /** Decide from the submitted patch, including its border, without flattening grays. */
-    static boolean opaqueBinary(Bitmap bitmap, Rect area) {
-        int[] row = new int[area.width()];
-        for (int y = area.top; y < area.bottom; y++) {
-            bitmap.getPixels(row, 0, row.length, area.left, y, row.length, 1);
-            for (int pixel : row)
-                if (pixel != android.graphics.Color.BLACK && pixel != android.graphics.Color.WHITE) return false;
-        }
-        return true;
     }
 
     private static Bitmap capture(View owner, Rect area) {

@@ -10,6 +10,7 @@ import android.view.OrientationEventListener;
 import android.view.View;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Target-orientation corners, timeout, shake recall and real prompt touch targets. */
 final class RotationPromptChecks {

@@ -13,6 +13,9 @@ import android.view.View;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import io.github.mpdairy.fasteink.FastEink;
+import io.github.mpdairy.fasteink.PanelCoordinates;
+import io.github.mpdairy.fasteink.Session;
 
 /** Real view-hierarchy gestures and e-ink checks on a disposable book. */
 final class ZoomUiChecks {
@@ -123,10 +126,10 @@ final class ZoomUiChecks {
                 });
                 test.waitForIdleSync();SystemClock.sleep(200);
                 main(test,() -> {
-                    DirectEink direct=(DirectEink)get(pad,"direct");check(direct!=null,"Fast e-ink reconnects after gesture");
+                    Session direct=(Session)get(pad,"direct");check(direct!=null,"Fast e-ink reconnects after gesture");
                     Rect patch=direct.bufferRegion(new Rect(0,0,view.getWidth(),view.getHeight()));
-                    int driverWidth=DirectEink.layout()[0];
-                    int driverHeight=DirectEink.layout()[1];
+                    int driverWidth=FastEink.bufferSize().x;
+                    int driverHeight=FastEink.bufferSize().y;
                     check(patch.left>=0&&patch.top>=0&&patch.right<=driverWidth&&patch.bottom<=driverHeight,"Zoomed e-ink patch stays in the driver buffer");
                     ViewportBitmap raster=(ViewportBitmap)get(pad,"viewportBitmap");int x=view.getWidth()/2,y=view.getHeight()/2;
                     if(quarter==0 && !hand) {
@@ -291,7 +294,7 @@ final class ZoomUiChecks {
         Bitmap source=Bitmap.createBitmap(31,19,Bitmap.Config.ARGB_8888);source.setHasAlpha(false);
         try {
             for(int y=0;y<19;y++)for(int x=0;x<31;x++)source.setPixel(x,y,0xff000000|((x*71+y*31)*977&0xffffff));
-            Method rotate=DirectEink.class.getDeclaredMethod("nativeRotate",Bitmap.class,Bitmap.class,int.class,int.class,int.class,int.class,int.class);
+            Method rotate=Session.class.getDeclaredMethod("nativeRotate",Bitmap.class,Bitmap.class,int.class,int.class,int.class,int.class,int.class);
             rotate.setAccessible(true);
             for(int turn=0;turn<4;turn++) {
                 int width=turn%2==0?31:19,height=turn%2==0?19:31;

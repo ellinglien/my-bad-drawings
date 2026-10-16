@@ -8,6 +8,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.view.View;
 import android.view.ViewGroup;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Previews a smaller tablet's panel at physical pixels, never a scaled copy of this tablet's UI. */
 final class PanelPreviewLayout extends ViewGroup {

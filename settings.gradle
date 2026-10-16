@@ -5,3 +5,6 @@ dependencyResolutionManagement {
 }
 rootProject.name = 'MonoPaint'
 include ':app'
+// Fast e-ink display updates: the fasteink git submodule.
+include ':fasteink'
+project(':fasteink').projectDir = file('fasteink/android')

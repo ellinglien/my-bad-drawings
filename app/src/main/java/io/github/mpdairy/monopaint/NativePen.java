@@ -15,6 +15,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
+import io.github.mpdairy.fasteink.Mode;
+import io.github.mpdairy.fasteink.Session;
 
 /** Adapted from AnimInk's MIT-licensed PW bridge. See THIRD_PARTY_NOTICES.md. */
 final class NativePen {
@@ -33,7 +35,7 @@ final class NativePen {
     private boolean grayCanvas;
     private final Paint canvasPaint = new Paint();
     private Canvas penCanvas;
-    private DirectEink directEink;
+    private Session directEink;
     private Bitmap directBitmap;
     private Bitmap dotTile;
     private int directMaximum, directPointer = -1;
@@ -156,7 +158,9 @@ final class NativePen {
                         directBitmap=Bitmap.createBitmap(host.getWidth(),host.getHeight(),Bitmap.Config.ARGB_8888);
                         directBitmap.eraseColor(Color.WHITE);
                     }
-                    directEink=DirectEink.forView(host,directBitmap,new android.graphics.Matrix(),requestFlags,7);
+                    // The probe compares both request settings observed in installed display clients.
+                    directEink=Session.forView(host,directBitmap,new android.graphics.Matrix(),
+                            requestFlags==1 ? Mode.GRAY_FLAGGED : Mode.GRAY);
                     directMaximum=size; directTilt=tiltBrush; directPointer=-1;
                     canvasPaint.setColor(color); canvasPaint.setAntiAlias(false);
                     canvasPaint.setFilterBitmap(false);
@@ -416,8 +420,8 @@ final class NativePen {
         long start=System.nanoTime();
         int result=directEink.present(directBitmap,pendingGray);
         directNanos+=System.nanoTime()-start;
-        if (result>=0) pendingGray.setEmpty();
-        if (result>0) { directUpdates++; grayUpdates++; }
+        if (result!=Session.BUSY) pendingGray.setEmpty();
+        if (result==Session.PRESENTED) { directUpdates++; grayUpdates++; }
     }
 
     private synchronized void releaseDirect() {

@@ -13,6 +13,9 @@ import android.view.MotionEvent;
 import android.view.View;
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import io.github.mpdairy.fasteink.FastEink;
+import io.github.mpdairy.fasteink.Mode;
+import io.github.mpdairy.fasteink.Session;
 
 /** Checks request routing and input handling, not the physical panel's response time. */
 final class ColorBarChecks {
@@ -76,17 +79,17 @@ final class ColorBarChecks {
                             Bitmap after=capture(picker);Rect dirty=SelectionFeedback.difference(before,after);
                             if(!dirty.isEmpty()) {
                                 check(app.selectionFeedback.submitted>submitted,"Every changed marker is submitted immediately");
-                                int mode=DirectEink.fastBinaryControls()?9:7;
-                                check(app.selectionFeedback.lastDisplayMode==mode,"Correct device-specific request");
-                                DirectEink display=DirectEink.forView(picker,after,new Matrix(),mode==9?1:0,mode);
+                                Mode mode=FastEink.supportsFastBinary()?Mode.FAST_BINARY:Mode.GRAY;
+                                check(app.selectionFeedback.lastMode==mode,"Correct device-specific request");
+                                Session display=Session.forView(picker,after,new Matrix(),mode);
                                 try {
                                     check(display.bufferRegion(dirty).equals(app.selectionFeedback.lastBufferRegion),"Request covers old and new marker in driver coordinates");
                                     check(display.bufferRegion(new Rect(0,0,picker.getWidth(),picker.getHeight())).contains(app.selectionFeedback.lastBufferRegion),"Request stays within color bar");
                                     // These planes are shared scratch: firmware/compositor may
                                     // rewrite them after ioctl. A later read is not a snapshot
                                     // of what our request submitted or what the panel displays.
-                                    check(display.present(after,dirty)==0,"Unchanged pixels submit no request");
-                                    if(mode==9) {
+                                    check(display.present(after,dirty)==Session.UNCHANGED,"Unchanged pixels submit no request");
+                                    if(mode==Mode.FAST_BINARY) {
                                         Bitmap invalid=after.copy(Bitmap.Config.ARGB_8888,true);
                                         invalid.setPixel(dirty.left,dirty.top,Color.GRAY);
                                         boolean rejected=false;
@@ -104,7 +107,7 @@ final class ColorBarChecks {
             ControlFeedbackChecks.controls(test,app,report);
             main(test,() -> check(Arrays.equals(blankPixels,blank.snapshot())&&!blank.canUndo(),"Color gestures never paint or add undo"));
             report.append("PASS: color bar pen/finger drags and reversals, immediate final position, four rotations/both hands, bounded old/new marker requests, no-op suppression, binary format validation, and no canvas changes. mode=")
-                    .append(DirectEink.fastBinaryControls()?9:7).append(". Physical trailing requires visual confirmation.\n");
+                    .append(FastEink.supportsFastBinary()?Mode.FAST_BINARY:Mode.GRAY).append(". Physical trailing requires visual confirmation.\n");
         } finally {
             main(test,() -> {
                 app.closePagePanel();

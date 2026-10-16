@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Map;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Swatch input and settings on the actual rotated UI, with the original session restored. */
 final class PaletteUiChecks {

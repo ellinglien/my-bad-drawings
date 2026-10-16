@@ -3,11 +3,19 @@
 Use JDK 21, Android SDK 34, NDK 27.0.12077973, and CMake 3.22.1.
 Set `JAVA_HOME` and `ANDROID_HOME` for your machine; the Gradle wrapper is included.
 
+Fast e-ink display updates come from the [fasteink](https://github.com/mpdairy/fasteink)
+library, a git submodule at `fasteink/` that Gradle builds as the `:fasteink`
+module. Clone with `git clone --recurse-submodules`, or run
+`git submodule update --init` in an existing clone. Change the library in its
+own repository, then commit the new submodule commit here. Its C core has
+desktop checks: `fasteink/scripts/test_core.sh`.
+
 ## Project names and compatibility
 
 MonoPaint is the app name; `monopaint` is the repository and release-file name.
 Java sources and tests live under `io/github/mpdairy/monopaint`, with package
-`io.github.mpdairy.monopaint`. The native library is `monopaint_display`.
+`io.github.mpdairy.monopaint`. The native libraries are `monopaint_display`
+(page rendering) and `fasteink` (display updates, from the fasteink library).
 
 Some old identifiers deliberately remain stable:
 

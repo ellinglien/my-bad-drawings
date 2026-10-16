@@ -32,6 +32,8 @@ import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import io.github.mpdairy.fasteink.PanelCoordinates;
+import io.github.mpdairy.fasteink.FastEink;
 
 /**
  * The painting screen. It owns the document and current selection, builds the layout,
@@ -122,8 +124,7 @@ public final class PaintActivity extends Activity implements ControlHost {
         device = Device.current(this);
         preferences = getSharedPreferences(PaintPreferences.FILE, MODE_PRIVATE);
         prefs = new PaintPreferences(preferences);
-        DirectEink.useAndroidDrawing(prefs.androidDrawing());
-        DirectEink.useFastBinaryPlane(device.fastBinaryPlane());
+        FastEink.setEnabled(!prefs.androidDrawing());
         noticeUntestedFirmware();
         navigationLocked = prefs.navigationLocked();
         prefs.loadPaint(paint);
@@ -623,7 +624,7 @@ public final class PaintActivity extends Activity implements ControlHost {
     void setAndroidDrawing(boolean enabled) {
         pad.suspend();
         prefs.setAndroidDrawing(enabled);
-        DirectEink.useAndroidDrawing(enabled);
+        FastEink.setEnabled(!enabled);
         root.invalidate(); pad.connectDisplay();
     }
 

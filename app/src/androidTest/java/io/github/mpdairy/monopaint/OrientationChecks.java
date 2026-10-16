@@ -17,6 +17,9 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import io.github.mpdairy.fasteink.FastEink;
+import io.github.mpdairy.fasteink.PanelCoordinates;
+import io.github.mpdairy.fasteink.Session;
 
 /** Exercises app-only rotation on a temporary page, then restores the original book. */
 final class OrientationChecks {
@@ -77,7 +80,7 @@ final class OrientationChecks {
                 layout(activity,false);
                 check(get(pad,"direct")!=null,"Landscape uses direct e-ink presentation");
                 // The page stays in the panel's portrait frame. Only a buffer scanned in another frame needs a rotated copy.
-                check((get(get(pad,"direct"),"buffer")==null)==DirectEink.bufferFromPanel().isIdentity(),"Landscape page reaches the panel without a rotated bitmap copy when the driver buffer is portrait");
+                check((get(get(pad,"direct"),"buffer")==null)==FastEink.bufferFromPanel().isIdentity(),"Landscape page reaches the panel without a rotated bitmap copy when the driver buffer is portrait");
                 stroke(activity,pad,320,340,480,340);
                 check(doc.tone(400,340)==0,"Landscape pen coordinates match displayed page");
                 // Header touches travel through the rotated View hierarchy.
@@ -235,13 +238,13 @@ final class OrientationChecks {
                 activity.dispatchTouchEvent(up); up.recycle();
                 elapsed[0]=System.nanoTime()-started;
                 check(Arrays.equals(reference.snapshot(),document.snapshot()),"Physical pen positions and original signed tilt degrees survive app rotation, including history");
-                check(get(pad,"direct")!=null && (get(get(pad,"direct"),"buffer")==null)==DirectEink.bufferFromPanel().isIdentity(),"Direct page submits its original bitmap to a portrait driver buffer");
+                check(get(pad,"direct")!=null && (get(get(pad,"direct"),"buffer")==null)==FastEink.bufferFromPanel().isIdentity(),"Direct page submits its original bitmap to a portrait driver buffer");
             });
             await(test,() -> ((DirtyRegions)get(pad,"pending")).isEmpty(),"Direct pen pixels submitted");
             test.waitForIdleSync(); SystemClock.sleep(200);
             main(test,() -> {
                 check((Integer)get(pad,"drawCount")==draws,"Landscape pen and pen-up do not request Android canvas frames");
-                DirectEink direct=(DirectEink)get(pad,"direct"); Bitmap bitmap=(Bitmap)get(pad,"display");
+                Session direct=(Session)get(pad,"direct"); Bitmap bitmap=(Bitmap)get(pad,"display");
                 check(direct.readGray(1140,y)==((bitmap.getPixel(1140,y)>>>16)&255)/16,"Landscape pen pixels reach native panel buffer");
                 check(direct.readGray(black[0],black[1])==0,"Tilted black brush appears in the panel buffer");
             });
@@ -368,7 +371,7 @@ final class OrientationChecks {
         });
         try {
             check(feedback.submitted>submitted,"Rotated color selection reaches direct display");
-            DirectEink direct=(DirectEink)get(pad,"direct"); Bitmap bitmap=(Bitmap)get(pad,"display");
+            Session direct=(Session)get(pad,"direct"); Bitmap bitmap=(Bitmap)get(pad,"display");
             android.graphics.Rect page=direct.bufferRegion(new android.graphics.Rect(0,0,bitmap.getWidth(),bitmap.getHeight()));
             check(!android.graphics.Rect.intersects(page,feedback.lastBufferRegion),"Color update stays outside the physical artwork");
         } finally {

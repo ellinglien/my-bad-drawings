@@ -238,11 +238,11 @@ mapping, not base plus one plane, in the field `postEinkPWRectFast` reads, so
 the firmware's own mode 9/flags 1 requests write and submit offset 0, the main
 plane. Mode 9 is otherwise unchanged.
 
-`Device.fastBinaryPlane()` therefore chooses the plane by build: from stamp
-2610091001 on, both models use plane 0; before it, the Nomad keeps plane 1
-and the Manta keeps gray controls. `DirectEink.useFastBinaryPlane` receives
-the choice, and JNI accepts only plane 0 or 1 for mode 9 and plane 0 for
-mode 7. The user confirmed on the physical Manta that the marker now follows
+The plane is therefore chosen by build: from stamp 2610091001 on, both models
+use plane 0; before it, the Nomad keeps plane 1 and the Manta keeps gray
+controls. This was `Device.fastBinaryPlane()`; it is now part of the layout
+table in the fasteink library, which accepts only plane 0 or 1 for mode 9 and
+plane 0 for mode 7. The user confirmed on the physical Manta that the marker now follows
 the pen.
 
 On the Nomad, plane 1 on 3.30.45 left black boxes where the Layers panel and

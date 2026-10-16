@@ -17,6 +17,9 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import io.github.mpdairy.fasteink.FastEink;
+import io.github.mpdairy.fasteink.PanelCoordinates;
+import io.github.mpdairy.fasteink.Session;
 
 /** App-local replay on an isolated temporary document; restores the user's document afterward. */
 final class PaintChecks {
@@ -144,7 +147,7 @@ final class PaintChecks {
                 // is shared with the compositor, not a retained screenshot.
                 event(view,start,MotionEvent.ACTION_MOVE,428,150,.1f);
                 try {
-                    driverPixel[0] = ((DirectEink)field(firstPad,"direct")).readGray(428,150);
+                    driverPixel[0] = ((Session)field(firstPad,"direct")).readGray(428,150);
                     driverPixel[1] = (((Bitmap)field(firstPad,"display")).getPixel(428,150) >>> 16 & 255) / 16;
                 } catch (Exception failure) { throw new IllegalStateException(failure); }
             });
@@ -724,7 +727,7 @@ final class PaintChecks {
                 int dx=grown[0],dy=grown[1];
                 DirtyRegions pending=(DirtyRegions)field(pad,"pending");
                 float[] pen=TestAccess.firmwareTilt(activity,0,tilt);
-                DirectEink direct=(DirectEink)field(pad,"direct");
+                Session direct=(Session)field(pad,"direct");
                 long start=SystemClock.uptimeMillis();
                 test.runOnMainSync(() -> {
                     library.edit(live);TestAccess.setMaximum(activity,64);set(get(activity,"paint"),"gray",0);call(get(activity,"toolbar"),"rebuildTools",new Class<?>[0]);
@@ -1002,7 +1005,7 @@ final class PaintChecks {
             android.graphics.Rect region=feedback.lastBufferRegion;
             View canvas=(View)field(activity,"pad");
             android.graphics.RectF canvasBounds=new android.graphics.RectF(0,0,canvas.getWidth(),canvas.getHeight());
-            PanelCoordinates.fromView(canvas).mapRect(canvasBounds);DirectEink.bufferFromPanel().mapRect(canvasBounds);
+            PanelCoordinates.fromView(canvas).mapRect(canvasBounds);FastEink.bufferFromPanel().mapRect(canvasBounds);
             check(!android.graphics.RectF.intersects(canvasBounds,new android.graphics.RectF(region)),"Selection request excludes document canvas");
             test.runOnMainSync(() -> restored[0]=controlBitmap(pencil));
             check(baseline[0].sameAs(restored[0]),"Changing tools restores exact inactive control pixels after redraw");

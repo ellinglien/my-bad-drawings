@@ -13,6 +13,7 @@ import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /**
  * The Layers popup: list with visibility toggles, plus add, reorder, opacity, rename

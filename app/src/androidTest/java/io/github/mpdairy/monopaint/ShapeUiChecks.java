@@ -16,6 +16,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
+import io.github.mpdairy.fasteink.PanelCoordinates;
+import io.github.mpdairy.fasteink.Session;
 
 /** Real pen gestures on a temporary book; restore and drain the original session afterward. */
 final class ShapeUiChecks {
@@ -220,7 +222,7 @@ final class ShapeUiChecks {
                 if(row[x]!=expected)throw new AssertionError("Sparse shape display differs from full composite at "+x+","+y);
             }
         }
-        DirectEink direct=(DirectEink)get(pad,"direct");
+        Session direct=(Session)get(pad,"direct");
         if(direct!=null) {
             call(pad,"present");Bitmap source=viewport==null?display:viewport.bitmap;
             // The driver's mapped plane is shared with Android; untouched regions are not

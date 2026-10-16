@@ -17,6 +17,8 @@ import java.lang.reflect.Field;
 import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import io.github.mpdairy.fasteink.FastEink;
+import io.github.mpdairy.fasteink.Session;
 
 /** Controlled app-local stylus replay. Measures firmware bitmap widths, never physical latency. */
 public final class WidthInstrumentation extends Instrumentation {
@@ -126,7 +128,7 @@ public final class WidthInstrumentation extends Instrumentation {
             return;
         }
         if (displayProbeOnly) {
-            result.putString("stream", DirectEink.probe() + "\n");
+            result.putString("stream", FastEink.describe() + "\n");
             finish(Activity.RESULT_OK,result);
             return;
         }
@@ -275,7 +277,7 @@ public final class WidthInstrumentation extends Instrumentation {
         for (int gray : new int[]{80,136,225,255}) {
             selectSwatch(activity,gray);
             Field field=NativePen.class.getDeclaredField("directEink"); field.setAccessible(true);
-            DirectEink display=(DirectEink)field.get(original);
+            Session display=(Session)field.get(original);
             if (display==null) throw new IllegalStateException("Direct presenter not configured: "+original.status);
             int y=gray==255 ? 1100 : 900;
             Field draws=host.getClass().getDeclaredField("drawCount"); draws.setAccessible(true);
@@ -319,7 +321,7 @@ public final class WidthInstrumentation extends Instrumentation {
         selectSwatch(activity,0);
         report.append("Direct display: gray/white driver pixels before UP; firmware writing stays off; zero Android redraw during stroke AND pen-up; identical overpainting submits no updates; retained gray/white survive later UI redraw; out-of-canvas updates rejected. Physical artifacts still need checking.\n");
     }
-    private void assertMappedCanvas(View host, DirectEink display, Rect area, int step) throws Exception {
+    private void assertMappedCanvas(View host, Session display, Rect area, int step) throws Exception {
         Field field=host.getClass().getDeclaredField("backing"); field.setAccessible(true);
         Bitmap backing=(Bitmap)field.get(host);
         for (int y=area.top;y<area.bottom;y+=step)
@@ -364,7 +366,7 @@ public final class WidthInstrumentation extends Instrumentation {
             if (gray==0) continue;
             double expectedWhite=REFERENCE_WHITE[grade]/300.0;
             selectSwatch(activity,gray);
-            DirectEink display=(DirectEink)field.get(original);
+            Session display=(Session)field.get(original);
             if (display==null) throw new IllegalStateException("Dot presenter missing: "+original.status);
             int beforeDraws=draws.getInt(host);
             replayOnPad(host,1500,.3f,-1,() -> {
@@ -437,7 +439,7 @@ public final class WidthInstrumentation extends Instrumentation {
             }
             waitForIdleSync();
             Field field=NativePen.class.getDeclaredField("directEink"); field.setAccessible(true);
-            assertMappedCanvas(host,(DirectEink)field.get(original),new Rect(1200,890,1640,1410),1);
+            assertMappedCanvas(host,(Session)field.get(original),new Rect(1200,890,1640,1410),1);
         }
         report.append("Every mapped pixel around crossing gray/white pressure curves matches retained bitmap, including unpainted borders. This does not measure physical panel artifacts.\n");
     }

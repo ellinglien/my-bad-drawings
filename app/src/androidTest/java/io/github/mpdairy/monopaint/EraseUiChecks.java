@@ -15,6 +15,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Mode controls and real pen routing on a disposable book; restores the user's session. */
 final class EraseUiChecks {

@@ -14,6 +14,7 @@ import android.widget.PopupWindow;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Runs on ShapeUiChecks' disposable book and shares its verified restoration. */
 final class NomadUiChecks {

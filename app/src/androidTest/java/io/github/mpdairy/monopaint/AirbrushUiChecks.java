@@ -14,6 +14,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Exercises pen input and real controls on a temporary page, then restores the session. */
 final class AirbrushUiChecks {

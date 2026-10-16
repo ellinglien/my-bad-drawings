@@ -11,6 +11,8 @@ import android.view.ViewGroup;
 import android.widget.PopupWindow;
 import android.widget.TextView;
 import java.lang.reflect.*;
+import io.github.mpdairy.fasteink.FastEink;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Layer controls on a temporary book; always restore the original session. */
 final class LayerUiChecks {
@@ -74,7 +76,7 @@ final class LayerUiChecks {
                     check((Boolean)get(get(eye,"press"),"pressed")&&feedback.submitted>submissions,"Eye press presents an immediate box on the fast display");
                     android.graphics.Rect region=feedback.lastBufferRegion;
                     android.graphics.RectF bounds=new android.graphics.RectF(0,0,eye.getWidth(),eye.getHeight());
-                    PanelCoordinates.fromView(eye).mapRect(bounds);DirectEink.bufferFromPanel().mapRect(bounds);
+                    PanelCoordinates.fromView(eye).mapRect(bounds);FastEink.bufferFromPanel().mapRect(bounds);
                     check(bounds.contains(new android.graphics.RectF(region)),"Eye feedback stays within its rotated control");
                     android.view.MotionEvent cancel=android.view.MotionEvent.obtain(0,0,android.view.MotionEvent.ACTION_CANCEL,0,0,0);
                     eye.dispatchTouchEvent(cancel);cancel.recycle();
@@ -156,7 +158,7 @@ final class LayerUiChecks {
     }
     /** On the Nomad, presses are pen-plane ink that only the app can erase once the panel closes. */
     private static void awaitFastInkErased(Instrumentation test,Object pad,int before,String what) throws Exception {
-        if(!DirectEink.fastBinaryControls()) return;
+        if(!FastEink.supportsFastBinary()) return;
         await(test,() -> (Integer)get(pad,"fastInkRefreshes")>before&&((android.graphics.RectF)get(pad,"fastInk")).isEmpty(),what+" fast ink is erased after the panel closes");
     }
     /** Black pixels inside the control's border, drawn as its parent would, scroll offset included. */

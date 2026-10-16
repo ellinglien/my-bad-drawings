@@ -5,6 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.view.View;
 import java.util.function.Consumer;
+import io.github.mpdairy.fasteink.FastEink;
 
 /** Same binary control pixels in Android redraws and direct Nomad feedback. */
 final class ControlRaster {
@@ -15,7 +16,7 @@ final class ControlRaster {
     /** Draws {@code view}; like any View.draw, the target is already offset by the view's scroll. */
     void draw(Canvas target,View view,Consumer<Canvas> draw) {
         int width=view.getWidth(),height=view.getHeight(),scrollX=view.getScrollX(),scrollY=view.getScrollY();
-        if (!DirectEink.fastBinaryControls() || width==0 || height==0) { draw.accept(target); return; }
+        if (!FastEink.supportsFastBinary() || width==0 || height==0) { draw.accept(target); return; }
         if (bitmap==null || bitmap.getWidth()!=width || bitmap.getHeight()!=height) {
             close();
             bitmap=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);

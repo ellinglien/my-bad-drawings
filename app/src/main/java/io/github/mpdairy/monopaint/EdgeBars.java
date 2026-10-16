@@ -3,6 +3,7 @@ package io.github.mpdairy.monopaint;
 import android.graphics.Matrix;
 import android.graphics.Point;
 import android.view.MotionEvent;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** One-finger edge toggles work in every bar layout. */
 final class EdgeBars {

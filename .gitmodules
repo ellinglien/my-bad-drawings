@@ -1,0 +1,3 @@
+[submodule "fasteink"]
+	path = fasteink
+	url = https://github.com/mpdairy/fasteink.git

@@ -14,6 +14,9 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import io.github.mpdairy.fasteink.FastEink;
+import io.github.mpdairy.fasteink.Mode;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** The settings scroll rail must remain reachable at both simulated screen sizes. */
 final class SettingsUiChecks {
@@ -107,10 +110,10 @@ final class SettingsUiChecks {
                 for(int i=0;i<40&&(get(pad,"direct")==null)!=label.startsWith("Standard");i++){SystemClock.sleep(50);test.waitForIdleSync();}
                 if(label.startsWith("Standard")) {
                     check(prefs.getBoolean("android_drawing",false),"Standard Android drawing is saved");
-                    check(DirectEink.androidDrawing()&&DirectEink.layout()[0]==0&&!DirectEink.fastBinaryControls(),"Standard Android reports no e-ink driver");
+                    check(!FastEink.enabled()&&!FastEink.supported()&&!FastEink.supportsFastBinary(),"Standard Android reports no e-ink driver");
                     check(get(pad,"direct")==null,"Canvas uses Android drawing");
                 } else {
-                    check(!prefs.getBoolean("android_drawing",true)&&!DirectEink.androidDrawing(),"Fast e-ink drawing is saved");
+                    check(!prefs.getBoolean("android_drawing",true)&&FastEink.enabled(),"Fast e-ink drawing is saved");
                     check(get(pad,"direct")!=null,"Canvas fast path returns");
                 }
             }

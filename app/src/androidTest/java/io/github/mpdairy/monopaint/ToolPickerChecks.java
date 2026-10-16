@@ -16,6 +16,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Runs inside ShapeUiChecks' temporary book and verified session restoration. */
 final class ToolPickerChecks {

@@ -9,6 +9,9 @@ import android.view.MotionEvent;
 import android.view.View;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import io.github.mpdairy.fasteink.FastEink;
+import io.github.mpdairy.fasteink.Mode;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Uses NomadUiChecks' disposable book and the outer suite's session restoration. */
 final class PageNavigationChecks {
@@ -112,7 +115,7 @@ final class PageNavigationChecks {
             }
             if(!feedbackOnly)overview(test,app,book,nomad,turn==0&&!right);
             report.append("PASS: ").append(nomad?"Nomad compact popup":"Manta expanded pages")
-                    .append(", previous/next/add, press/release mode=").append(DirectEink.fastBinaryControls()?9:7)
+                    .append(", previous/next/add, press/release mode=").append(FastEink.supportsFastBinary()?Mode.FAST_BINARY:Mode.GRAY)
                     .append(", turn=").append(turn).append(" right=").append(right).append(".\n");
         }
         if(!feedbackOnly) {
@@ -231,7 +234,7 @@ final class PageNavigationChecks {
             main(test,() -> {
                 check((Boolean)get(get(button,"press"),"pressed"),"Press is visibly retained on pen-down");
                 check(feedback.submitted>submitted,"Press uses fast display before loading");
-                check(feedback.lastDisplayMode==(DirectEink.fastBinaryControls()?9:7),"Page arrow press uses device-specific fast mode");
+                check(feedback.lastMode==(FastEink.supportsFastBinary()?Mode.FAST_BINARY:Mode.GRAY),"Page arrow press uses device-specific fast mode");
                 check(book.index()==before,"Page work waits until click");
             });
             event(test,MotionEvent.ACTION_UP,down,bounds.centerX(),bounds.centerY());idle(test);
@@ -242,7 +245,7 @@ final class PageNavigationChecks {
             check(!(Boolean)get(get(button,"press"),"pressed"),"Press clears after completion");
             boolean closed=panel!=null&&get(app,"pagePanel")==null;
             check(feedback.submitted==submitted+(closed?3:2),"Exactly one press and one release, with no delayed repeat");
-            if(!closed)check(feedback.lastDisplayMode==(DirectEink.fastBinaryControls()?9:7),"Page arrow release uses device-specific fast mode");
+            if(!closed)check(feedback.lastMode==(FastEink.supportsFastBinary()?Mode.FAST_BINARY:Mode.GRAY),"Page arrow release uses device-specific fast mode");
         } finally {main(test,() -> counter.removeTextChangedListener(watcher));}
     }
     private static void verifyRaster(StringBuilder report) {

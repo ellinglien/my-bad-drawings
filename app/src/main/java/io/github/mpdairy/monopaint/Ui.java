@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.SeekBar;
 import java.util.function.IntConsumer;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Small view helpers shared by the app's hand-built controls. */
 final class Ui {

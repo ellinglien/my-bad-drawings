@@ -18,6 +18,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Real toolbar controls and pen input, on a temporary book with session restoration. */
 final class ToolbarChecks {

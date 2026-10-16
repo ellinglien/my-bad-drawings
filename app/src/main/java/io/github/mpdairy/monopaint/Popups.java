@@ -7,6 +7,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.PopupWindow;
+import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /**
  * Popups placed in the app's own upright coordinates.

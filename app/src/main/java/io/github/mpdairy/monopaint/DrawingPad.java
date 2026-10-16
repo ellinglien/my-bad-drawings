@@ -13,11 +13,15 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
+import io.github.mpdairy.fasteink.FastEink;
+import io.github.mpdairy.fasteink.Mode;
+import io.github.mpdairy.fasteink.PanelCoordinates;
+import io.github.mpdairy.fasteink.Session;
 
 /**
  * The canvas. It renders the current page into a page-sized raster ({@link #display}),
  * or a screen-sized one while zoomed ({@link #viewportBitmap}), and presents changed
- * pixels straight to the e-ink panel through {@link DirectEink} when available.
+ * pixels straight to the e-ink panel through a fasteink {@link Session} when available.
  *
  * <p>Pen input runs one of these gestures at a time:
  * <ul>
@@ -47,9 +51,9 @@ final class DrawingPad extends View {
     /** Changed presented pixels awaiting presentation, as separate patches. */
     private final DirtyRegions pending = new DirtyRegions(32);
     private final Rect presenting = new Rect();
-    private DirectEink direct;
+    private Session direct;
     /** Nomad's fast black/white session for moving previews; see {@link #beginFastPreview}. */
-    private DirectEink previewDirect;
+    private Session previewDirect;
     /** Pixels {@link #previewDirect} showed, re-presented through {@link #direct} when the preview ends. */
     private final Rect previewArea = new Rect();
     /** Panel area of closed controls' fast ink, presented again through {@link #direct}; see {@link #eraseFastInk}. */
@@ -418,13 +422,13 @@ final class DrawingPad extends View {
         scheduleWet();
         if (app.canvasCovered() || !app.resumed || !hasWindowFocus() || app.loading || display == null || direct != null) return;
         // Standard Android drawing leaves the firmware pen and e-ink interfaces untouched.
-        if (DirectEink.androidDrawing()) return;
+        if (!FastEink.enabled()) return;
         if (isLayoutRequested() || app.root.isLayoutRequested() || app.orientationFrame.isLayoutRequested()
                 || app.previewFrame.isLayoutRequested()) return;
         try {
             if (!input.prepareDocumentCanvas()) throw new IllegalStateException(input.status);
-            direct = viewportBitmap == null ? DirectEink.forView(this, display, pageToView, 0, 7)
-                    : DirectEink.forView(this, viewportBitmap.bitmap, new Matrix(), 0, 7);
+            direct = viewportBitmap == null ? Session.forView(this, display, pageToView, Mode.GRAY)
+                    : Session.forView(this, viewportBitmap.bitmap, new Matrix(), Mode.GRAY);
             connectedAt = SystemClock.uptimeMillis();
             refreshFastInk();
         } catch (RuntimeException | LinkageError error) {
@@ -459,10 +463,10 @@ final class DrawingPad extends View {
         Rect area = new Rect(); panelArea.roundOut(area);
         Bitmap white = Bitmap.createBitmap(area.width(), area.height(), Bitmap.Config.ARGB_8888);
         white.eraseColor(Color.WHITE);
-        DirectEink blank = null;
+        Session blank = null;
         try {
             Matrix toPanel = new Matrix(); toPanel.setTranslate(area.left, area.top);
-            blank = DirectEink.forPanel(white, toPanel, 1, 9);
+            blank = Session.forPanel(white, toPanel, Mode.FAST_BINARY);
             blank.refresh(white, new Rect(0, 0, area.width(), area.height()));
         } catch (RuntimeException | LinkageError error) {
             Log.w(ProbeActivity.TAG, "Fast ink stays until the canvas redraws", error);
@@ -485,7 +489,7 @@ final class DrawingPad extends View {
         if (!area.intersect(0, 0, source.getWidth(), source.getHeight())) { fastInk.setEmpty(); return; }
         flush(true);
         // Forced: the software pixels are unchanged, only the panel's are stale.
-        if (direct.refresh(source, area) < 0) { postDelayed(this::refreshFastInk, 8); return; }
+        if (direct.refresh(source, area) == Session.BUSY) { postDelayed(this::refreshFastInk, 8); return; }
         fastInk.setEmpty(); fastInkRefreshes++;
     }
     /**
@@ -496,9 +500,9 @@ final class DrawingPad extends View {
      * {@link #endFastPreview} presents the final pixels through {@link #direct}.
      */
     private void beginFastPreview() {
-        if (direct == null || previewDirect != null || !DirectEink.fastBinaryControls()) return;
+        if (direct == null || previewDirect != null || !FastEink.supportsFastBinary()) return;
         flush(true);
-        try { previewDirect = DirectEink.forView(this, presented(), viewportBitmap == null ? pageToView : new Matrix(), 1, 9); }
+        try { previewDirect = Session.forView(this, presented(), viewportBitmap == null ? pageToView : new Matrix(), Mode.FAST_BINARY); }
         catch (RuntimeException | LinkageError error) { Log.w(ProbeActivity.TAG, "Previews use gray display", error); }
     }
     private void endFastPreview() {
@@ -525,14 +529,14 @@ final class DrawingPad extends View {
         }
         removeCallbacks(retry);
         if (direct == null) { invalidate(); pending.clear(); return; }
-        DirectEink target = previewDirect != null ? previewDirect : direct;
+        Session target = previewDirect != null ? previewDirect : direct;
         try {
             while (!pending.isEmpty()) {
                 int[] patch = pending.first();
                 presenting.set(patch[0], patch[1], patch[2], patch[3]);
                 int result = target.present(presented(), presenting);
                 lastPresent = SystemClock.uptimeMillis();
-                if (result < 0) {
+                if (result == Session.BUSY) {
                     if (++retries < 120) { postDelayed(retry, 8); return; }
                     throw new IllegalStateException("Display remained busy");
                 }

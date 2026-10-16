@@ -9,6 +9,7 @@ import android.graphics.Rect;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import io.github.mpdairy.fasteink.FastEink;
 
 /**
  * The gray strip in the color bar, drawn with the panel's real dot patterns. Tap or drag
@@ -49,11 +50,11 @@ final class ShadePicker extends View {
     }
     private void beginMarkerGesture() {
         removeCallbacks(cleanMarker);
-        deferMarkerCommit = DirectEink.fastBinaryControls();
+        deferMarkerCommit = FastEink.supportsFastBinary();
     }
     private void scheduleCleanup() {
         removeCallbacks(cleanMarker);
-        if (DirectEink.fastBinaryControls()) postDelayed(cleanMarker, 250);
+        if (FastEink.supportsFastBinary()) postDelayed(cleanMarker, 250);
     }
     @Override protected void onDetachedFromWindow() {
         removeCallbacks(cleanMarker); removeCallbacks(slide); slideX = Float.NaN;
