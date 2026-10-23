@@ -40,7 +40,8 @@ final class ToolSettings {
         AIRBRUSH("Airbrush", Kind.COLORED),
         SHAPES("Shapes", Kind.COLORED),
         BRUSH_PEN("Brush pen", Kind.WATER),
-        WET_BRUSH_PEN("Wet brush pen", Kind.FLOWING_WATER);
+        WET_BRUSH_PEN("Wet brush pen", Kind.FLOWING_WATER),
+        LASSO("Lasso", Kind.SELECTION);
 
         final String label;
         /** Brushes share brush heads, wet canvas and transparent paint; they display as one Brush tool. */
@@ -51,11 +52,13 @@ final class ToolSettings {
         final boolean water;
         /** Its water stays wet and carries ink like ink in water, faster where the water is fresher. */
         final boolean flowing;
+        /** Selects artwork to move instead of painting, so it has nothing to keep as a custom tool. */
+        final boolean selects;
         Tool(String label, Kind kind) {
             this.label = label; brush = kind == Kind.BRUSH; erasable = kind == Kind.BRUSH || kind == Kind.COLORED || kind == Kind.FLOWING_WATER;
-            flowing = kind == Kind.FLOWING_WATER; water = kind == Kind.WATER || flowing;
+            flowing = kind == Kind.FLOWING_WATER; water = kind == Kind.WATER || flowing; selects = kind == Kind.SELECTION;
         }
-        private enum Kind { BRUSH, COLORED, COLORLESS, WATER, FLOWING_WATER }
+        private enum Kind { BRUSH, COLORED, COLORLESS, WATER, FLOWING_WATER, SELECTION }
     }
     enum Head {
         ROUND("Round"), FLAT("Flat"), FILBERT("Filbert");

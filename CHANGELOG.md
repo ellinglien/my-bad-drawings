@@ -6,6 +6,26 @@ with each change; when cutting a release, turn that section into
 
 ## 0.99 (Unreleased)
 
+- New **Lasso** tool: draw a loop around part of the current layer to pick it
+  up, then drag inside it to move it, drag a corner dot to resize it, or drag
+  the round knob to turn it. The knob turns with the piece, so it stays under
+  your pen, and sits just inside it when there's no room on screen. It keeps its proportions, and turns settle on
+  quarter turns so a sideways piece stays crisp. Tap outside it, or pick any
+  other tool, to put it down; Undo puts it back where it was.
+- **Import image…** in the menu brings a PNG or JPEG onto the page, on the
+  current layer or a new one (it remembers which you picked last), fitted to the page or at its own size, and turned
+  a quarter at a time with **Turn left** and **Turn right**, with a preview of
+  how it will sit on the page. You choose
+  it in MonoPaint's own browser, with previews, which turns with the app and
+  opens in the folder you last imported from (Download at first). On a page
+  set to **Expand canvas**, importing first expands the page to the whole
+  screen, as hiding the bars would, so a fitted picture fills the screen. It arrives
+  picked up like a Lasso piece, so you can move, resize and turn it before you
+  tap outside it. Import a reference photo, erase patches of it, and paint them
+  back in to practice textures like hair or wood grain. A PNG you exported from
+  MonoPaint comes back with the same grays.
+- The **Open painting** and **Save painting as…** browsers use the same larger
+  bold text as the other panels (and the Large text setting).
 - A menu or panel you open with your finger closes when you tap outside it with
   your finger, so you don't have to find the pen. One you open with the pen
   still ignores your resting hand and closes only for the pen.

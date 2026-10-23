@@ -27,6 +27,8 @@ import io.github.mpdairy.fasteink.Session;
  * <ul>
  * <li>a {@link DrawingStroke} for ordinary tools ({@link ToolStrokes});</li>
  * <li>a live {@link ShapePreview} for Shapes, committed at pen-up;</li>
+ * <li>a Lasso loop, which lifts a {@link FloatingSelection}; while one floats, pen drags move,
+ * scale and turn it, and it is placed when the pen lands elsewhere or another action begins;</li>
  * <li>a fill: tap for a flood fill, or drag a gradient axis and then pick its second color;</li>
  * <li>eyedropper sampling while the color picker is active.</li>
  * </ul>
@@ -99,7 +101,18 @@ final class DrawingPad extends View {
     /** This gesture's shape or flat fill is laid as a watercolor wash: see {@link WatercolorWash}. */
     private boolean washing;
 
-    // Moving previews: a shape or the gradient guide, drawn once per display frame
+    // The lasso and floating selections
+    /** The lasso's loop so far, page x, y pairs, of which {@link #lassoShown} points are drawn; empty between loops. */
+    private float[] lasso = new float[512];
+    private int lassoCount, lassoShown;
+    /** A piece floating over the page until it is placed, or null; see {@link #placeSelection}. */
+    private FloatingSelection selection;
+    private SelectionPreview selectionPreview;
+    /** The part of {@link #selection} the pen is dragging, or {@link FloatingSelection#NONE}. */
+    private int selectionHandle = FloatingSelection.NONE;
+    private float grabX, grabY, dragX, dragY;
+
+    // Moving previews: a shape, the gradient guide, the lasso or a selection, drawn once per display frame
     private boolean previewFrameScheduled;
     private long lastPreviewFrame;
     private int previewFrameCount;
@@ -116,11 +129,8 @@ final class DrawingPad extends View {
     private float fillStartX, fillStartY, fillEndX, fillEndY;
     private int fillShade, fillOriginalGray, fillTolerance;
     private ToolSettings.Gradient fillGradient = ToolSettings.Gradient.LINEAR;
-    private final Paint gradientGuide = new Paint();
-    /** Presented pixels the gradient guide is drawn over; empty when it is not shown. */
-    private final java.util.ArrayList<Rect> guideTiles = new java.util.ArrayList<>();
-    /** The presented pixels under {@link #guideTiles}, in order, restored to erase the guide. */
-    private int[] guideBackground = new int[0];
+    /** The gradient's direction, the lasso's loop or a selection's frame, whichever is shown. */
+    private final CanvasGuide guide;
     private final Runnable gradientStep = this::advanceGradient;
     private final Runnable fillStep = this::advanceFill;
 
@@ -140,6 +150,7 @@ final class DrawingPad extends View {
         super(app); this.app = app; landscapeTilt = app.device.landscapeTilt;
         setContentDescription("Painting canvas; use the pen to paint. Unlock Zoom to pinch and pan with two fingers.");
         input = new NativePen(this, (bitmap, region) -> bitmap.recycle());
+        guide = new CanvasGuide(dp(2), dp(5), dp(48));
     }
     private int dp(float value) { return app.dp(value); }
     private static boolean pointerUp(MotionEvent event, int pointer) {
@@ -199,7 +210,7 @@ final class DrawingPad extends View {
                 || viewportBitmap.bitmap.getHeight() != getHeight())) { viewportBitmap.close(); viewportBitmap = null; }
         if (scaled && viewportBitmap == null) viewportBitmap = new ViewportBitmap(getWidth(), getHeight());
         if (wasScaled != scaled) renderAll();
-        else if (viewportBitmap != null) { viewportBitmap.update(display, pageToView, null); redrawGradientGuide(); }
+        else if (viewportBitmap != null) { viewportBitmap.update(display, pageToView, null); redrawGuide(); }
         pending.clear(); app.toolbar.refreshZoom();
     }
     private void place(Matrix transform, float scale, float x, float y) {
@@ -288,8 +299,9 @@ final class DrawingPad extends View {
             document.clearDirty();
         }
         pending.clear();
+        if (selectionPreview != null) selectionPreview.showAll(display, viewportBitmap != null);
         if (viewportBitmap != null) viewportBitmap.update(display, pageToView, null);
-        redrawGradientGuide();
+        redrawGuide();
     }
     /** Draws the masking fluid's hatching over the freshly composed page. */
     private void drawMask() {
@@ -317,8 +329,8 @@ final class DrawingPad extends View {
         int[] bounds = document.dirty();
         if (bounds == null) return;
         // The guide's saved background must not cover the newly rendered artwork.
-        boolean guide = !guideTiles.isEmpty();
-        eraseGradientGuide();
+        boolean guided = !guide.isEmpty();
+        eraseGuide();
         Rect dirty = new Rect(Math.max(0, bounds[0] - 2), Math.max(0, bounds[1] - 2),
                 Math.min(document.width, bounds[2] + 2), Math.min(document.height, bounds[3] + 2));
         if (dirty.intersect(0, 0, display.getWidth(), display.getHeight())) {
@@ -326,7 +338,7 @@ final class DrawingPad extends View {
             queue(dirty);
         }
         document.clearDirty();
-        if (guide) drawGradientGuide();
+        if (guided) drawGuide();
     }
     /** Queues page pixels that are already up to date in {@link #display}. */
     private void queue(Rect pageArea) {
@@ -349,71 +361,32 @@ final class DrawingPad extends View {
         else if (display != null) canvas.drawBitmap(display, pageToView, null);
     }
     private boolean showsGradientGuide() { return (fillGesture && fillGradient != ToolSettings.Gradient.FLAT) || gradientWaiting; }
-    /**
-     * Draws the gradient guide into the presented raster, replacing the previous one, so it
-     * reaches the panel like any canvas change. Without antialiasing its pixels stay
-     * black/white for {@link #beginFastPreview}.
-     */
+    /** Page points as presented: the unzoomed page raster is only rotated (never scaled) relative to the view. */
+    private float[] presentedPoints(float[] page, int count) {
+        float[] points = java.util.Arrays.copyOf(page, 2 * count);
+        if (viewportBitmap != null) pageToView.mapPoints(points);
+        return points;
+    }
+    /** Draws the gradient's direction line in place of whatever guide was shown. */
     private void drawGradientGuide() {
-        eraseGradientGuide();
-        Bitmap target = presented();
-        if (target == null) return;
-        float[] axis = {fillStartX, fillStartY, fillEndX, fillEndY};
-        // The unzoomed page raster is only rotated (never scaled) relative to the view.
-        if (viewportBitmap != null) pageToView.mapPoints(axis);
-        // Short segments keep a long diagonal guide's damage to a band along the line.
-        int segments = Math.max(1, (int)Math.ceil(Math.hypot(axis[2]-axis[0], axis[3]-axis[1]) / dp(48)));
-        int saved = 0;
-        RectF bounds = new RectF();
-        for (int i = 0; i < segments; i++) {
-            float a = (float)i / segments, b = (float)(i+1) / segments;
-            float x0 = axis[0]+(axis[2]-axis[0])*a, y0 = axis[1]+(axis[3]-axis[1])*a;
-            float x1 = axis[0]+(axis[2]-axis[0])*b, y1 = axis[1]+(axis[3]-axis[1])*b;
-            bounds.set(Math.min(x0, x1), Math.min(y0, y1), Math.max(x0, x1), Math.max(y0, y1));
-            bounds.inset(-dp(6), -dp(6));
-            Rect tile = new Rect(); bounds.roundOut(tile);
-            if (!tile.intersect(0, 0, target.getWidth(), target.getHeight())) continue;
-            guideTiles.add(tile); saved += tile.width() * tile.height();
-        }
-        if (guideBackground.length < saved) guideBackground = new int[saved];
-        // Save every tile before drawing; overlapping tiles are restored in reverse.
-        int offset = 0;
-        for (Rect tile : guideTiles) {
-            target.getPixels(guideBackground, offset, tile.width(), tile.left, tile.top, tile.width(), tile.height());
-            offset += tile.width() * tile.height();
-        }
-        Canvas canvas = new Canvas(target);
-        gradientGuide.setStyle(Paint.Style.STROKE);
-        gradientGuide.setColor(Color.WHITE); gradientGuide.setStrokeWidth(dp(5));
-        canvas.drawLine(axis[0], axis[1], axis[2], axis[3], gradientGuide);
-        gradientGuide.setColor(Color.BLACK); gradientGuide.setStrokeWidth(dp(2));
-        canvas.drawLine(axis[0], axis[1], axis[2], axis[3], gradientGuide);
-        gradientGuide.setStyle(Paint.Style.FILL);
-        canvas.drawCircle(axis[0], axis[1], dp(4), gradientGuide);
-        canvas.drawCircle(axis[2], axis[3], dp(4), gradientGuide);
-        for (Rect tile : guideTiles) queueView(tile);
+        eraseGuide();
+        if (presented() == null) return;
+        float[] axis = presentedPoints(new float[]{fillStartX, fillStartY, fillEndX, fillEndY}, 2);
+        guide.add(presented(), axis, 2, false, axis, dp(4), this::queueView);
     }
-    /** Restores the pixels under the gradient guide and queues them. */
-    private void eraseGradientGuide() {
-        if (guideTiles.isEmpty()) return;
-        Bitmap target = presented();
-        int offset = 0;
-        for (Rect tile : guideTiles) offset += tile.width() * tile.height();
-        for (int i = guideTiles.size()-1; i >= 0; i--) {
-            Rect tile = guideTiles.get(i);
-            offset -= tile.width() * tile.height();
-            target.setPixels(guideBackground, offset, tile.width(), tile.left, tile.top, tile.width(), tile.height());
-            queueView(tile);
-        }
-        guideTiles.clear();
-    }
-    /** Draws the guide again after a re-render replaced the raster under it. */
-    private void redrawGradientGuide() {
-        guideTiles.clear();
+    /** Draws the guide the current gesture shows, if any, in place of whatever was shown. */
+    private void drawGuide() {
         if (showsGradientGuide()) drawGradientGuide();
+        else if (lassoCount > 0) { eraseGuide(); lassoShown = 0; drawLasso(); }
+        else if (selection != null) drawSelectionFrame();
+        else eraseGuide();
     }
-    /** Removes the gradient guide from the screen. */
-    private void clearGradientGuide() { eraseGradientGuide(); flush(true); }
+    /** Restores the pixels under the guide and queues them. */
+    private void eraseGuide() { if (presented() != null) guide.erase(presented(), this::queueView); }
+    /** Draws the guide again after a re-render replaced the raster under it. */
+    private void redrawGuide() { guide.forget(); drawGuide(); }
+    /** Removes the guide from the screen. */
+    private void clearGradientGuide() { eraseGuide(); flush(true); }
 
     // Direct e-ink presentation
 
@@ -566,6 +539,7 @@ final class DrawingPad extends View {
         if (hasGradient()) return true;
         if (fillGesture) { continueFillGesture(event); return true; }
         if (shapeStroke != null) { continueShape(event); return true; }
+        if (lassoCount > 0 || selectionHandle != FloatingSelection.NONE) { continueSelection(event); return true; }
         long inputStart = System.nanoTime();
         long eventAge = Math.max(0, SystemClock.uptimeMillis() - event.getEventTime());
         boolean drawingInput = false;
@@ -596,6 +570,12 @@ final class DrawingPad extends View {
      */
     private boolean penDown(MotionEvent event, int index) {
         pagePoint(event.getX(index), event.getY(index));
+        if (selection != null) {
+            float[] knob = selectionKnob();
+            int handle = selection.hit(samplePoint[0], samplePoint[1], knob, dp(24) / pageScale());
+            if (handle != FloatingSelection.NONE) { grabSelection(event, index, handle); return true; }
+            placeSelection();
+        }
         if (samplePoint[0] < 0 || samplePoint[1] < 0
                 || samplePoint[0] >= document.width || samplePoint[1] >= document.height) return false;
         PaintState paint = app.paint;
@@ -609,6 +589,7 @@ final class DrawingPad extends View {
         boolean penEraser = event.getToolType(index) == MotionEvent.TOOL_TYPE_ERASER
                 || (event.getButtonState() & MotionEvent.BUTTON_STYLUS_PRIMARY) != 0;
         ToolSettings settings = penEraser ? app.library.builtin(ToolSettings.Tool.ERASER) : app.library.current();
+        if (settings.tool == ToolSettings.Tool.LASSO) { beginLasso(event, index); return true; }
         boolean erasing = paint.eraseMode && settings.supportsEraseMode();
         // Brushes paint into a wet canvas; the brush pens, and brushes, shapes and fills in
         // watercolor mode, bring their own water, which on a dry canvas wets only where it lands.
@@ -673,6 +654,9 @@ final class DrawingPad extends View {
     void finishStroke() {
         if (navigating) touchBlocked = true;
         endNavigation();
+        if (lassoCount > 0) { lassoCount = 0; endPenPreview(); eraseGuide(); flush(true); }
+        if (selectionHandle != FloatingSelection.NONE) releaseSelection();
+        placeSelection();
         if (shapeStroke != null) {
             removeCallbacks(previewFrame); previewFrameScheduled = false;
             renderShape(shapeStroke.cancel(display, viewportBitmap != null)); shapeStroke = null; pointer = -1;
@@ -755,7 +739,10 @@ final class DrawingPad extends View {
         lastPreviewFrame = SystemClock.uptimeMillis();
         if (shapeStroke != null) renderShape(shapeStroke.preview(shapeX, shapeY, display, viewportBitmap != null));
         else if (showsGradientGuide()) drawGradientGuide();
-        else return;
+        else if (lassoCount > 0) drawLasso();
+        else if (selectionHandle != FloatingSelection.NONE) {
+            selection.drag(selectionHandle, grabX, grabY, dragX, dragY); showSelection();
+        } else return;
         flush(true); previewFrameCount++;
     }
     private void renderShape(Rect dirty) {
@@ -764,6 +751,144 @@ final class DrawingPad extends View {
         dirty.inset(-2, -2);
         if (!dirty.intersect(0, 0, document.width, document.height)) return;
         queue(dirty);
+    }
+
+    // The lasso and floating selections
+
+    /** Whether a lifted piece or imported picture is floating over the page. */
+    boolean hasSelection() { return selection != null; }
+    /** How many view pixels a page pixel spans. */
+    private float pageScale() { return pageToView.mapRadius(1); }
+    /** The selection's turning knob, beside the edge facing the top of the screen, and on it. */
+    private float[] selectionKnob() {
+        float[] up = {0, -1};
+        viewToPage.mapVectors(up);
+        // The page area on screen, less room for the knob's own dot.
+        RectF visible = new RectF(0, 0, getWidth(), getHeight());
+        viewToPage.mapRect(visible);
+        if (!visible.intersect(0, 0, document.width, document.height)) visible.set(0, 0, document.width, document.height);
+        float margin = dp(14) / pageScale();
+        visible.inset(Math.min(margin, visible.width() / 2), Math.min(margin, visible.height() / 2));
+        return selection.knob(up[0], up[1], dp(40) / pageScale(), new float[]{visible.left, visible.top, visible.right, visible.bottom});
+    }
+    /** Ends the pen's hold on the canvas after a lasso loop or selection drag. */
+    private void endPenPreview() {
+        removeCallbacks(previewFrame); previewFrameScheduled = false;
+        pointer = -1; endFastPreview(); getParent().requestDisallowInterceptTouchEvent(false);
+    }
+    private void beginLasso(MotionEvent event, int index) {
+        // Wet paint would go on changing the layer under the piece.
+        dryWet();
+        pointer = event.getPointerId(index);
+        getParent().requestDisallowInterceptTouchEvent(true);
+        lassoCount = lassoShown = 0; addLassoPoint();
+        beginFastPreview();
+    }
+    /** Adds {@link #samplePoint} to the loop, skipping points too close to the last to show. */
+    private void addLassoPoint() {
+        float x = samplePoint[0], y = samplePoint[1];
+        if (lassoCount > 0 && Math.hypot(x - lasso[2*lassoCount-2], y - lasso[2*lassoCount-1]) < dp(3) / pageScale()) return;
+        if (2 * lassoCount + 2 > lasso.length) lasso = java.util.Arrays.copyOf(lasso, 2 * lasso.length);
+        lasso[2*lassoCount] = x; lasso[2*lassoCount+1] = y; lassoCount++;
+    }
+    /** Draws the loop's points not yet shown, joined to those that are. */
+    private void drawLasso() {
+        int from = Math.max(0, lassoShown - 1), count = lassoCount - from;
+        if (count < 2 || presented() == null) return;
+        float[] points = presentedPoints(java.util.Arrays.copyOfRange(lasso, 2 * from, 2 * lassoCount), count);
+        guide.add(presented(), points, count, false, null, 0, this::queueView);
+        lassoShown = lassoCount;
+    }
+    private void grabSelection(MotionEvent event, int index, int handle) {
+        pointer = event.getPointerId(index);
+        getParent().requestDisallowInterceptTouchEvent(true);
+        selectionHandle = handle; grabX = dragX = samplePoint[0]; grabY = dragY = samplePoint[1];
+        selection.grab(handle);
+        beginFastPreview();
+    }
+    /** Follows the pen drawing a loop or dragging the selection. */
+    private void continueSelection(MotionEvent event) {
+        int action = event.getActionMasked(), index = event.findPointerIndex(pointer);
+        if (action == MotionEvent.ACTION_CANCEL || index < 0) {
+            // Keep the piece where it got to; an unfinished loop lifts nothing.
+            if (lassoCount > 0) { lassoCount = 0; endPenPreview(); eraseGuide(); flush(true); }
+            else releaseSelection();
+            return;
+        }
+        boolean up = pointerUp(event, pointer);
+        if (action == MotionEvent.ACTION_MOVE || up) {
+            if (lassoCount > 0) for (int h = 0; h < event.getHistorySize(); h++) {
+                pagePoint(event.getHistoricalX(index, h), event.getHistoricalY(index, h)); addLassoPoint();
+            }
+            pagePoint(event.getX(index), event.getY(index));
+            if (lassoCount > 0) addLassoPoint(); else { dragX = samplePoint[0]; dragY = samplePoint[1]; }
+            if (!up) schedulePreviewFrame();
+        }
+        if (!up) return;
+        drawPreviewFrame();
+        if (selectionHandle != FloatingSelection.NONE) { releaseSelection(); return; }
+        // A tap, such as one that placed the last piece, draws no loop.
+        boolean loop = lassoCount >= 3;
+        FloatingSelection lifted = loop ? FloatingSelection.lift(document, lasso, lassoCount) : null;
+        lassoCount = 0; endPenPreview(); eraseGuide();
+        if (lifted == null) { flush(true); if (loop) app.message("Nothing on this layer inside the loop."); return; }
+        floatSelection(lifted);
+    }
+    /** Ends a selection drag, leaving the piece floating where it got to. */
+    private void releaseSelection() {
+        selection.release(); selectionHandle = FloatingSelection.NONE; endPenPreview();
+        // A knob that would have left the screen during a turn moves inside now.
+        eraseGuide(); drawSelectionFrame(); flush(true);
+    }
+    /** Floats {@code piece} over the page, placing any piece already floating first. */
+    void floatSelection(FloatingSelection piece) {
+        finishStroke(); dryWet();
+        selection = piece; selectionPreview = new SelectionPreview(document, piece);
+        showSelection(); flush(true);
+    }
+    /** Redraws the piece where it lies now, with its frame. */
+    private void showSelection() {
+        eraseGuide();
+        Rect dirty = selectionPreview.show(display, viewportBitmap != null);
+        if (!dirty.isEmpty()) queue(dirty);
+        drawSelectionFrame();
+    }
+    /** Outlines the piece, with a dot on each corner to scale it and a knob to turn it. */
+    private void drawSelectionFrame() {
+        if (selection == null || presented() == null) return;
+        float[] corners = presentedPoints(selection.corners(), 4), knob = selectionKnob();
+        guide.add(presented(), corners, 4, true, corners, dp(5), this::queueView);
+        float[] stem = presentedPoints(new float[]{knob[2], knob[3], knob[0], knob[1]}, 2);
+        guide.add(presented(), stem, 2, false, new float[]{stem[2], stem[3]}, dp(8), this::queueView);
+    }
+    /** Lays the floating piece on the page as one undo step. */
+    void placeSelection() {
+        if (selection == null) return;
+        FloatingSelection piece = selection; Rect area = endSelection();
+        boolean changed;
+        try { changed = piece.place(document); }
+        catch (IllegalStateException error) { changed = false; app.message(error.getMessage()); }
+        // The preview showed nearest pixels; the page now holds them blended.
+        renderArea(area); renderDirty(); flush(true);
+        if (changed) app.recovery();
+    }
+    /** Drops the floating piece, leaving the page as it was; false when none floats. */
+    boolean cancelSelection() {
+        if (selection == null) return false;
+        if (selectionHandle != FloatingSelection.NONE) { selectionHandle = FloatingSelection.NONE; endPenPreview(); }
+        renderArea(endSelection()); flush(true);
+        return true;
+    }
+    /** Forgets the floating piece and its frame; returns the page pixels its preview covered. */
+    private Rect endSelection() {
+        eraseGuide();
+        Rect area = selectionPreview.area();
+        selection = null; selectionPreview = null;
+        return area;
+    }
+    /** Re-renders these page pixels from the document and queues them. */
+    private void renderArea(Rect area) {
+        if (area.intersect(0, 0, display.getWidth(), display.getHeight())) { render(area); queue(area); }
     }
 
     // Fills and gradients
@@ -928,7 +1053,7 @@ final class DrawingPad extends View {
         int fingers = fingerTaps.event(event.getActionMasked(), event.getEventTime(), ids, x, y, dp(18));
         if (fingers == 0) return false;
         endNavigation();
-        app.history(fingers == 2 ? document::undo : document::redo);
+        if (fingers == 2) app.undo(); else app.history(document::redo);
         return true;
     }
 

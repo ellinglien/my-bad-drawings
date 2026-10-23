@@ -1,19 +1,14 @@
 #include <jni.h>
 #include <android/bitmap.h>
 #include <stdint.h>
-
-#define MAX_LAYERS 8
-static void fail(JNIEnv *env,const char *message) {
-    jclass type=(*env)->FindClass(env,"java/lang/IllegalStateException");
-    if(type)(*env)->ThrowNew(env,type,message);
-}
+#include "layers.h"
 
 typedef struct {
-    uint8_t *tones[MAX_LAYERS],*alpha[MAX_LAYERS];
-    int visible[MAX_LAYERS],count,active,shade,logical,width;
+    const uint8_t **tones,**alpha;
+    int visible[MAX_LAYERS],count,active,shade,width;
     uint8_t *pixels;
     uint32_t stride;
-    jint *dots;
+    const jint *dots;
     int left,top,right,bottom;
 } Raster;
 
@@ -33,12 +28,10 @@ static void span(Raster *r,int y,int left,int right,int paint) {
         for(int layer=opaque?r->active+1:0;layer<r->count;layer++) {
             if(!r->visible[layer] || (paint && r->shade<0 && layer==r->active))continue;
             int replacement=paint && layer==r->active;
-            int a=((replacement?255:r->alpha[layer][offset+x])*r->visible[layer]+50)/100;
-            int tone=replacement?r->shade:r->tones[layer][offset+x];
-            if(a)value=(tone*a+value*(255-a)+127)/255;
+            value=over(value,replacement?r->shade:r->tones[layer][offset+x],
+                    replacement?255:r->alpha[layer][offset+x],r->visible[layer]);
         }
-        out[x]=r->logical?0xff000000u|(uint32_t)value*0x010101u
-                :(uint32_t)r->dots[value*64+(y&7)*8+(x&7)];
+        out[x]=shown(value,x,y,r->dots);
     }
 }
 static void difference(Raster *r,int y,const jint *source,const jint *subtract,int paint) {
@@ -61,29 +54,20 @@ Java_io_github_mpdairy_monopaint_ShapePreview_nativeApply(JNIEnv *env,jclass cla
         jintArray previous,jintArray next,jintArray dots,jboolean logical,jintArray dirty) {
     (void)clazz;
     AndroidBitmapInfo info;
-    int count=(*env)->GetArrayLength(env,tones);
+    Layers layers;
     if(AndroidBitmap_getInfo(env,display,&info)!=ANDROID_BITMAP_RESULT_SUCCESS
-            || info.format!=ANDROID_BITMAP_FORMAT_RGBA_8888 || count<1 || count>MAX_LAYERS
-            || active<0 || active>=count || shade< -1 || shade>255
-            || (*env)->GetArrayLength(env,alpha)!=count || (*env)->GetArrayLength(env,visible)!=count
+            || info.format!=ANDROID_BITMAP_FORMAT_RGBA_8888) { fail(env,"Invalid shape preview");return; }
+    if(!layers_find(env,&layers,tones,alpha,(size_t)info.width*info.height))return;
+    int count=layers.count;
+    if(active<0 || active>=count || shade< -1 || shade>255 || (*env)->GetArrayLength(env,visible)!=count
             || (*env)->GetArrayLength(env,previous)!=(int)info.height*4
             || (*env)->GetArrayLength(env,next)!=(int)info.height*4
             || (*env)->GetArrayLength(env,dots)!=256*64 || (*env)->GetArrayLength(env,dirty)!=4) {
         fail(env,"Invalid shape preview");return;
     }
-    jbyteArray toneRefs[MAX_LAYERS]={0},alphaRefs[MAX_LAYERS]={0};
-    Raster r={.count=count,.active=active,.shade=shade,.logical=logical,.width=(int)info.width,
+    Raster r={.tones=layers.tones,.alpha=layers.alpha,.count=count,.active=active,.shade=shade,.width=(int)info.width,
               .stride=info.stride,.left=(int)info.width,.top=(int)info.height};
     (*env)->GetIntArrayRegion(env,visible,0,count,r.visible);
-    for(int i=0;i<count;i++) {
-        toneRefs[i]=(*env)->GetObjectArrayElement(env,tones,i);
-        alphaRefs[i]=(*env)->GetObjectArrayElement(env,alpha,i);
-        if(!toneRefs[i] || !alphaRefs[i]
-                || (*env)->GetArrayLength(env,toneRefs[i])!=(int)(info.width*info.height)
-                || (*env)->GetArrayLength(env,alphaRefs[i])!=(int)(info.width*info.height)) {
-            fail(env,"Invalid shape layers");return;
-        }
-    }
     void *pixels=NULL;
     if(AndroidBitmap_lockPixels(env,display,&pixels)!=ANDROID_BITMAP_RESULT_SUCCESS) {
         fail(env,"Cannot write shape preview");return;
@@ -93,22 +77,15 @@ Java_io_github_mpdairy_monopaint_ShapePreview_nativeApply(JNIEnv *env,jclass cla
     // No allocation, blocking, or arbitrary JNI calls occur while the arrays are pinned.
     jint *old=(*env)->GetPrimitiveArrayCritical(env,previous,NULL);
     jint *current=old?(*env)->GetPrimitiveArrayCritical(env,next,NULL):NULL;
-    r.dots=current?(*env)->GetPrimitiveArrayCritical(env,dots,NULL):NULL;
-    int ready=r.dots!=NULL;
-    for(int i=0;i<count && ready;i++) {
-        r.tones[i]=(*env)->GetPrimitiveArrayCritical(env,toneRefs[i],NULL);
-        if(r.tones[i])r.alpha[i]=(*env)->GetPrimitiveArrayCritical(env,alphaRefs[i],NULL);
-        ready=r.tones[i] && r.alpha[i];
-    }
+    jint *pattern=current?(*env)->GetPrimitiveArrayCritical(env,dots,NULL):NULL;
+    int ready=pattern!=NULL && layers_pin(env,&layers);
+    r.dots=logical?NULL:pattern;
     if(ready)for(int y=0;y<(int)info.height;y++) {
         difference(&r,y,old+y*4,current+y*4,0);
         difference(&r,y,current+y*4,old+y*4,1);
     }
-    for(int i=count-1;i>=0;i--) {
-        if(r.alpha[i])(*env)->ReleasePrimitiveArrayCritical(env,alphaRefs[i],r.alpha[i],JNI_ABORT);
-        if(r.tones[i])(*env)->ReleasePrimitiveArrayCritical(env,toneRefs[i],r.tones[i],JNI_ABORT);
-    }
-    if(r.dots)(*env)->ReleasePrimitiveArrayCritical(env,dots,r.dots,JNI_ABORT);
+    layers_release(env,&layers);
+    if(pattern)(*env)->ReleasePrimitiveArrayCritical(env,dots,pattern,JNI_ABORT);
     if(current)(*env)->ReleasePrimitiveArrayCritical(env,next,current,JNI_ABORT);
     if(old)(*env)->ReleasePrimitiveArrayCritical(env,previous,old,JNI_ABORT);
     AndroidBitmap_unlockPixels(env,display);

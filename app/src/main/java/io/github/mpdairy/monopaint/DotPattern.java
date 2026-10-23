@@ -35,6 +35,21 @@ final class DotPattern {
         }
         throw new IllegalStateException("Palette must end at white");
     }
+    /** The tone that {@link #exportGray} turns into each PNG gray, or the nearest one. */
+    private static final int[] IMPORTED = new int[256];
+    static {
+        for (int png = 0; png < 256; png++) {
+            int best = 0;
+            for (int tone = 1; tone < 256; tone++)
+                if (Math.abs(exportGray(tone) - png) < Math.abs(exportGray(best) - png)) best = tone;
+            IMPORTED[png] = best;
+        }
+    }
+    /** The tone for a PNG gray, undoing {@link #exportGray}, so an exported painting imports with the tones it had. */
+    static int importGray(int gray) {
+        if(gray<0||gray>255)throw new IllegalArgumentException("Invalid gray");
+        return IMPORTED[gray];
+    }
     /** Even density spacing across the picker, including the intermediate light shades. */
     static int pickerTone(int position) {
         int count = (Math.max(0, Math.min(255, position)) * 64 + 127) / 255;

@@ -85,6 +85,11 @@ final class FullscreenController {
         });
         show("Page "+(index+1)+" — use the extra space?",panel);
     }
+    /**
+     * Gives a page set to Expand canvas all the screen it would have with every bar hidden, now,
+     * so a picture fitted to the page fills the screen once the bars are gone.
+     */
+    void expandChosenCanvas() { if(app.book.canvasChoice()==2) expand(false); }
     private boolean expand(boolean explain) {
         app.pad.finishStroke(); app.pad.dryWet();
         // Include all hidden margins in the page's own coordinates, in every app rotation.

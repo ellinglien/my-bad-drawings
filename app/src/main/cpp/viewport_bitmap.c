@@ -3,11 +3,8 @@
 #include <stdint.h>
 #include <math.h>
 #include <stdlib.h>
+#include "layers.h"
 
-static void fail(JNIEnv *env,const char *message) {
-    jclass type=(*env)->FindClass(env,"java/lang/IllegalStateException");
-    if(type) (*env)->ThrowNew(env,type,message);
-}
 
 /* Sample logical tones, then apply the shared screen-pixel calibration in one pass.
  * This touches only app-owned bitmaps, never the display device. */
@@ -78,26 +75,18 @@ Java_io_github_mpdairy_monopaint_ViewportBitmap_nativeCompose(JNIEnv *env,jclass
         jobject target,jobjectArray tones,jobjectArray alpha,jintArray opacity,jintArray dots) {
     (void)clazz;
     AndroidBitmapInfo info;
-    int count=(*env)->GetArrayLength(env,tones);
-    if(count>8 || (*env)->GetArrayLength(env,opacity)!=count || (*env)->GetArrayLength(env,alpha)!=count
-            || (dots && (*env)->GetArrayLength(env,dots)!=256*64)
-            || AndroidBitmap_getInfo(env,target,&info)!=ANDROID_BITMAP_RESULT_SUCCESS
+    Layers layers;
+    if(AndroidBitmap_getInfo(env,target,&info)!=ANDROID_BITMAP_RESULT_SUCCESS
             || info.format!=ANDROID_BITMAP_FORMAT_RGBA_8888) {
         fail(env,"Invalid navigation layers");return;
     }
-    jint opacities[8]={0};
-    (*env)->GetIntArrayRegion(env,opacity,0,count,opacities);
-    jbyteArray tone_refs[8]={0},alpha_refs[8]={0};
-    const uint8_t *tone_pixels[8]={0},*alpha_pixels[8]={0};
-    for(int i=0;i<count;i++) {
-        tone_refs[i]=(*env)->GetObjectArrayElement(env,tones,i);
-        alpha_refs[i]=(*env)->GetObjectArrayElement(env,alpha,i);
-        if(!tone_refs[i] || !alpha_refs[i]
-                || (*env)->GetArrayLength(env,tone_refs[i])!=(int)(info.width*info.height)
-                || (*env)->GetArrayLength(env,alpha_refs[i])!=(int)(info.width*info.height)) {
-            fail(env,"Invalid navigation layer size");return;
-        }
+    if(!layers_find(env,&layers,tones,alpha,(size_t)info.width*info.height))return;
+    int count=layers.count;
+    if((*env)->GetArrayLength(env,opacity)!=count || (dots && (*env)->GetArrayLength(env,dots)!=256*64)) {
+        fail(env,"Invalid navigation layers");return;
     }
+    jint opacities[MAX_LAYERS]={0};
+    (*env)->GetIntArrayRegion(env,opacity,0,count,opacities);
     void *pixels=NULL;
     if(AndroidBitmap_lockPixels(env,target,&pixels)!=ANDROID_BITMAP_RESULT_SUCCESS) {
         fail(env,"Cannot compose navigation bitmap");return;
@@ -105,30 +94,19 @@ Java_io_github_mpdairy_monopaint_ViewportBitmap_nativeCompose(JNIEnv *env,jclass
     int ready=1;
     jint *pattern=dots?(*env)->GetIntArrayElements(env,dots,NULL):NULL;
     if(dots && !pattern)ready=0;
-    for(int i=0;i<count && ready;i++) {
-        tone_pixels[i]=(*env)->GetPrimitiveArrayCritical(env,tone_refs[i],NULL);
-        if(tone_pixels[i])alpha_pixels[i]=(*env)->GetPrimitiveArrayCritical(env,alpha_refs[i],NULL);
-        ready=tone_pixels[i] && alpha_pixels[i];
-    }
+    if(ready)ready=layers_pin(env,&layers);
     if(ready)for(uint32_t y=0;y<info.height;y++) {
         uint32_t *out=(uint32_t *)((uint8_t *)pixels+(size_t)y*info.stride);
         for(uint32_t x=0;x<info.width;x++)out[x]=0xffffffff;
         for(int layer=0;layer<count;layer++) {
-            const uint8_t *t=tone_pixels[layer]+(size_t)y*info.width;
-            const uint8_t *a=alpha_pixels[layer]+(size_t)y*info.width;
-            for(uint32_t x=0;x<info.width;x++) {
-                unsigned coverage=(a[x]*opacities[layer]+50)/100;
-                unsigned shade=(t[x]*coverage+(out[x]&255)*(255-coverage)+127)/255;
-                out[x]=0xff000000u|shade*0x010101u;
-            }
+            const uint8_t *t=layers.tones[layer]+(size_t)y*info.width;
+            const uint8_t *a=layers.alpha[layer]+(size_t)y*info.width;
+            for(uint32_t x=0;x<info.width;x++)
+                out[x]=0xff000000u|over(out[x]&255,t[x],a[x],opacities[layer])*0x010101u;
         }
-        if(pattern)for(uint32_t x=0;x<info.width;x++)
-            out[x]=(uint32_t)pattern[(out[x]&255)*64+(y&7)*8+(x&7)];
+        if(pattern)for(uint32_t x=0;x<info.width;x++)out[x]=shown(out[x]&255,(int)x,(int)y,pattern);
     }
-    for(int i=count-1;i>=0;i--) {
-        if(alpha_pixels[i])(*env)->ReleasePrimitiveArrayCritical(env,alpha_refs[i],(void *)alpha_pixels[i],JNI_ABORT);
-        if(tone_pixels[i])(*env)->ReleasePrimitiveArrayCritical(env,tone_refs[i],(void *)tone_pixels[i],JNI_ABORT);
-    }
+    layers_release(env,&layers);
     if(pattern)(*env)->ReleaseIntArrayElements(env,dots,pattern,JNI_ABORT);
     AndroidBitmap_unlockPixels(env,target);
 }

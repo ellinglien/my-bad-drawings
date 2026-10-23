@@ -6,11 +6,6 @@ import android.graphics.Rect;
 /** Display-only preview. The document and its undo history stay untouched until pen-up. */
 final class ShapePreview {
     static { System.loadLibrary("monopaint_display"); }
-    private static final int[] DOTS=new int[256*64];
-    static {
-        for(int tone=0;tone<256;tone++)for(int y=0;y<8;y++)for(int x=0;x<8;x++)
-            DOTS[tone*64+y*8+x]=DotPattern.pixel(tone,x,y);
-    }
     private static native void nativeApply(Bitmap display,byte[][] tones,byte[][] alpha,int[] visible,
             int active,int shade,int[] previous,int[] next,int[] dots,boolean logical,int[] dirty);
     private final ToneDocument document;
@@ -37,7 +32,7 @@ final class ShapePreview {
         return apply(display,logical);
     }
     private Rect apply(Bitmap display,boolean logical) {
-        nativeApply(display,tones,alpha,visible,active,shade,previous,next,DOTS,logical,dirty);
+        nativeApply(display,tones,alpha,visible,active,shade,previous,next,ViewportBitmap.DOTS,logical,dirty);
         int[] swap=previous;previous=next;next=swap;
         return new Rect(dirty[0],dirty[1],dirty[2],dirty[3]);
     }

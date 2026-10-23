@@ -8,7 +8,8 @@ import android.graphics.RectF;
 /** Scale logical tones first, then dither at screen resolution so zoom cannot alias shades. */
 final class ViewportBitmap {
     static { System.loadLibrary("monopaint_display"); }
-    private static final int[] DOTS=new int[256*64];
+    /** Each tone's 8 × 8 dot pattern, as the canvas shows it unzoomed. */
+    static final int[] DOTS=new int[256*64];
     static {
         for(int tone=0;tone<256;tone++) for(int y=0;y<8;y++) for(int x=0;x<8;x++)
             DOTS[tone*64+y*8+x]=DotPattern.pixel(tone,x,y);

@@ -19,6 +19,7 @@ final class ToolIcons {
             case BRUSH: return R.drawable.ic_brush;
             case BRUSH_PEN: return R.drawable.ic_brush_pen;
             case WET_BRUSH_PEN: return R.drawable.ic_wet_brush_pen;
+            case LASSO: return R.drawable.ic_lasso;
             default: throw new IllegalArgumentException("No icon for " + tool);
         }
     }

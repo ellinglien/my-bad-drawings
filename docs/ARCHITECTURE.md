@@ -48,8 +48,16 @@ To add a tool:
    in page coordinates and edits the `ToneDocument`; `finish()` commits one undo step.
 5. Add it to `Toolbar.TOOLS` to show it in the side toolbar.
 
-Fill and Shapes are drag-and-release gestures rather than strokes. `DrawingPad` runs
-them itself.
+Fill, Shapes and Lasso are drag-and-release gestures rather than strokes. `DrawingPad` runs
+them itself. Live previews draw straight into the display raster without touching the
+document: `ShapePreview` and `SelectionPreview` composite the layers natively (sharing
+`cpp/layers.h` with page composition), and `CanvasGuide` draws guide lines over the artwork,
+such as the gradient's direction or a selection's frame, and restores what was beneath.
+
+A Lasso loop lifts a `FloatingSelection` from the active layer, and **Import image…**
+(`ImageImport`) floats a picture the same way. The piece moves, scales and turns over the
+page; `DrawingPad.placeSelection` lays it as one undo step when the pen lands elsewhere or
+any other action calls `finishStroke`, and Undo drops it instead (`cancelSelection`).
 
 ## Documents
 

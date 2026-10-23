@@ -24,7 +24,7 @@ final class Toolbar {
     /** Tools offered in the toolbar, in their default order. */
     static final ToolSettings.Tool[] TOOLS = {ToolSettings.Tool.BRUSH, ToolSettings.Tool.BRUSH_PEN, ToolSettings.Tool.PENCIL,
             ToolSettings.Tool.AIRBRUSH, ToolSettings.Tool.FILL, ToolSettings.Tool.SHAPES,
-            ToolSettings.Tool.ERASER, ToolSettings.Tool.SOFTEN};
+            ToolSettings.Tool.ERASER, ToolSettings.Tool.SOFTEN, ToolSettings.Tool.LASSO};
     /** Toolbar entries that are not tools. */
     static final String LAYERS = "LAYERS", ZOOM = "ZOOM", PALETTE = "PALETTE";
 
@@ -169,16 +169,17 @@ final class Toolbar {
         zoomButton.overlay = (canvas, button) -> drawLock(canvas, button, app.navigationLocked);
         markActive(zoomButton, false); refreshZoom();
     }
-    /** A selectable tool or favorite: tap selects, tapping again opens settings. */
-    private ToolButton selectable(String key, String name, int icon, Runnable select) {
+    /** A selectable tool or favorite: tap selects, tapping again opens its settings if it has any. */
+    private ToolButton selectable(String key, String name, int icon, boolean settings, Runnable select) {
         ToolButton control = railButton(name, icon, () -> {
             if (key.equals("tool:SHAPES") && !shapeChosen()) { select.run(); app.showToolSettings(); }
-            else if (selectedKey().equals(key)) app.showToolSettings();
-            else select.run();
+            else if (!selectedKey().equals(key)) select.run();
+            else if (settings) app.showToolSettings();
         });
-        control.settingsArrow = app.getDrawable(R.drawable.ic_chevron); control.selectionOutline = true;
+        if (settings) control.settingsArrow = app.getDrawable(R.drawable.ic_chevron);
+        control.selectionOutline = true;
         control.iconOffset = -4;
-        control.setContentDescription(name + ". Tap to select; tap again for settings.");
+        control.setContentDescription(name + (settings ? ". Tap to select; tap again for settings." : ". Tap to select."));
         selectionButtons.put(key, control);
         control.marked = selectedKey().equals(key); markActive(control, control.marked);
         return control;
@@ -186,7 +187,9 @@ final class Toolbar {
     private void addTool(ToolSettings.Tool tool) {
         String key = "tool:" + tool;
         ToolSettings remembered = library().builtin(chosen(tool));
-        ToolButton button = selectable(key, remembered.label(), ToolIcons.of(remembered), () -> {
+        // The lasso has no settings.
+        boolean settings = !tool.selects;
+        ToolButton button = selectable(key, remembered.label(), ToolIcons.of(remembered), settings, () -> {
             library().select(chosen(tool)); refreshToolSelection(); app.saveToolState();
         });
         presentTool(button, remembered, null);
@@ -194,13 +197,13 @@ final class Toolbar {
             if (!app.busy()) {
                 app.setPickingShade(false); app.pad.finishStroke();
                 if (!selectedKey().equals(key)) { library().select(chosen(tool)); refreshToolSelection(); app.saveToolState(); }
-                app.showToolSettings();
+                if (settings) app.showToolSettings();
             }
             return true;
         });
     }
     private void addPreset(ToolLibrary.Preset preset) {
-        ToolButton button = selectable(preset.id, preset.name, ToolIcons.of(preset.settings), () -> {
+        ToolButton button = selectable(preset.id, preset.name, ToolIcons.of(preset.settings), true, () -> {
             library().recall(preset.id); refreshToolSelection(); app.saveToolState();
         });
         button.presetId = preset.id;

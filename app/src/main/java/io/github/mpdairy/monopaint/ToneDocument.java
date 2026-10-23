@@ -110,13 +110,24 @@ final class ToneDocument {
         if(mask==null||(x+y)%HATCH>=HATCH_LINE||shield(y*width+x)<32) return -1;
         return compositeTone(x,y)<128?255:0;
     }
-    void addLayer() {
+    void addLayer() { addLayer(paper(width,height),new byte[width*height]); }
+    /** Adds a layer holding these raw tones and coverage above the active one, and selects it. */
+    void addLayer(byte[] layerTones,byte[] layerAlpha) {
         idle(); if(layers.size()>=MAX_LAYERS) throw new IllegalStateException("Each page can have up to "+MAX_LAYERS+" layers.");
+        if(layerTones.length!=width*height||layerAlpha.length!=width*height) throw new IllegalArgumentException("Invalid layer pixels");
         StackState old=new StackState(this);
         int number=1;
         while(hasName("Layer "+number)) number++;
-        layers.add(active+1,new Layer("Layer "+number,true,paper(width,height),new byte[width*height]));
+        layers.add(active+1,new Layer("Layer "+number,true,layerTones,layerAlpha));
         selectLayer(active+1); stackEdit(old);
+    }
+    /** Copies the active layer's raw tones and coverage in this rectangle, which must lie on the page. */
+    void copyLayer(int x,int y,int w,int h,byte[] layerTones,byte[] layerAlpha) {
+        Layer layer=layers.get(active);
+        for(int row=0;row<h;row++) {
+            System.arraycopy(layer.tones,(y+row)*width+x,layerTones,row*w,w);
+            System.arraycopy(layer.alpha,(y+row)*width+x,layerAlpha,row*w,w);
+        }
     }
     private boolean hasName(String name) { for(Layer layer:layers) if(layer.name.equals(name)) return true; return false; }
     void removeLayer() {
@@ -262,6 +273,8 @@ final class ToneDocument {
         return pixels;
     }
     void begin() { begin(maskTarget); }
+    /** Begins a gesture on the active layer, even while gestures lay masking fluid. */
+    void beginLayer() { begin(false); }
     private void begin(boolean fluid) {
         if (editing) throw new IllegalStateException("Finish the current gesture first");
         if(fluid) {
@@ -345,6 +358,15 @@ final class ToneDocument {
         int from=onWhite(baseTone,baseAlpha);
         int reach=Math.abs(onWhite(result,resultAlpha)-from)+Math.abs(resultAlpha-baseAlpha);
         if(reach>Math.abs(tone(x,y)-from)+Math.abs(opacity(x,y)-baseAlpha)) setPixel(x,y,result,resultAlpha);
+    }
+    /** Lays {@code gray} at {@code coverage} over the pixel as it is now, as a separate sheet would lie over it. */
+    void overTone(int x,int y,int gray,int coverage) {
+        if(x<0||y<0||x>=width||y>=height) return;
+        int i=y*width+x, under=alpha[i]&255, kept=under*(255-coverage);
+        int resultAlpha=coverage+(kept+127)/255;
+        if(resultAlpha==0) return;
+        int pigment=gray*coverage*255+(tones[i]&255)*kept;
+        setPixel(x,y,Math.max(0,Math.min(255,(pigment+resultAlpha*255/2)/(resultAlpha*255))),Math.min(255,resultAlpha));
     }
     /** Strongest pencil contact in this gesture, carrying the chosen pigment and its coverage. */
     void pencilTone(int x,int y,int gray,float strength) { pencilTone(x,y,gray,strength,1); }

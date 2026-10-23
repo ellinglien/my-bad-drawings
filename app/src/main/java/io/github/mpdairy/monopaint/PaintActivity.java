@@ -213,7 +213,7 @@ public final class PaintActivity extends Activity implements ControlHost {
         });
         menuControls = new LinearLayout(this);
         menuControls.addView(menuButton, new LinearLayout.LayoutParams(dp(48), dp(48)));
-        headerAction("Undo", R.drawable.ic_undo, () -> history(pad.document::undo));
+        headerAction("Undo", R.drawable.ic_undo, this::undo);
         headerAction("Redo", R.drawable.ic_redo, () -> history(pad.document::redo));
         leftHeader.addView(menuControls);
 
@@ -704,11 +704,12 @@ public final class PaintActivity extends Activity implements ControlHost {
     AlertDialog appSettings() { closePagePanel(); return new AppSettingsDialog(this).dialog; }
 
     private void fileMenu(View anchor) {
-        String[] names = {"New painting", "Open painting", "Save painting as…", "Export PNG…", "Fullscreen…", "Settings"};
-        int[] icons = {R.drawable.ic_new, R.drawable.ic_open, R.drawable.ic_save, R.drawable.ic_export, R.drawable.ic_zoom, R.drawable.ic_settings};
+        String[] names = {"New painting", "Open painting", "Save painting as…", "Import image…", "Export PNG…", "Fullscreen…", "Settings"};
+        int[] icons = {R.drawable.ic_new, R.drawable.ic_open, R.drawable.ic_save, R.drawable.ic_import, R.drawable.ic_export,
+                R.drawable.ic_zoom, R.drawable.ic_settings};
         Runnable[] actions = {() -> settleChanges("starting a new painting", this::startNewDrawing),
-                () -> settleChanges("opening another painting", this::openDrawing), this::saveDrawingAs, this::exportPng,
-                () -> fullscreen.showModes(), this::appSettings};
+                () -> settleChanges("opening another painting", this::openDrawing), this::saveDrawingAs, this::importImage,
+                this::exportPng, () -> fullscreen.showModes(), this::appSettings};
         menu(anchor, names, icons, actions);
     }
     /** A list of labeled rows below the hamburger; tapping one closes the list and runs its action. */
@@ -753,6 +754,11 @@ public final class PaintActivity extends Activity implements ControlHost {
         catch (IllegalStateException | IllegalArgumentException error) { message(error.getMessage()); }
     }
     interface HistoryStep { boolean apply(); }
+    /** Undoes the last change; a floating selection is dropped instead, putting back what it lifted. */
+    void undo() {
+        if (pad.cancelSelection()) return;
+        history(pad.document::undo);
+    }
     void history(HistoryStep step) {
         pad.finishStroke(); pad.dryWet();
         int width=pad.document.width, height=pad.document.height;
@@ -1092,7 +1098,7 @@ public final class PaintActivity extends Activity implements ControlHost {
         // A failed save must never change the destination of subsequent saves.
         if (book == savedBook) { savedBook.markSaved(snapshot.book); drawingName = path; recovery(); }
     }
-    private static final int PICK_FOLDER = 1;
+    private static final int PICK_FOLDER = 1, PICK_IMAGE = 3;
     private Consumer<Uri> folderPicked;
     /** Opens Android's folder picker at Supernote's EXPORT folder; keeps access to the chosen folder. */
     void pickFolder(Consumer<Uri> picked) {
@@ -1108,6 +1114,10 @@ public final class PaintActivity extends Activity implements ControlHost {
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
         if (request == SHARED_STORAGE) { loadDrawing(); return; }
+        if (request == PICK_IMAGE) {
+            if (result == RESULT_OK && data != null && data.getData() != null && !busy()) ImageImport.ask(this, data.getData());
+            return;
+        }
         if (request != PICK_FOLDER) return;
         Consumer<Uri> picked = folderPicked; folderPicked = null;
         if (picked == null || result != RESULT_OK || data == null || data.getData() == null) return;
@@ -1115,6 +1125,11 @@ public final class PaintActivity extends Activity implements ControlHost {
         getContentResolver().takePersistableUriPermission(tree,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         picked.accept(tree);
+    }
+    private void importImage() {
+        if (ImageImport.browse(this)) return;
+        try { startActivityForResult(ImageImport.picker(), PICK_IMAGE); }
+        catch (android.content.ActivityNotFoundException error) { message("No file picker on this tablet"); }
     }
     private void exportPng() {
         pad.dryWet();

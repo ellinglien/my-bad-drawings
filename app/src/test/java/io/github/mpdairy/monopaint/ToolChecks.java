@@ -5,8 +5,8 @@ import java.util.Arrays;
 
 public final class ToolChecks {
     public static void main(String[] args) throws Exception {
-        gradientSettings(); presets(); favoriteIsolation(); favoriteNumbers(); flatHeight(); wideFlat(); customEdits(); presetDragOrder(); legacyPresets(); pressureResponse(); brushHeads(); tiltDirection(); sizeRanges(); fills(); tolerantFills(); softErase(); soften(); directionalBlend(); stumpStrength(); pencil(); brushPenMigration();
-        System.out.println("PASS: preset CRUD/order/recall/persistence, brush pen migration, bounded four-connected fill/cancel, soft eraser falloff, unbiased soften/edges, logical pencil texture/cap");
+        gradientSettings(); presets(); favoriteIsolation(); favoriteNumbers(); flatHeight(); wideFlat(); customEdits(); presetDragOrder(); legacyPresets(); pressureResponse(); brushHeads(); tiltDirection(); sizeRanges(); fills(); tolerantFills(); softErase(); soften(); directionalBlend(); stumpStrength(); pencil(); brushPenMigration(); beforeLasso();
+        System.out.println("PASS: preset CRUD/order/recall/persistence, brush pen and lasso migration, bounded four-connected fill/cancel, soft eraser falloff, unbiased soften/edges, logical pencil texture/cap");
     }
     private static void brushPenMigration() throws Exception {
         // Ten tools before the brush pen, eleven before the wet brush pen.
@@ -23,13 +23,28 @@ public final class ToolChecks {
         check(ToolSettings.defaults(ToolSettings.Tool.WET_BRUSH_PEN).coverage==ToolSettings.DEFAULT_COVERAGE,"Opaque wet paint covers half at first");
         check(!restored.builtin(ToolSettings.Tool.BRUSH).clearWater,"Other tools still read the shared flag as unset");
     }
+    /** The format before the Lasso stores twelve tools; reading it gives the Lasso its defaults. */
+    private static void beforeLasso() throws Exception {
+        ToolLibrary library=new ToolLibrary();library.select(ToolSettings.Tool.PENCIL);library.edit(library.current().size(44));library.add("Sketch");
+        java.io.DataInputStream in=new java.io.DataInputStream(new java.io.ByteArrayInputStream(library.encode()));
+        java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();java.io.DataOutputStream out=new java.io.DataOutputStream(bytes);
+        in.readInt();out.writeInt(0x54535049);byte[] record=new byte[75];
+        for(int i=0;i<26;i++){in.readFully(record);if(i!=12)out.write(record);}
+        out.writeUTF(in.readUTF());int count=in.readInt();out.writeInt(count);
+        for(int i=0;i<count;i++){out.writeUTF(in.readUTF());out.writeUTF(in.readUTF());in.readFully(record);out.write(record);}
+        check(in.read()==-1,"Pre-lasso fixture consumes every byte");
+        ToolLibrary restored=ToolLibrary.decode(bytes.toByteArray());
+        check(restored.current().equals(library.current()) && restored.activeId().equals(library.activeId()),"Pre-lasso format keeps the selected favorite");
+        check(restored.builtin(ToolSettings.Tool.LASSO).equals(ToolSettings.defaults(ToolSettings.Tool.LASSO)),"Migration adds the Lasso");
+        check(ToolSettings.Tool.LASSO.selects && !ToolSettings.Tool.LASSO.erasable && !ToolSettings.Tool.BRUSH.selects,"Only the Lasso selects");
+    }
     /** A format whose records stop after {@code kept} bytes, before the newer oil paint fields. */
     private static void beforeOilField(int version, int kept) throws Exception {
         ToolLibrary library=new ToolLibrary();library.select(ToolSettings.Tool.BRUSH);library.edit(library.current().oilPaint(true).paintLoad(30));library.add("Oil");
         java.io.DataInputStream in=new java.io.DataInputStream(new java.io.ByteArrayInputStream(library.encode()));
         java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();java.io.DataOutputStream out=new java.io.DataOutputStream(bytes);
         in.readInt();out.writeInt(version);byte[] record=new byte[kept];int skipped=75-kept;
-        for(int i=0;i<25;i++){in.readFully(record);in.skipBytes(skipped);out.write(record);}
+        for(int i=0;i<26;i++){in.readFully(record);in.skipBytes(skipped);if(i!=12)out.write(record);}
         out.writeUTF(in.readUTF());int count=in.readInt();out.writeInt(count);
         for(int i=0;i<count;i++){out.writeUTF(in.readUTF());out.writeUTF(in.readUTF());in.readFully(record);in.skipBytes(skipped);out.write(record);}
         check(in.read()==-1,"Paint load format fixture consumes every byte");
@@ -42,7 +57,7 @@ public final class ToolChecks {
         java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();java.io.DataOutputStream out=new java.io.DataOutputStream(bytes);
         // Those formats predate the carry and oil paint fields that end each record.
         in.readInt();out.writeInt(version);byte[] record=new byte[54];
-        for(int i=0;i<25;i++){in.readFully(record);in.skipBytes(21);if(i<tools || i>=12)out.write(record);}
+        for(int i=0;i<26;i++){in.readFully(record);in.skipBytes(21);if(i<tools || i>=13)out.write(record);}
         out.writeUTF(in.readUTF());int count=in.readInt();out.writeInt(count);
         for(int i=0;i<count;i++){out.writeUTF(in.readUTF());out.writeUTF(in.readUTF());in.readFully(record);in.skipBytes(21);out.write(record);}
         check(in.read()==-1,"Previous format fixture consumes every byte");
@@ -99,7 +114,7 @@ public final class ToolChecks {
         java.io.DataInputStream in=new java.io.DataInputStream(new java.io.ByteArrayInputStream(library.encode()));
         java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();java.io.DataOutputStream out=new java.io.DataOutputStream(bytes);
         in.readInt();out.writeInt(0x5453503d);byte[] record=new byte[47];
-        for(int i=0;i<25;i++){in.readFully(record);if(i<8 || i>11)out.write(record);in.readUnsignedByte();in.skipBytes(27);}
+        for(int i=0;i<26;i++){in.readFully(record);if(i<8 || i>12)out.write(record);in.readUnsignedByte();in.skipBytes(27);}
         out.writeUTF(in.readUTF());int count=in.readInt();out.writeInt(count);
         for(int i=0;i<count;i++) {
             out.writeUTF(in.readUTF());out.writeUTF(in.readUTF());in.readFully(record);out.write(record);in.readUnsignedByte();in.skipBytes(27);

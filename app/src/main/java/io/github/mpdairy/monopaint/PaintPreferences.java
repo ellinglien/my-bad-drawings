@@ -37,6 +37,12 @@ final class PaintPreferences {
     /** The untested firmware build the user was last told about; empty before any. */
     String untestedFirmwareNoticed() { return store.getString("untested_firmware_noticed", ""); }
     void setUntestedFirmwareNoticed(String build) { store.edit().putString("untested_firmware_noticed", build).apply(); }
+    /** The shared-storage folder the last imported picture came from. */
+    String importFolder() { return store.getString("import_folder", "Download"); }
+    void setImportFolder(String folder) { store.edit().putString("import_folder", folder).apply(); }
+    /** Whether the last imported picture went on a new layer; the current layer at first. */
+    boolean importNewLayer() { return flag("import_new_layer", false); }
+    void setImportNewLayer(boolean value) { setFlag("import_new_layer", value); }
     /** Folder chosen for PNG exports, as a document-tree URI; empty means Pictures/MonoPaint. */
     String exportFolder() { return store.getString("export_folder", ""); }
     void setExportFolder(String uri) { store.edit().putString("export_folder", uri).apply(); }

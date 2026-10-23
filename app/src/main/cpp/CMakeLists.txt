@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(monopaint_display C)
 # Page rendering only. Display device access lives in the fasteink library (../fasteink).
-add_library(monopaint_display SHARED viewport_bitmap.c shape_preview.c)
+add_library(monopaint_display SHARED viewport_bitmap.c shape_preview.c selection_preview.c)
 # Keep pen preview and pixel-transfer loops fast in tablet debug builds too.
-set_source_files_properties(shape_preview.c PROPERTIES COMPILE_OPTIONS "-O2")
+set_source_files_properties(shape_preview.c selection_preview.c PROPERTIES COMPILE_OPTIONS "-O2")
 # Match Android Matrix's separately rounded multiply/add at pixel boundaries.
 # Fused arithmetic can otherwise choose the adjacent source pixel after rotation.
 set_source_files_properties(viewport_bitmap.c PROPERTIES COMPILE_OPTIONS "-O2;-ffp-contract=off")

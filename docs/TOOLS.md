@@ -14,6 +14,7 @@ Tap a tool to select it. Tap it again to open its settings.
 | <img src="icons/shapes.svg" width="24"><br>**Shapes** | Lines, rectangles, squares, ovals and circles. |
 | <img src="icons/eraser.svg" width="24"><br>**Eraser** | Erases to reveal the layers below. A pen's eraser end or side button, if it has one, always uses this tool. |
 | <img src="icons/soften.svg" width="24"><br>**Blending stump** | Smudges shading in the direction you rub. |
+| <img src="icons/lasso.svg" width="24"><br>**Lasso** | Draw a loop around part of the current layer to pick it up. Drag inside it to move it, a corner dot to resize it (it keeps its proportions), or the round knob to turn it; turns settle on quarter turns. The knob turns with the piece, and sits just inside it when there's no room on screen. Tap outside it, or choose anything else, to put it down. Undo puts it back where it was. |
 
 ### Brush heads
 
@@ -125,6 +126,11 @@ another painting first asks whether to name it. Once a painting has a name, it
 saves itself to that file as you work: within a minute of drawing, whenever you
 leave MonoPaint, and before you open or start another painting. Save painting
 as… on a named painting copies it to a new name and continues in the copy, so
-the original keeps how it looked at that moment. **Export PNG** saves to `EXPORT/MonoPaint` on a Supernote
+the original keeps how it looked at that moment. **Import image…** brings a
+PNG or JPEG from anywhere on the tablet (it opens in the folder you last imported
+from, Download at first) onto the page, on the current layer or a new one (whichever you picked last), fitted to the page
+or at its own size, and turned a quarter at a time with a preview of it on the page; it arrives picked up, like a Lasso piece, to move, resize and
+turn before you tap outside it. Grays come in as the tones that export them, so an
+exported painting imports as it was. **Export PNG** saves to `EXPORT/MonoPaint` on a Supernote
 with file access, otherwise `Pictures/MonoPaint`. To convert a painting to PNG
 on a computer, see [BUILDING.md](BUILDING.md#png-conversion).
