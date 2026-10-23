@@ -333,6 +333,17 @@ final class OrientationChecks {
             await(test,() -> reopened.getContentView().hasWindowFocus(),"Reopened file menu receives input");
             injectTap(test,physicalPoint(pad,pad.getWidth()/2f,pad.getHeight()/2f),true);
             await(test,() -> !reopened.isShowing(),"Tap outside dismisses the anchored menu");
+            View menuButton=(View)get(activity,"menuButton");
+            float[] outside=physicalPoint(pad,pad.getWidth()/2f,pad.getHeight()/2f);
+            android.widget.PopupWindow byFinger=openMenu(test,activity,menuButton,MotionEvent.TOOL_TYPE_FINGER);
+            tapPopupWindow(test,byFinger,outside,MotionEvent.TOOL_TYPE_FINGER);
+            await(test,() -> !byFinger.isShowing(),"A finger tap outside dismisses a menu a finger opened");
+            android.widget.PopupWindow byPen=openMenu(test,activity,menuButton,MotionEvent.TOOL_TYPE_STYLUS);
+            tapPopupWindow(test,byPen,outside,MotionEvent.TOOL_TYPE_FINGER);
+            test.waitForIdleSync();
+            check(byPen.isShowing(),"A finger outside a menu the pen opened is a resting hand");
+            tapPopupWindow(test,byPen,outside,MotionEvent.TOOL_TYPE_STYLUS);
+            await(test,() -> !byPen.isShowing(),"The pen dismisses a menu the pen opened");
             check(Arrays.equals(tones,((ToneDocument)get(get(activity,"pad"),"document")).snapshot()),"Opening and dismissing the menu preserves drawing pixels");
         } finally {
             main(test,() -> { android.widget.PopupWindow open=(android.widget.PopupWindow)get(activity,"filePopup"); if(open!=null)open.dismiss(); });
@@ -344,6 +355,30 @@ final class OrientationChecks {
         PanelCoordinates.fromView(view).mapRect(bounds);
         Matrix inverse=new Matrix();PanelCoordinates.fromView(root).invert(inverse);inverse.mapRect(bounds);
         return bounds;
+    }
+    /** Opens the file menu by tapping the hamburger with {@code tool}. */
+    private static android.widget.PopupWindow openMenu(Instrumentation test,PaintActivity activity,View button,int tool) throws Exception {
+        main(test,() -> tapLocal(activity,button,button.getWidth()/2f,button.getHeight()/2f,tool));
+        await(test,() -> { android.widget.PopupWindow menu=(android.widget.PopupWindow)get(activity,"filePopup");
+            return menu!=null && menu.isShowing(); },"Hamburger opens the file menu");
+        return (android.widget.PopupWindow)get(activity,"filePopup");
+    }
+    /**
+     * Taps a popup's window at a screen point, as Android delivers a touch outside a modal
+     * popup. Injected finger events land elsewhere on this tablet, so dispatch directly.
+     */
+    private static void tapPopupWindow(Instrumentation test,android.widget.PopupWindow popup,float[] screen,int tool) throws Exception {
+        main(test,() -> {
+            View window=popup.getContentView().getRootView();
+            int[] at=new int[2]; window.getLocationOnScreen(at);
+            long now=SystemClock.uptimeMillis();
+            for(int action:new int[]{MotionEvent.ACTION_DOWN,MotionEvent.ACTION_UP}) {
+                MotionEvent.PointerProperties p=new MotionEvent.PointerProperties(); p.id=0; p.toolType=tool;
+                MotionEvent event=MotionEvent.obtain(now,SystemClock.uptimeMillis(),action,1,new MotionEvent.PointerProperties[]{p},
+                        new MotionEvent.PointerCoords[]{coords(screen[0],screen[1],1,0,0)},0,0,1,1,0,0,InputDevice.SOURCE_TOUCHSCREEN,0);
+                event.offsetLocation(-at[0],-at[1]); window.dispatchTouchEvent(event); event.recycle();
+            }
+        });
     }
     private static void injectTap(Instrumentation test,float[] point) {injectTap(test,point,false);}
     private static void injectTap(Instrumentation test,float[] point,boolean dismissing) {
@@ -484,6 +519,9 @@ final class OrientationChecks {
         view.dispatchTouchEvent(e); e.recycle();
     }
     private static void tapLocal(PaintActivity activity,View view,float x,float y) {
+        tapLocal(activity,view,x,y,MotionEvent.TOOL_TYPE_FINGER);
+    }
+    private static void tapLocal(PaintActivity activity,View view,float x,float y,int tool) {
         float[] point={x,y}; View current=view;
         while (current.getParent() instanceof View) {
             current.getMatrix().mapPoints(point);
@@ -492,8 +530,8 @@ final class OrientationChecks {
             current=parent;
         }
         long now=SystemClock.uptimeMillis();
-        event(current,now,MotionEvent.ACTION_DOWN,point[0],point[1],MotionEvent.TOOL_TYPE_FINGER);
-        event(current,now,MotionEvent.ACTION_UP,point[0],point[1],MotionEvent.TOOL_TYPE_FINGER);
+        event(current,now,MotionEvent.ACTION_DOWN,point[0],point[1],tool);
+        event(current,now,MotionEvent.ACTION_UP,point[0],point[1],tool);
     }
     private static void screenshot(Instrumentation test,PaintActivity activity,String name) throws Exception {
         test.waitForIdleSync();

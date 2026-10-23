@@ -209,7 +209,9 @@ landscape directions, the hamburger occupies the outer corner, the color marker
 faces the canvas with black at the bottom, and menu/undo/colors/pages order.
 It also checks the file menu opens below the hamburger for both hands in all
 four orientations, its Settings item responds at the displayed touch target,
-and tapping outside dismisses it without changing the drawing. Menu screenshots
+and tapping outside dismisses it without changing the drawing. A finger tap
+outside closes a menu a finger opened; a menu the pen opened ignores the finger
+and closes for the pen. Menu screenshots
 are saved as `orientation-menu-<rotation>-<toolboxRight>.png`.
 Artwork stays fixed relative to the tablet in every direction.
 

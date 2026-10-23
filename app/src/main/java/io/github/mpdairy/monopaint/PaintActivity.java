@@ -102,6 +102,7 @@ public final class PaintActivity extends Activity implements ControlHost {
     private TextView popupPageNumber;
     private PageActionButton popupPrevious, popupNext;
     private final Rect pagePanelBounds = new Rect();
+    private boolean pagePanelByFinger;
     TextView gradientHint;
     private final Runnable gradientHintTask = this::showGradientHint;
     /** Swallows the rest of a touch that dismissed a panel. */
@@ -479,7 +480,7 @@ public final class PaintActivity extends Activity implements ControlHost {
         PanelCoordinates.fromView(root).mapRect(bounds);
         Matrix inverse = new Matrix(); PanelCoordinates.fromView(previewFrame).invert(inverse);
         inverse.mapRect(bounds); bounds.roundOut(pagePanelBounds);
-        pagePanel = panel;
+        pagePanel = panel; pagePanelByFinger = Ui.fingerPress();
         // Lay out the real touch targets synchronously, then submit only their
         // bounded pixels through the same fast path as toolbar selection.
         selectionFeedback.update(previewFrame, new Rect(pagePanelBounds), () -> previewFrame.showPanel(panel, pagePanelBounds));
@@ -631,6 +632,7 @@ public final class PaintActivity extends Activity implements ControlHost {
     void dispatchCancelledTouch(MotionEvent event) { super.dispatchTouchEvent(event); }
 
     @Override public boolean dispatchTouchEvent(MotionEvent event) {
+        Ui.notePress(event);
         if (edgeBars != null && edgeBars.touch(event)) return true;
         boolean down = event.getActionMasked() == MotionEvent.ACTION_DOWN;
         if (down && rotateButton != null && rotateButton.getVisibility() == View.VISIBLE && Ui.outside(rotateButton, event))
@@ -640,13 +642,13 @@ public final class PaintActivity extends Activity implements ControlHost {
                 dismissingTouch = false;
             return true;
         }
-        // A pen touch outside the page row or palette editor only closes it; a resting hand is ignored.
+        // A touch outside the page row or palette editor only closes it, or is a resting hand to ignore.
         if (down && pagePanel != null && Ui.outside(pagePanel, event)) {
-            if (!Ui.fingersOnly(event)) closePagePanel();
+            if (Ui.closesPanel(pagePanelByFinger, event)) closePagePanel();
             dismissingTouch = true; return true;
         }
         if (down && paletteEditor != null && Ui.outside(shadePicker, event)) {
-            if (!Ui.fingersOnly(event)) closePaletteEditor();
+            if (Ui.closesPanel(paletteEditor.openedByFinger, event)) closePaletteEditor();
             dismissingTouch = true; return true;
         }
         // Android treats ORIENTATION as radians when it transforms a View's events.
@@ -965,7 +967,9 @@ public final class PaintActivity extends Activity implements ControlHost {
     void orientDialog(AlertDialog dialog, int desiredWidth) {
         android.view.Window window = dialog.getWindow();
         if (window == null) return;
-        window.getDecorView().setOnTouchListener(Ui::restingOutside);
+        Ui.notePresses(window);
+        boolean openedByFinger = Ui.fingerPress();
+        window.getDecorView().setOnTouchListener((panel, event) -> Ui.restingOutside(panel, event, openedByFinger));
         int width = Math.min(dp(desiredWidth), root.getWidth()-dp(32));
         boolean compact = compactLayout();
         if (appRotation == Surface.ROTATION_0 && !compact) { window.setLayout(width, -2); return; }

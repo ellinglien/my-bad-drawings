@@ -4,8 +4,11 @@ User-facing changes since the last release. Add an entry under **Unreleased**
 with each change; when cutting a release, turn that section into
 `dist/RELEASE_NOTES.md` and retitle it with the new version.
 
-## Unreleased
+## 0.99 (Unreleased)
 
+- A menu or panel you open with your finger closes when you tap outside it with
+  your finger, so you don't have to find the pen. One you open with the pen
+  still ignores your resting hand and closes only for the pen.
 - The **wet brush pen** has a **Hold ink between strokes** setting, on at
   first. Turn it off for the first wet brush pen: it lays only clear water and
   holds no ink, lifting the paint it touches and letting it thin out through

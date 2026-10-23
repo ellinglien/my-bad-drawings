@@ -31,6 +31,8 @@ final class PaletteEditor {
     final PopupWindow popup;
     final ScrollView scroll;
     final SelectionFeedback swatchFeedback = new SelectionFeedback();
+    /** A finger touch outside closes the editor only when a finger opened it. */
+    final boolean openedByFinger = Ui.fingerPress();
     private boolean colorsDirty;
     private int pendingTone;
     int selected = -1, dropTarget = -1;

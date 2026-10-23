@@ -7,7 +7,10 @@ import android.graphics.drawable.GradientDrawable;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.SeekBar;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.util.function.IntConsumer;
 import io.github.mpdairy.fasteink.PanelCoordinates;
 
@@ -44,12 +47,42 @@ final class Ui {
         return true;
     }
 
+    /** Whether the latest press on any of the app's windows used fingers only. */
+    private static boolean fingerPress;
     /**
-     * Whether only fingers touch outside a panel: usually the hand resting while the pen
-     * works its controls. Such touches are swallowed; only the pen closes panels.
+     * Notes which tools make up a press; every window passes its touch events here. A pen
+     * joining a resting hand makes it a pen press.
      */
-    static boolean restingOutside(View panel, MotionEvent event) {
-        return fingersOnly(event) && (event.getActionMasked() == MotionEvent.ACTION_OUTSIDE || outside(panel, event));
+    static void notePress(MotionEvent event) {
+        int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN) fingerPress = fingersOnly(event);
+        else if (action == MotionEvent.ACTION_POINTER_DOWN) fingerPress &= fingersOnly(event);
+    }
+    /** Whether the press now opening a panel used fingers only. */
+    static boolean fingerPress() { return fingerPress; }
+    /** Notes the presses a dialog's window receives, which never reach the activity. */
+    static void notePresses(Window window) {
+        Window.Callback callback = window.getCallback();
+        if (callback == null || Proxy.isProxyClass(callback.getClass())) return;
+        window.setCallback((Window.Callback)Proxy.newProxyInstance(Window.Callback.class.getClassLoader(),
+                new Class<?>[]{Window.Callback.class}, (proxy, method, args) -> {
+                    if (method.getName().equals("dispatchTouchEvent")) notePress((MotionEvent)args[0]);
+                    try { return method.invoke(callback, args); }
+                    catch (InvocationTargetException error) { throw error.getCause(); }
+                }));
+    }
+
+    /**
+     * Whether a touch outside a panel closes it. The pen always does; fingers only close a
+     * panel a finger opened, so a hand resting while the pen works a panel leaves it open.
+     */
+    static boolean closesPanel(boolean openedByFinger, MotionEvent event) {
+        return openedByFinger || !fingersOnly(event);
+    }
+    /** Whether a touch outside a panel is a resting hand to swallow instead of closing it. */
+    static boolean restingOutside(View panel, MotionEvent event, boolean openedByFinger) {
+        return !closesPanel(openedByFinger, event)
+                && (event.getActionMasked() == MotionEvent.ACTION_OUTSIDE || outside(panel, event));
     }
 
     static void detach(View view) {
