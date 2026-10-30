@@ -9,9 +9,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import io.github.mpdairy.fasteink.FastEink;
-import io.github.mpdairy.fasteink.Mode;
-import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Uses NomadUiChecks' disposable book and the outer suite's session restoration. */
 final class PageNavigationChecks {
@@ -23,105 +20,34 @@ final class PageNavigationChecks {
     }
     private static void run(Instrumentation test,PaintActivity app,StringBuilder report,boolean feedbackOnly)throws Exception {
         if(!feedbackOnly) {verifyRaster(report);benchmark(test,app,report);}
-        SharedPreferences prefs=(SharedPreferences)get(app,"preferences");
-        SelectionFeedback feedback=(SelectionFeedback)get(app,"selectionFeedback");
-        for(boolean nomad:app.device.compactControls?new boolean[]{true}:new boolean[]{false,true})for(int turn=0;turn<4;turn++)for(boolean right:new boolean[]{false,true}) {
-            final int quarter=turn;
-            DrawingBook book=new DrawingBook(new ToneDocument(640,720));
-            book.current().begin();for(int y=80;y<260;y++)book.current().paintSpan(70,250,y,40);book.current().finish();
-            book.addPage();book.current().begin();for(int y=100;y<380;y++)book.current().paintSpan(90,400,y,160);book.current().finish();
+        if(feedbackOnly)return;
+        // Retired: MonoPaint's header page row, Nomad Pages popup and page overview grid. Inkwash never shows that
+        // header (PaintActivity.showInkWashBar); pages turn from its page bar (PageTurner), checked on the desktop.
+        DrawingBook book=new DrawingBook(new ToneDocument(640,720));
+        book.current().begin();for(int y=80;y<260;y++)book.current().paintSpan(70,250,y,40);book.current().finish();
+        book.addPage();book.current().begin();for(int y=100;y<380;y++)book.current().paintSpan(90,400,y,160);book.current().finish();
+        main(test,() -> call(app,"replaceBook",new Class<?>[]{DrawingBook.class},book));idle(test);
+        for(int target:new int[]{0,1,0}) {
             main(test,() -> {
-                call(app,"closePagePanel");call(app,"replaceBook",new Class<?>[]{DrawingBook.class},book);
-                call(app,"setSimulating",new Class<?>[]{boolean.class},nomad);
-                prefs.edit().putBoolean("toolbox_right",right).apply();
-                call(app,"requestQuarter",new Class<?>[]{int.class},quarter);call(app,"applyToolboxSide");
+                int artwork=(Integer)get(get(app,"pad"),"pagePresentCount");
+                call(app,"changePage",new Class<?>[]{int.class},target);
+                check(book.index()==target,"Page turn selects the page");
+                check((Integer)get(get(app,"pad"),"pagePresentCount")>artwork,"Page turn submits its artwork");
             });idle(test);
-            View compact=(View)get(app,"pagesButton"),expanded=(View)get(app,"headerControls");
-            check(compact.isShown()==nomad&&expanded.isShown()!=nomad,"Only appropriate page controls are shown");
-            if(nomad) {
-                check(compact.getWidth()==compact.getHeight(),"Nomad page button is square");
-                View shade=(View)get(app,"shadePicker");
-                check(shade.getWidth()>=430,"Nomad color bar reclaims the unused header gaps: "+shade.getWidth());
-                View mask=(View)get(app,"maskButton");
-                View wet=(View)get(app,"watercolorButton"),strength=(View)get(app,"wetnessBar");
-                View pair=(View)get(app,"wetControls");
-                check(pair.getParent()==shade.getParent()&&mask.getLeft()==0&&pair.getLeft()==mask.getRight()
-                        &&pair.getWidth()==pair.getHeight()&&wet.getParent()==strength.getParent()&&strength.getLeft()==wet.getRight(),
-                        "Masking fluid and the square of wet controls stay together at the start of the color group");
-                check(((View)get(app,"rotateButton")).getParent()!=get(app,"menuControls"),"Rotation prompt never occupies header space");
-                main(test,() -> {
-                    int submitted=feedback.submitted;call(app,"showPagePanel");
-                    check(feedback.submitted>submitted,"Popup pixels submitted synchronously through fast path");
-                });idle(test);
-                View panel=(View)get(app,"pagePanel");
-                check(bounds((View)get(app,"orientationFrame")).contains(bounds(panel)),"Page popup inside preview");
-                check(get(get(app,"pad"),"direct")==null,"Canvas presenter suspended under page panel");
-            }
-            // Counter updates must never add direct control submissions. Artwork
-            // still reaches the fast path before Android redraws either label.
-            for(int target:new int[]{0,1}) {
-                main(test,() -> {
-                    int submitted=feedback.submitted;
-                    int artwork=(Integer)get(get(app,"pad"),"pagePresentCount");
-                    call(app,"changePage",new Class<?>[]{int.class},target);
-                    check(feedback.submitted==submitted,"Page counters use regular redraw without a direct flash");
-                    check((Integer)get(get(app,"pad"),"pagePresentCount")>artwork,"Artwork submission does not wait for counter redraw");
-                    android.widget.TextView label=(android.widget.TextView)get(app,nomad?"popupPageNumber":"pageNumber");
-                    check(label.getText().toString().equals((target+1)+" / 2"),"Regular page counter matches current page");
-                });idle(test);
-            }
-            View previous=(View)get(app,nomad?"popupPrevious":"previousPage");
-            View next=(View)get(app,nomad?"popupNext":"nextPage");
-            press(test,app,previous,book,0,feedback);
-            check(book.current().tone(70,80)==40,"Previous page retains its artwork");
-            check(!previous.isEnabled(),"Previous disabled on first page");
-            main(test,() -> {check(!previous.performClick(),"Disabled previous ignores action");});
-            press(test,app,next,book,1,feedback);
-            check(book.current().tone(90,100)==160,"Next page retains its artwork");
-            check(!next.isEnabled(),"Next disabled on last page");
-            // The Nomad's Pages box is already open and holds the actions.
-            if(!nomad) {
-                main(test,() -> {
-                    int submitted=feedback.submitted;call(app,"showPageMenu");
-                    check(feedback.submitted>submitted,"Page menu pixels submitted synchronously through fast path");
-                });idle(test);
-                check(bounds((View)get(app,"orientationFrame")).contains(bounds((View)get(app,"pagePanel"))),"Page menu inside preview");
-                check(get(get(app,"pad"),"direct")==null,"Canvas presenter suspended under page menu");
-            }
-            View add=pageMenuItem(app,"Add page");
-            press(test,app,add,book,2,feedback);
-            check(book.count()==3&&book.current().opacity(90,100)==0,"Add creates exactly one blank page");
-            if(nomad) {
-                main(test,() -> call(app,"showPagePanel"));idle(test);
-                check(get(app,"pagePanel")!=null&&get(app,"popupPageNumber")!=null,"Page row reopens after a page action");
-                if(turn==0&&!right)screenshot(test,app,"nomad-pages.png");
-                RectF paper=bounds((View)get(app,"pad"));
-                float outsideX=paper.centerX(),outsideY=paper.centerY();
-                check(!bounds((View)get(app,"pagePanel")).contains(outsideX,outsideY),"Dismissal tap is outside the page popup");
-                long down=SystemClock.uptimeMillis();
-                event(test,MotionEvent.ACTION_DOWN,down,outsideX,outsideY);event(test,MotionEvent.ACTION_UP,down,outsideX,outsideY);idle(test);
-                check(get(app,"pagePanel")==null&&!book.current().canUndo(),"Outside gesture dismisses without painting");
-                // Closing the embedded panel requests layout; reconnect runs
-                // after that frame, which may outlast the input-idle wait.
-                for(int i=0;i<40&&get(get(app,"pad"),"direct")==null;i++) {SystemClock.sleep(50);test.waitForIdleSync();}
-                check(get(get(app,"pad"),"direct")!=null,"Canvas fast path resumes after popup closes: focus="+app.hasWindowFocus()
-                        +" covered="+app.canvasCovered()+" layout="+app.previewFrame.isLayoutRequested());
-                // The real compact-button touch target also opens the retained popup.
-                RectF button=bounds(compact);down=SystemClock.uptimeMillis();
-                event(test,MotionEvent.ACTION_DOWN,down,button.centerX(),button.centerY());
-                event(test,MotionEvent.ACTION_UP,down,button.centerX(),button.centerY());idle(test);
-                check(get(app,"pagePanel")!=null,"Compact button opens page options by touch");
-                main(test,app::onBackPressed);idle(test);check(get(app,"pagePanel")==null,"Back closes page popup");
-            }
-            if(!feedbackOnly)overview(test,app,book,nomad,turn==0&&!right);
-            report.append("PASS: ").append(nomad?"Nomad compact popup":"Manta expanded pages")
-                    .append(", previous/next/add, press/release mode=").append(FastEink.supportsFastBinary()?Mode.FAST_BINARY:Mode.GRAY)
-                    .append(", turn=").append(turn).append(" right=").append(right).append(".\n");
         }
-        if(!feedbackOnly) {
-            overviewScroll(test,app);
-            report.append("PASS: 100-page thumbnail grid scrolls to the current page and jumps across the book.\n");
-        }
+        check(book.current().tone(70,80)==40,"Turning back keeps the first page's artwork");
+        // The page bar's + tile (the owner, 2026-10-24): a new page at the notebook's end, turned to (the tile's tap is PaintActivity.newPage).
+        main(test,() -> call(app,"newPage",new Class<?>[0]));idle(test);
+        check(book.count()==3&&book.index()==2&&BlankPages.blank(book,2)&&app.pad.document==book.current(),"+ adds a page at the end and turns to it");
+        main(test,() -> call(app,"changePage",new Class<?>[]{int.class},1));idle(test);
+        check(book.current().tone(90,100)==160,"The page before it stays");
+        // An old notebook's blank page at its end goes when it is opened; the page drawn on stays.
+        DrawingBook old=new DrawingBook(new ToneDocument(640,720));
+        old.current().begin();for(int y=80;y<260;y++)old.current().paintSpan(70,250,y,40);old.current().finish();
+        old.addPage();old.select(0);
+        main(test,() -> call(app,"replaceBook",new Class<?>[]{DrawingBook.class},old));idle(test);
+        check(old.count()==1&&old.index()==0,"Opened: the blank page at its end goes");
+        report.append("PASS: Page turns select, submit and keep each page's artwork; the + tile adds a page at the end; an old notebook's blank page at its end goes on opening.\n");
     }
     private static void overview(Instrumentation test,PaintActivity app,DrawingBook book,boolean nomad,boolean capture)throws Exception {
         if(nomad){main(test,() -> call(app,"showPagePanel"));idle(test);}
@@ -234,7 +160,7 @@ final class PageNavigationChecks {
             main(test,() -> {
                 check((Boolean)get(get(button,"press"),"pressed"),"Press is visibly retained on pen-down");
                 check(feedback.submitted>submitted,"Press uses fast display before loading");
-                check(feedback.lastMode==(FastEink.supportsFastBinary()?Mode.FAST_BINARY:Mode.GRAY),"Page arrow press uses device-specific fast mode");
+                check(feedback.lastDisplayMode==(DirectEink.fastBinaryControls()?9:7),"Page arrow press uses device-specific fast mode");
                 check(book.index()==before,"Page work waits until click");
             });
             event(test,MotionEvent.ACTION_UP,down,bounds.centerX(),bounds.centerY());idle(test);
@@ -245,7 +171,7 @@ final class PageNavigationChecks {
             check(!(Boolean)get(get(button,"press"),"pressed"),"Press clears after completion");
             boolean closed=panel!=null&&get(app,"pagePanel")==null;
             check(feedback.submitted==submitted+(closed?3:2),"Exactly one press and one release, with no delayed repeat");
-            if(!closed)check(feedback.lastMode==(FastEink.supportsFastBinary()?Mode.FAST_BINARY:Mode.GRAY),"Page arrow release uses device-specific fast mode");
+            if(!closed)check(feedback.lastDisplayMode==(DirectEink.fastBinaryControls()?9:7),"Page arrow release uses device-specific fast mode");
         } finally {main(test,() -> counter.removeTextChangedListener(watcher));}
     }
     private static void verifyRaster(StringBuilder report) {

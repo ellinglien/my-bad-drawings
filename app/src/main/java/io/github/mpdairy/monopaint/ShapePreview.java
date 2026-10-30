@@ -19,11 +19,21 @@ final class ShapePreview {
     ShapePreview(ToneDocument document,ToolSettings settings,int shade,float x,float y) {
         this.document=document;this.shade=shade;
         geometry=new ShapeGeometry(settings,document.width,document.height,x,y);
-        ToneDocument.Snapshot source=document.layerSnapshot();active=source.active;
-        tones=new byte[source.layers.size()][];alpha=new byte[tones.length][];visible=new int[tones.length];
-        for(int i=0;i<tones.length;i++) {
-            ToneDocument.Layer layer=source.layers.get(i);tones[i]=layer.tones;alpha[i]=layer.alpha;visible[i]=layer.visible?layer.opacity:0;
+        ToneDocument.Snapshot source=document.layerSnapshot();
+        // Inkwash: every layer's base and kind planes in the page's order; the shape goes on the selected layer's base.
+        java.util.List<ToneDocument.Layer> entries=new java.util.ArrayList<>();
+        java.util.List<Integer> shown=new java.util.ArrayList<>();
+        int base=0;
+        for(int k=0,end=ToneDocument.stackSize(source.layers.size());k<end;k++) {
+            ToneDocument.Layer entry=ToneDocument.stacked(source.layers,k);
+            if(entry==null)continue;
+            ToneDocument.Layer owner=source.layers.get(ToneDocument.stackOwner(k));
+            if(entry==owner&&ToneDocument.stackOwner(k)==source.active)base=entries.size();
+            entries.add(entry);shown.add(owner.visible?ToneDocument.stackOpacity(owner,entry):0);
         }
+        active=base;
+        tones=new byte[entries.size()][];alpha=new byte[tones.length][];visible=new int[tones.length];
+        for(int i=0;i<tones.length;i++) { tones[i]=entries.get(i).tones;alpha[i]=entries.get(i).alpha;visible[i]=shown.get(i); }
         previous=new int[document.height*4];next=new int[previous.length];
     }
     Rect preview(float x,float y,Bitmap display,boolean logical) {

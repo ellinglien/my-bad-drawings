@@ -12,7 +12,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Disposable pages; always restores the user's original book, page and preferences. */
 final class FullscreenChecks {

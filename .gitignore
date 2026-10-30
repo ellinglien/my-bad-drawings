@@ -7,11 +7,16 @@ core
 core.*
 *.keystore
 *.jks
+keystore.properties
 *.apk
-!dist/monopaint.apk
 .env
 .env.*
 !.env.example
 .agents/
 .codex/
 VERIFICATION.md
+.DS_Store
+docs/brush-lab/studio.html
+docs/brush-lab/dial-demo.html
+docs/brush-lab/match-lab.html
+.claude/

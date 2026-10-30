@@ -34,8 +34,8 @@ final class ToolSettings {
         FILL("Fill", Kind.COLORED),
         ERASER("Eraser", Kind.COLORLESS),
         SOFTEN("Blending stump", Kind.COLORLESS),
-        WATERCOLOR("Watercolor", Kind.BRUSH),
-        WET_WATERCOLOR("Wet watercolor (experimental)", Kind.BRUSH),
+        WATERCOLOR("Watercolour", Kind.BRUSH),
+        WET_WATERCOLOR("Wet watercolour (experimental)", Kind.BRUSH),
         FLAT_WASH("Flat wash", Kind.BRUSH),
         AIRBRUSH("Airbrush", Kind.COLORED),
         SHAPES("Shapes", Kind.COLORED),
@@ -248,14 +248,26 @@ final class ToolSettings {
         if (tool == Tool.FILL) return gradient == Gradient.FLAT ? "Flat fill" : gradient.label + " gradient";
         return label();
     }
-    /** The measured .05–.45 pen pressure range as 0–1. */
-    private static float travel(float pressure) {
+    /**
+     * The pen's pressure as 0–1, the one place raw pen pressure is read. Up to a usual press (.30) it is MonoPaint's
+     * measured .05–.45 line, unchanged; past it a gentler line reaches 1 at .78, a hard press since the Manta's
+     * 3.31.45 firmware (2026-10-29: hard strokes .63–.83), so pressing harder keeps growing a mark (docs/TILT_INPUT.md).
+     */
+    static float travel(float pressure) {
         if(!Float.isFinite(pressure)) pressure=0;
-        return Math.max(0,Math.min(1,(pressure-.05f)/.40f));
+        float t = pressure <= KNEE ? (pressure-.05f)/.40f : KNEE_TRAVEL+(1-KNEE_TRAVEL)*(pressure-KNEE)/(FULL-KNEE);
+        return Math.max(0,Math.min(1,t));
     }
+    /** The pen pressure whose {@link #travel} is {@code travel} (0 to 1): its inverse. */
+    static float pressure(float travel) {
+        travel=Math.max(0,Math.min(1,travel));
+        return travel <= KNEE_TRAVEL ? .05f+.40f*travel : KNEE+(FULL-KNEE)*(travel-KNEE_TRAVEL)/(1-KNEE_TRAVEL);
+    }
+    /** {@link #travel}'s knee (a usual press, and its travel) and the pressure that is a full press. */
+    static final float KNEE = .30f, KNEE_TRAVEL = (KNEE-.05f)/.40f, FULL = .78f;
     float diameter(float pressure) {
         float p=travel(pressure);
-        // Keep the measured .05–.45 pressure range reachable at every response.
+        // Keep the whole pen pressure range ({@link #travel}) reachable at every response.
         // Light touch is linear; 50 preserves the original square; firm is quartic.
         if (!isBrush() || pressureResponse == DEFAULT_PRESSURE_RESPONSE)
             return minimum+(maximum-minimum)*p*p;

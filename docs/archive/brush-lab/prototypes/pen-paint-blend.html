@@ -1,0 +1,1585 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pen Paint Blend</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap">
+<style>
+/* Brutalist, as the Brush Lab web page: hard black rules, square corners, one monospace face, inverted fills for what's on.
+   Deliberately one theme: it imitates the Manta's black-on-white screen. */
+:root {
+  --desk: #dcdcd6;
+  --screen: #ffffff;
+  --ink: #000000;
+  --grey: #5c5c56;
+  --rule: #b4b4ad;
+  --hatch: #8d8d86;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --desk: #dcdcd6; --screen: #ffffff; --ink: #000000; } }
+:root[data-theme="dark"] { --desk: #dcdcd6; --screen: #ffffff; --ink: #000000; }
+* { box-sizing: border-box; }
+html, body { background: var(--desk); color: var(--ink); margin: 0; }
+body { font-family: var(--mono); font-size: 15px; line-height: 1.4; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 18px 16px 32px; display: grid; gap: 14px; }
+h1 { font-size: 1.6rem; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: .02em; }
+h2 { font-size: .8rem; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: .08em; }
+p { margin: 0; max-width: 72ch; }
+.muted { color: var(--grey); }
+.device { background: var(--screen); border: 3px solid var(--ink); display: grid; min-width: 0; }
+.bar { display: flex; flex-wrap: wrap; align-items: stretch; border-bottom: 3px solid var(--ink); }
+.bar > * { border-right: 2px solid var(--ink); }
+.bar > *:last-child { border-right: 0; }
+.bar .title { font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 0 14px; display: grid; align-items: center; min-height: 48px; }
+.btn { min-width: 44px; height: 48px; display: inline-grid; grid-auto-flow: column; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; background: var(--screen); border: 0; border-radius: 0; cursor: pointer; color: var(--ink); font: inherit; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.btn.line { border: 2px solid var(--ink); height: 40px; }
+.btn[aria-pressed="true"] { background: var(--ink); color: var(--screen); }
+.btn:hover:not(:disabled) { background: var(--ink); color: var(--screen); }
+.btn:focus-visible, .chip:focus-visible, input:focus-visible, .size:focus-visible, summary:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.spring { flex: 1; border-right: 0 !important; }
+.engines { display: flex; }
+.engines .btn { border-right: 2px solid var(--ink); }
+.engines .btn:last-child { border-right: 0; }
+.work { display: grid; grid-template-columns: minmax(0, 1fr) 360px; min-width: 0; }
+.main { display: flex; flex-direction: column; min-width: 0; }
+.test { flex: 1; display: flex; flex-direction: column; padding: 12px; gap: 8px; }
+.canvasbox { position: relative; height: min(64vh, 560px); min-height: 300px; border: 2px solid var(--ink); }
+.canvasbox canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; display: block; }
+.canvasbox .hint { position: absolute; left: 10px; bottom: 8px; font-size: .7rem; color: var(--grey); pointer-events: none; }
+.head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.head h2 { margin-right: auto; }
+.sizes { display: flex; }
+.size { width: 48px; height: 48px; border: 0; border-left: 2px solid var(--ink); background: var(--screen); padding: 0; cursor: pointer; display: grid; place-items: center; border-radius: 0; }
+.size:first-child { border-left: 0; }
+.size i { display: block; background: var(--ink); border-radius: 50%; }
+.size[aria-pressed="true"] { background: var(--ink); }
+.size[aria-pressed="true"] i { background: var(--screen); }
+.status { font-size: .74rem; min-height: 2.8em; font-variant-numeric: tabular-nums; }
+.settings { border-left: 3px solid var(--ink); display: grid; align-content: start; min-width: 0; }
+.randomize { width: 100%; height: 64px; border-bottom: 3px solid var(--ink); font-size: 1rem; background: var(--ink); color: var(--screen); }
+.randomize:hover:not(:disabled) { background: var(--screen); color: var(--ink); }
+.who { padding: 8px 12px; border-bottom: 2px solid var(--ink); display: grid; gap: 2px; min-width: 0; }
+.who b { font-size: .95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who span { font-size: .7rem; color: var(--grey); overflow-wrap: anywhere; }
+.lab { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.dial { display: grid; grid-template-columns: 104px minmax(0, 1fr) 48px; align-items: center; min-height: 40px; padding: 0 12px; border-bottom: 1px solid var(--rule); gap: 6px; }
+.dial .val { color: var(--grey); font-size: .72rem; text-align: right; font-variant-numeric: tabular-nums; }
+.dial.big { min-height: 76px; border-bottom: 2px solid var(--ink); grid-template-columns: 104px minmax(0, 1fr) 48px; }
+.dial.big .lab { font-size: .95rem; }
+.dial.big .ends { grid-column: 2; display: flex; justify-content: space-between; font-size: .64rem; color: var(--grey); margin-top: -6px; }
+input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 34px; margin: 0; background: transparent; cursor: pointer; touch-action: pan-y; }
+input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--ink); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 26px; margin-top: -12px; background: var(--ink); border: 0; border-radius: 0; }
+input[type="range"]::-moz-range-track { height: 2px; background: var(--ink); }
+input[type="range"]:disabled { cursor: default; }
+input[type="range"]:disabled::-webkit-slider-thumb { background: var(--rule); }
+input[type="range"]:disabled::-moz-range-thumb { background: var(--rule); }
+.dial:has(input:disabled) .lab, .dial:has(input:disabled) .val { color: var(--rule); }
+input[type="range"]::-moz-range-thumb { width: 14px; height: 26px; background: var(--ink); border: 0; border-radius: 0; }
+.big input[type="range"]::-webkit-slider-runnable-track { height: 4px; }
+.big input[type="range"]::-webkit-slider-thumb { width: 22px; height: 34px; margin-top: -15px; }
+.big input[type="range"]::-moz-range-track { height: 4px; }
+.big input[type="range"]::-moz-range-thumb { width: 22px; height: 34px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font: inherit; font-size: .72rem; min-height: 32px; padding: 3px 10px; border: 2px solid var(--ink); border-radius: 0; background: var(--screen); color: var(--ink); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--screen); }
+.chiprow { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: 6px; padding: 6px 12px; border-bottom: 1px solid var(--rule); }
+details { border-bottom: 2px solid var(--ink); }
+summary { cursor: pointer; padding: 10px 12px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; list-style: none; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "+ "; }
+details[open] summary::before { content: "− "; }
+details[open] summary { border-bottom: 2px solid var(--ink); }
+.sec { border-top: 3px solid var(--ink); padding: 12px; display: grid; gap: 10px; min-width: 0; }
+.strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-left: 2px solid var(--ink); border-top: 2px solid var(--ink); }
+.tile { margin: 0; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); display: grid; min-width: 0; background: var(--screen); }
+.tile canvas { width: 100%; height: auto; display: block; }
+.tile figcaption { border-top: 2px solid var(--ink); padding: 3px 6px; font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile.on figcaption { background: var(--ink); color: var(--screen); }
+.share { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.share label { min-width: 8em; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.share input { font-family: var(--mono); font-size: .78rem; flex: 1 1 220px; min-width: 0; padding: 8px; border: 2px solid var(--ink); border-radius: 0; background: var(--screen); color: var(--ink); }
+.say { font-size: .75rem; min-height: 1.4em; overflow-wrap: anywhere; }
+table.st { border-collapse: collapse; font-size: .72rem; width: 100%; }
+table.st th, table.st td { border: 1px solid var(--ink); padding: 3px 6px; text-align: right; font-variant-numeric: tabular-nums; }
+table.st th:first-child, table.st td:first-child { text-align: left; }
+.tablebox { overflow-x: auto; }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); border-left: 2px solid var(--ink); border-top: 2px solid var(--ink); }
+.note { padding: 10px 12px; display: grid; gap: 6px; align-content: start; font-size: .78rem; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); }
+.note ul { margin: 0; padding-left: 1.1em; display: grid; gap: 3px; }
+.phone { display: none; }
+@media (max-width: 820px) {
+  .phone { display: inline; } .desk { display: none; }
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .settings { border-left: 0; border-top: 3px solid var(--ink); }
+  .canvasbox { height: 58vh; }
+  /* Phone: the strip turns on its side, Wet down the rows, A beside B. */
+  .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(5, auto); grid-auto-flow: column; }
+  h1 { font-size: 1.25rem; }
+}
+@media (max-width: 420px) {
+  .wrap { padding: 12px 10px 24px; }
+  .bar .title { display: none; }
+  .engines .btn { padding: 0 8px; }
+  .dial, .chiprow { grid-template-columns: 88px minmax(0, 1fr) 44px; padding: 0 10px; }
+  .chiprow { grid-template-columns: 88px minmax(0, 1fr); padding: 6px 10px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header style="display:grid;gap:6px">
+    <h1>Pen Paint Blend</h1>
+    <p class="muted">One brush with a pen part and a paint part, fed the same samples. Wet 0 is today's pen, Wet 1 today's paint; between, the line loosens into a wash. A and B are two ways to build it.</p>
+  </header>
+
+  <section class="device" aria-label="Test pad">
+    <div class="bar">
+      <span class="title">Test pad</span>
+      <div class="engines" role="group" aria-label="Engine">
+        <button class="btn" id="engA" aria-pressed="true" title="Two parts: a pen line and a paint wash">A · Line + wash</button>
+        <button class="btn" id="engB" aria-pressed="false" title="One nib whose water swells with Wet">B · Wet nib</button>
+      </div>
+      <span class="spring"></span>
+      <div class="sizes" role="group" aria-label="Size">
+        <button class="size" id="sz0" aria-pressed="false" aria-label="Small"><i style="width:8px;height:8px"></i></button>
+        <button class="size" id="sz1" aria-pressed="true" aria-label="Medium"><i style="width:14px;height:14px"></i></button>
+        <button class="size" id="sz2" aria-pressed="false" aria-label="Large"><i style="width:22px;height:22px"></i></button>
+      </div>
+      <button class="btn" id="clear">Clear</button>
+    </div>
+    <div class="work">
+      <div class="main">
+        <div class="test">
+          <div class="canvasbox"><canvas id="pad" width="600" height="400"></canvas><span class="hint">draw here · mouse, finger or pen</span></div>
+          <div class="status" id="cost">Draw a stroke: its cost per sample and after lift shows here.</div>
+        </div>
+      </div>
+      <div class="settings">
+        <button class="btn randomize" id="rand">Randomize</button>
+        <div class="who"><b id="bname">brush</b><span id="bcode"></span></div>
+        <div id="dials"></div>
+        <details id="more"><summary>More dials</summary><div id="dials2"></div></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="device" aria-label="Strip">
+    <div class="sec" style="border-top:0">
+      <div class="head"><h2>Same stroke, Wet 0 to 1</h2><span class="muted" style="font-size:.72rem"><span class="desk">top row A · line + wash, bottom row B · wet nib</span><span class="phone">left A · line + wash, right B · wet nib</span></span></div>
+      <div class="chiprow" style="padding:0;border:0"><span class="lab">Lines</span><span class="chips" id="stripLines" role="group" aria-label="Lines placement"></span></div>
+      <div class="strip" id="strip"></div>
+      <div class="head"><h2>Offset and Chaos</h2><span class="muted" style="font-size:.72rem">A at Wet <span id="strip2Wet"></span><span class="desk">: offset on top, chaos below</span><span class="phone">: offset left, chaos right</span></span></div>
+      <div class="strip" id="strip2"></div>
+    </div>
+  </section>
+
+  <section class="device" aria-label="Share codes">
+    <div class="sec" style="border-top:0">
+      <h2>Share codes</h2>
+      <div class="share"><label for="codeOut">This brush</label><input id="codeOut" readonly></div>
+      <div class="share"><label for="codeIn">Paste a code</label><input id="codeIn" placeholder="any .I, .P or .B code" autocomplete="off" spellcheck="false"><button class="btn line" id="load">Load</button></div>
+      <div class="share"><button class="btn line" id="oldPen">Try an old pen code</button><button class="btn line" id="oldPaint">Try an old paint code</button></div>
+      <div class="say" id="codeSay"></div>
+      <div class="say" id="ident">Checking that old codes draw as they do today…</div>
+    </div>
+  </section>
+
+  <section class="device" aria-label="Cost">
+    <div class="sec" style="border-top:0">
+      <div class="head"><h2>Cost in this browser</h2><button class="btn line" id="bench">Measure</button></div>
+      <p class="muted" style="font-size:.74rem">A long loop at size L, every effect turned high, 1400 × 900 page. Per sample: the stamp while the pen is down. Settle: the work after lift. *This page stamps the whole stroke again at lift for its taper out; the app re-lays only the tail, so ignore that column for the device. Median of 3; browser timers round to 0.1 ms.</p>
+      <div class="tablebox"><table class="st" id="benchT"><tbody><tr><td>Press Measure.</td></tr></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="device" aria-label="Notes">
+    <div class="notes">
+      <div class="note"><h2>A · Line + wash</h2><ul>
+        <li>The pen engine lays the line, the paint engine the wash, from the same samples.</li>
+        <li>Wet moves ink from the line into the wash, which bleeds it; the wash grows from a halo to a full body and takes the nib's shape and angle.</li>
+        <li>Line: how much crisp line is left at Wet 1.</li>
+        <li>Wet 0 and Wet 1 are today's engines to the bit, so old brushes don't change.</li></ul></div>
+      <div class="note"><h2>B · Wet nib</h2><ul>
+        <li>One nib. Wet swells its water past the nib and lets the pigment run through it, gathering at the water's edge.</li>
+        <li>Reads as one fat wet mark, not a line over a wash.</li>
+        <li>Wet 1 is not today's paint, so old paint codes need the old engine kept beside it.</li></ul></div>
+      <div class="note"><h2>Merged dials</h2><ul>
+        <li>Grain = paper tooth + granulation</li>
+        <li>Bristle = dry brush + brush streaks</li>
+        <li>Pool = pooling + hollow edge</li>
+        <li>Each pair has one member per kind, so old codes load without loss.</li></ul></div>
+      <div class="note"><h2>Lines</h2><ul>
+        <li>Lines sit inside the wash's footprint, so they widen, taper and turn with it: one mark.</li>
+        <li>Centre: today's line. Spread: 2–5 lines across the wash, along the nib angle. Outline: ink on the wash's two edges, broken where it thins. Squiggle: one line meandering within it. Split: dip-pen tines parting.</li>
+        <li>Breathe: pressure opens them, a light touch brings them together; 0 holds them fixed.</li>
+        <li>The lines bleed into the wash with Wet, and the wash darkens along them. B draws a centre line only.</li></ul></div>
+      <div class="note"><h2>Offset · Chaos · Mixing</h2><ul>
+        <li>Offset: the line drifts off the wash, past its edge, and starts or ends before or after it.</li>
+        <li>Chaos: spacing, width, ink and place wander on seeded noise; lines break and restart; the squiggle loses its rhythm.</li>
+        <li>Mixing: the line goes grey and fuzzy in heavy wet wash and stays crisp on dry paper. The wash pulls branching feathers of ink from it, and pools where the line crosses its edge.</li></ul></div>
+    </div>
+  </section>
+</div>
+<script>
+"use strict";
+let QUANT = true;
+// ---------- randomness ----------
+function rng(seed) {
+  let s = seed >>> 0;
+  return function () {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const clamp = (v, a = 0, b = 1) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+
+// Smooth value noise in 0..1, cell pixels per lattice step.
+function valueNoise(w, h, cell, r) {
+  const gw = Math.ceil(w / cell) + 2, gh = Math.ceil(h / cell) + 2, g = new Float32Array(gw * gh);
+  for (let i = 0; i < g.length; i++) g[i] = r();
+  const out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const fy = y / cell, iy = fy | 0, ty = fy - iy, sy = ty * ty * (3 - 2 * ty);
+    for (let x = 0; x < w; x++) {
+      const fx = x / cell, ix = fx | 0, tx = fx - ix, sx = tx * tx * (3 - 2 * tx);
+      const a = g[iy * gw + ix], b = g[iy * gw + ix + 1], c = g[(iy + 1) * gw + ix], d = g[(iy + 1) * gw + ix + 1];
+      out[y * w + x] = lerp(lerp(a, b, sx), lerp(c, d, sx), sy);
+    }
+  }
+  return out;
+}
+function fbm(w, h, cell, r) {
+  const a = valueNoise(w, h, cell, r), b = valueNoise(w, h, cell / 2, r), c = valueNoise(w, h, cell / 4, r);
+  for (let i = 0; i < a.length; i++) a[i] = (a[i] * 4 + b[i] * 2 + c[i]) / 7;
+  return a;
+}
+
+// ---------- a surface: wash under ink, plus the paper's grain ----------
+function surface(w, h, seed) {
+  const r = rng(seed);
+  return { w, h, ink: new Float32Array(w * h), wash: new Float32Array(w * h), scratch: new Float32Array(w * h),
+    fine: valueNoise(w, h, 1.7, r), mid: valueNoise(w, h, 6, r), low: fbm(w, h, 44, r), blob: valueNoise(w, h, 16, r) };
+}
+
+// ---------- brushes ----------
+const ADJ = ["bold","brave","brisk","bashful","chipper","cosmic","dapper","dramatic","feral","fierce","frantic","gallant","humble","jumbo","mellow","nimble","peculiar","plump","pompous","regal","rogue","rustic","sleek","smug","snug","stout","stubborn","suave","swift","upbeat","vivid","wild","zealous"];
+const NOUN = ["plum","pear","fig","lime","leek","kale","yam","bean","pea","beet","corn","date","grape","peach","quince","chard","squash","gourd","cress","radish","turnip","parsnip","carrot","lemon","melon","mango","apple","cherry","olive","onion","garlic","pepper","okra","fennel","lychee","guava","shallot","caper","currant"];
+const INK_SIZE = [3, 8, 16], PAINT_SIZE = [24, 120, 220];
+const INK_DARK = [1, 0.53, 0.31], PAINT_DARK = [0.34, 0.2, 0.11];
+
+// A roll: a seed decides every dial. Each roughness dial is off about half the time, so plain brushes still turn up.
+function roll(kind, seed) {
+  const r = rng(seed), maybe = p => r() < p ? r() : 0;
+  const name = ADJ[(r() * ADJ.length) | 0] + "-" + NOUN[(r() * NOUN.length) | 0];
+  if (kind === "ink") {
+    const nib = ["round", "chisel", "flat"][(r() * 3) | 0];
+    const b = { kind, seed, name, nib,
+      aspect: nib === "round" ? 1 : nib === "chisel" ? lerp(0.3, 0.55, r()) : lerp(0.14, 0.28, r()),
+      angle: lerp(20, 70, r()),
+      taperIn: maybe(0.7), taperOut: maybe(0.75), pressure: r(), speed: lerp(-1, 1, r()),
+      dry: maybe(0.45), tooth: maybe(0.5), wobble: maybe(0.45) };
+    // Keep a roll tasteful: the three roughness dials share a budget.
+    const rough = b.dry + b.tooth + b.wobble;
+    if (rough > 1.3) { const k = 1.3 / rough; b.dry *= k; b.tooth *= k; b.wobble *= k; }
+    // Drawn last, so seeds rolled before these dials existed keep the rest of their character.
+    b.pool = maybe(0.45); b.splatter = maybe(0.3);
+    return b;
+  }
+  const wet = r() < 0.65;
+  const b = { kind, seed, name, mode: wet ? "wet" : "flat", pressure: r(), soft: r(),
+    gran: maybe(0.55), feather: maybe(0.5), hollow: wet ? maybe(0.7) : 0, bloom: wet ? maybe(0.6) : 0 };
+  b.streaks = maybe(0.45); const backrun = maybe(0.4); b.backrun = wet ? backrun : 0;
+  // Drawn last, so seeds rolled before drying time existed keep the rest of their character. On the Manta,
+  // 0.75 s + 4.25 s * drying^2 of wet time (WashLook.wetMs); not simulated here.
+  b.drying = r();
+  return b;
+}
+const INK_DIALS = [["taperIn", "Taper in"], ["taperOut", "Taper out"], ["pressure", "Pressure"], ["speed", "Speed", true], ["dry", "Dry brush"], ["tooth", "Paper tooth"], ["wobble", "Wobble"], ["pool", "Pooling"], ["splatter", "Splatter"]];
+
+// ---------- ink ----------
+// Stamps the stroke into surf.scratch (coverage 0..1), returns the touched rectangle.
+function stampInk(surf, b, pts, size, final, from) {
+  const { w, h, scratch: buf, fine, mid } = surf;
+  const total = pts.length ? pts[pts.length - 1].d : 0;
+  const rnd = rng(b.seed ^ 0x9e37);
+  const bristles = []; for (let i = 0; i < 48; i++) bristles.push(rnd());
+  const cosA = Math.cos(b.angle * Math.PI / 180), sinA = Math.sin(b.angle * Math.PI / 180);
+  const inLen = b.taperIn * 70, outLen = b.taperOut * 90;
+  let rect = [w, h, 0, 0];
+  for (let k = Math.max(1, from); k < pts.length; k++) {
+    const p0 = pts[k - 1], p1 = pts[k], seg = p1.d - p0.d;
+    const dirx = seg > 0 ? (p1.x - p0.x) / seg : 1, diry = seg > 0 ? (p1.y - p0.y) / seg : 0;
+    const steps = Math.max(1, Math.ceil(seg / Math.max(0.4, size * 0.1)));
+    for (let s = (k === 1 ? 0 : 1); s <= steps; s++) {
+      const t = s / steps, x = lerp(p0.x, p1.x, t), y = lerp(p0.y, p1.y, t), d = lerp(p0.d, p1.d, t);
+      const pr = lerp(p0.p, p1.p, t), v = lerp(p0.v, p1.v, t);
+      let wd = size * lerp(1 - 0.75 * b.pressure, 1 + 0.6 * b.pressure, pr);
+      wd *= clamp(1 + b.speed * 0.55 * (clamp(v / 2.5) - 0.3), 0.35, 1.6);
+      if (inLen > 0) wd *= Math.pow(clamp(d / inLen), 0.6) * 0.92 + 0.08;
+      if (final && outLen > 0) wd *= Math.pow(clamp((total - d) / outLen), 0.6) * 0.92 + 0.08;
+      const xi = clamp(x | 0, 0, w - 1), yi = clamp(y | 0, 0, h - 1);
+      if (b.wobble > 0) wd *= 1 + b.wobble * 0.7 * (mid[yi * w + xi] - 0.5);
+      // Ink pools where the pen slows or rests.
+      if (b.pool > 0) wd *= 1 + b.pool * 0.9 * (1 - clamp(v / 0.25)) ** 2;
+      const a = Math.max(0.6, wd / 2), bb = Math.max(0.6, Math.min(a, Math.max(1, a * b.aspect)));
+      // How much ink is left in the brush: dry brushes run out with distance and speed, pressing pushes ink out.
+      const load = 1 - b.dry * (0.35 + 0.8 * clamp(d / 600) + 0.7 * clamp(v / 2.5) - 0.6 * pr);
+      const nBr = Math.min(48, 6 + Math.round(a));
+      const R = Math.ceil(a + 1.5);
+      const x0 = Math.max(0, Math.floor(x - R)), x1 = Math.min(w - 1, Math.ceil(x + R));
+      const y0 = Math.max(0, Math.floor(y - R)), y1 = Math.min(h - 1, Math.ceil(y + R));
+      for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
+        // Already fully covered: nothing here can change it (the same picture, sooner).
+        if (buf[py * w + px] >= 1) continue;
+        const dx = px + 0.5 - x, dy = py + 0.5 - y;
+        const u = dx * cosA + dy * sinA, q = -dx * sinA + dy * cosA;
+        const dist = Math.sqrt((u / a) * (u / a) + (q / bb) * (q / bb));
+        // Antialias by the distance in pixels to the ellipse's edge, so thin nibs stay crisp along their length too.
+        const g = Math.hypot(u / (a * a), q / (bb * bb)) / Math.max(dist, 1e-6);
+        let cov = clamp(0.5 - (dist - 1) / Math.max(g, 1e-6));
+        if (cov <= 0) continue;
+        if (b.dry > 0) {
+          const across = clamp(((-dx * diry + dy * dirx) / a + 1) / 2, 0, 0.9999);
+          const bristle = bristles[(across * nBr) | 0];
+          if (bristle > load + 0.25 * (fine[py * w + px] - 0.5)) cov *= 0.0;
+        }
+        const i = py * w + px;
+        if (cov > buf[i]) buf[i] = cov;
+      }
+      if (x0 < rect[0]) rect[0] = x0; if (y0 < rect[1]) rect[1] = y0; if (x1 > rect[2]) rect[2] = x1; if (y1 > rect[3]) rect[3] = y1;
+    }
+  }
+  if (final && b.splatter > 0) splatter(surf, b, pts, size, rect);
+  return rect;
+}
+// Fast flicks throw drops ahead of the pen and a little to the side.
+function splatter(surf, b, pts, size, rect) {
+  const { w, h, scratch: buf } = surf, total = pts.length ? pts[pts.length - 1].d : 0;
+  const rnd = rng((b.seed ^ Math.imul(pts.length, 2654435761) ^ Math.round(total * 16)) >>> 0);
+  for (let k = 1; k < pts.length; k++) {
+    const p0 = pts[k - 1], p1 = pts[k], seg = p1.d - p0.d;
+    if (p1.v < 0.8 || seg <= 0 || rnd() > b.splatter * 0.025 * (p1.v - 0.8) * seg) continue;
+    const dirx = (p1.x - p0.x) / seg, diry = (p1.y - p0.y) / seg;
+    for (let n = 1 + ((rnd() * 3) | 0); n > 0; n--) {
+      const ahead = 6 + rnd() * 34 * p1.v, side = (rnd() - 0.5) * 18;
+      const x = p1.x + dirx * ahead - diry * side, y = p1.y + diry * ahead + dirx * side;
+      const r = Math.max(0.7, (0.3 + rnd() * rnd() * 1.4) * size / 5), R = Math.ceil(r + 1);
+      const x0 = Math.max(0, Math.floor(x - R)), x1 = Math.min(w - 1, Math.ceil(x + R));
+      const y0 = Math.max(0, Math.floor(y - R)), y1 = Math.min(h - 1, Math.ceil(y + R));
+      for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
+        const cov = clamp(r - Math.hypot(px + 0.5 - x, py + 0.5 - y) + 0.5), i = py * w + px;
+        if (cov > buf[i]) buf[i] = cov;
+      }
+      if (x0 < rect[0]) rect[0] = x0; if (y0 < rect[1]) rect[1] = y0; if (x1 > rect[2]) rect[2] = x1; if (y1 > rect[3]) rect[3] = y1;
+    }
+  }
+}
+// Ragged paper tooth, then onto the ink layer.
+function settleInk(surf, b, rect, dark) {
+  const { w, scratch: buf, ink, fine, mid } = surf;
+  for (let y = rect[1]; y <= rect[3]; y++) for (let x = rect[0]; x <= rect[2]; x++) {
+    const i = y * w + x; let a = buf[i]; if (a <= 0) continue;
+    if (b.tooth > 0) {
+      const n = fine[i] * 0.65 + mid[i] * 0.35;
+      a = clamp((a - (0.5 + b.tooth * 0.9 * (n - 0.5))) * 4 + 0.5);
+    }
+    const v = a * dark; if (v > ink[i]) ink[i] = v;
+    buf[i] = 0;
+  }
+}
+
+// ---------- paint ----------
+function paintWidth(b, size, p) {
+  const tip = lerp(0.6, 0.06, b.pressure);
+  return size * (tip + (1 - tip) * Math.pow(clamp(p), 1.2));
+}
+function stampPaint(surf, b, pts, size, from) {
+  const { w, h, scratch: buf } = surf;
+  let rect = [w, h, 0, 0];
+  const hairs = []; if (b.streaks > 0) { const rnd = rng(b.seed ^ 0x51ed); for (let i = 0; i < 130; i++) hairs.push(rnd()); }
+  for (let k = Math.max(1, from); k < pts.length; k++) {
+    const p0 = pts[k - 1], p1 = pts[k], seg = p1.d - p0.d;
+    const dirx = seg > 0 ? (p1.x - p0.x) / seg : 1, diry = seg > 0 ? (p1.y - p0.y) / seg : 0;
+    const steps = Math.max(1, Math.ceil(seg / Math.max(0.8, paintWidth(b, size, p1.p) * 0.12)));
+    for (let s = (k === 1 ? 0 : 1); s <= steps; s++) {
+      const t = s / steps, x = lerp(p0.x, p1.x, t), y = lerp(p0.y, p1.y, t), pr = lerp(p0.p, p1.p, t);
+      const r = Math.max(0.8, paintWidth(b, size, pr) / 2), edge = Math.max(1, r * lerp(0.08, 0.6, b.soft));
+      const dens = b.mode === "wet" ? lerp(0.7, 1, pr) : 1;
+      const R = Math.ceil(r + 1);
+      const x0 = Math.max(0, Math.floor(x - R)), x1 = Math.min(w - 1, Math.ceil(x + R));
+      const y0 = Math.max(0, Math.floor(y - R)), y1 = Math.min(h - 1, Math.ceil(y + R));
+      for (let py = y0; py <= y1; py++) {
+        // Only the pixels inside the disc, and not those already as dark as this stamp can make them (the same picture, sooner).
+        const dy = py + 0.5 - y, span = r * r - dy * dy;
+        if (span <= 0) continue;
+        const sx = Math.sqrt(span), xa = Math.max(x0, Math.floor(x - 0.5 - sx)), xb = Math.min(x1, Math.ceil(x - 0.5 + sx));
+        for (let px = xa; px <= xb; px++) {
+        const i = py * w + px;
+        if (buf[i] >= dens) continue;
+        const dx = px + 0.5 - x, dist = Math.sqrt(dx * dx + dy * dy);
+        let cov = clamp((r - dist) / edge) * dens;
+        if (b.streaks > 0 && cov > 0) {
+          // Hair lines along the stroke: each hair across the brush carries its own amount of paint.
+          const f = clamp(((-dx * diry + dy * dirx) / r + 1) / 2) * Math.min(120, 6 + r / 2.5), h0 = f | 0, t = f - h0;
+          cov *= 1 - b.streaks * 0.75 * lerp(hairs[h0], hairs[h0 + 1], t * t * (3 - 2 * t));
+        }
+        if (cov > buf[i]) buf[i] = cov;
+        }
+      }
+      if (x0 < rect[0]) rect[0] = x0; if (y0 < rect[1]) rect[1] = y0; if (x1 > rect[2]) rect[2] = x1; if (y1 > rect[3]) rect[3] = y1;
+    }
+  }
+  return rect;
+}
+function blur(src, rw, rh, r) {
+  const tmp = new Float32Array(rw * rh), out = new Float32Array(rw * rh), n = 2 * r + 1;
+  for (let y = 0; y < rh; y++) {
+    let acc = 0; const row = y * rw;
+    for (let x = -r; x <= r; x++) acc += src[row + clamp(x, 0, rw - 1)];
+    for (let x = 0; x < rw; x++) {
+      tmp[row + x] = acc / n;
+      acc += src[row + Math.min(rw - 1, x + r + 1)] - src[row + Math.max(0, x - r)];
+    }
+  }
+  for (let x = 0; x < rw; x++) {
+    let acc = 0;
+    for (let y = -r; y <= r; y++) acc += tmp[clamp(y, 0, rh - 1) * rw + x];
+    for (let y = 0; y < rh; y++) {
+      out[y * rw + x] = acc / n;
+      acc += tmp[Math.min(rh - 1, y + r + 1) * rw + x] - tmp[Math.max(0, y - r) * rw + x];
+    }
+  }
+  return out;
+}
+// The wash settles: bleeds feather out, pigment pools at the rim, blooms and granulates, then glazes over what was there.
+function settlePaint(surf, b, rect, dark) {
+  const { w, h, scratch: buf, wash, fine, mid, low, blob } = surf;
+  const fr = Math.round(2 + b.feather * 12), pad = fr + 8;
+  const X0 = Math.max(0, rect[0] - pad), Y0 = Math.max(0, rect[1] - pad), X1 = Math.min(w - 1, rect[2] + pad), Y1 = Math.min(h - 1, rect[3] + pad);
+  const rw = X1 - X0 + 1, rh = Y1 - Y0 + 1;
+  if (rw <= 0 || rh <= 0) return;
+  let P = new Float32Array(rw * rh);
+  for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) P[y * rw + x] = buf[(y + Y0) * w + x + X0];
+  if (b.feather > 0) {
+    const B = blur(blur(P, rw, rh, fr), rw, rh, Math.max(1, fr >> 1));
+    for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
+      const j = y * rw + x, i = (y + Y0) * w + x + X0;
+      // Creeping fingers: where the blurred paint reaches past a noisy threshold, paint follows it.
+      const reach = clamp((B[j] - (0.42 - 0.3 * b.feather) - 0.45 * (low[i] - 0.5) - 0.25 * (mid[i] - 0.5)) * 6);
+      const f = reach * B[j] * 1.4 * b.feather;
+      if (f > P[j]) P[j] = clamp(f);
+    }
+  }
+  let rim = null;
+  if (b.hollow > 0) {
+    const B2 = blur(blur(P, rw, rh, 3 + Math.round(b.hollow * 5)), rw, rh, 2);
+    rim = new Float32Array(rw * rh);
+    for (let j = 0; j < rim.length; j++) rim[j] = Math.max(0, P[j] - B2[j]);
+  }
+  for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
+    const j = y * rw + x, i = (y + Y0) * w + x + X0; let d = P[j];
+    if (d <= 0) continue;
+    if (rim) d = d * (1 - 0.6 * b.hollow) + rim[j] * b.hollow * 5;
+    if (b.bloom > 0) d *= clamp(1 + b.bloom * 2.6 * (low[i] - 0.5) + b.bloom * 0.5 * (mid[i] - 0.5), 0.25, 2);
+    if (b.backrun > 0) {
+      // Cauliflowers: water creeping back leaves pale blossoms with a dark rim.
+      const th = 0.7 - 0.05 * b.backrun, n = 0.55 * blob[i] + 0.45 * low[i];
+      const inside = clamp((n - th) * 40), ring = Math.exp(-(((n - th) / 0.02) ** 2));
+      d = d * (1 - 0.4 * b.backrun * inside) + d * b.backrun * 0.9 * ring;
+    }
+    if (b.gran > 0) d *= 1 + b.gran * 1.5 * (fine[i] - 0.5) + b.gran * 0.6 * (mid[i] - 0.5);
+    d = clamp(d, 0, 1.6) * dark;
+    wash[i] = 1 - (1 - wash[i]) * (1 - clamp(d));
+  }
+  for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) buf[(y + Y0) * w + x + X0] = 0;
+}
+
+// ---------- points: distance and smoothed speed (px per ms) ----------
+function addPoint(pts, x, y, p, t) {
+  const q = pts[pts.length - 1];
+  if (!q) { pts.push({ x, y, p, t, d: 0, v: 0 }); return true; }
+  const seg = Math.hypot(x - q.x, y - q.y);
+  if (seg < 0.6) return false;
+  const v = q.v * 0.75 + (seg / Math.max(1, t - q.t)) * 0.25;
+  pts.push({ x, y, p, t, d: q.d + seg, v });
+  return true;
+}
+
+// ---------- drawing a whole stroke on any surface ----------
+function drawStroke(surf, b, pts, sizeIx, shadeIx) {
+  if (b.kind === "ink") {
+    const rect = stampInk(surf, b, pts, INK_SIZE[sizeIx], true, 1);
+    settleInk(surf, b, rect, INK_DARK[shadeIx]);
+  } else {
+    const rect = stampPaint(surf, b, pts, PAINT_SIZE[sizeIx], 1);
+    settlePaint(surf, b, rect, PAINT_DARK[shadeIx]);
+  }
+}
+
+// ---------- compositing ----------
+const PAPER = 251;
+function compose(ctx, surf, rect, live, quant) {
+  const { w, ink, wash, scratch } = surf;
+  const x0 = Math.max(0, rect[0]), y0 = Math.max(0, rect[1]), x1 = Math.min(surf.w - 1, rect[2]), y1 = Math.min(surf.h - 1, rect[3]);
+  if (x1 < x0 || y1 < y0) return;
+  const rw = x1 - x0 + 1, rh = y1 - y0 + 1, img = ctx.createImageData(rw, rh), data = img.data;
+  for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
+    const i = (y + y0) * w + x + x0;
+    let wd = wash[i], id = ink[i];
+    if (live && scratch[i] > 0) {
+      if (live.kind === "paint") wd = 1 - (1 - wd) * (1 - scratch[i] * live.dark);
+      else id = Math.max(id, scratch[i] * live.dark);
+    }
+    let tone = PAPER * (1 - wd) * (1 - id);
+    if (quant) tone = Math.round(tone / 17) * 17;
+    const o = (y * rw + x) * 4;
+    data[o] = data[o + 1] = data[o + 2] = tone; data[o + 3] = 255;
+  }
+  ctx.putImageData(img, x0, y0);
+}
+
+const TEXTURES = {};   // name -> Float32Array(256 * 256), 0..1
+function loadTextures() {
+  return Promise.all(Object.entries(TEXTURE_SRC).map(([name, src]) => new Promise(done => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement("canvas"); c.width = c.height = 256;
+      const x = c.getContext("2d"); x.drawImage(img, 0, 0);
+      const d = x.getImageData(0, 0, 256, 256).data, f = new Float32Array(256 * 256);
+      for (let i = 0; i < f.length; i++) f[i] = d[i * 4] / 255;
+      TEXTURES[name] = f; done();
+    };
+    img.onerror = () => done();
+    img.src = src;
+  })));
+}
+// A surface's fine and mid noise drive paper tooth, dry-brush bristles, wobble and granulation. A brush with a
+// texture swaps in the scan: fine at full scale, mid at three times the scale, tiled across the surface.
+function useTexture(surf, b) {
+  surf.fine0 ??= surf.fine; surf.mid0 ??= surf.mid; surf.tex ??= {};
+  const t = b.texture && TEXTURES[b.texture];
+  if (!t) { surf.fine = surf.fine0; surf.mid = surf.mid0; return; }
+  if (!surf.tex[b.texture]) {
+    const fine = new Float32Array(surf.w * surf.h), mid = new Float32Array(surf.w * surf.h);
+    for (let y = 0; y < surf.h; y++) for (let x = 0; x < surf.w; x++) {
+      fine[y * surf.w + x] = t[(y & 255) * 256 + (x & 255)];
+      const fx = x / 3, fy = y / 3, ix = fx | 0, iy = fy | 0, tx = fx - ix, ty = fy - iy;
+      const at = (u, v) => t[(v & 255) * 256 + (u & 255)];
+      mid[y * surf.w + x] = lerp(lerp(at(ix, iy), at(ix + 1, iy), tx), lerp(at(ix, iy + 1), at(ix + 1, iy + 1), tx), ty);
+    }
+    surf.tex[b.texture] = { fine, mid };
+  }
+  surf.fine = surf.tex[b.texture].fine; surf.mid = surf.tex[b.texture].mid;
+}
+
+// ---------- the sample stroke: the app icon's loop (Phosphor scribble-loop), its centre line in the icon's 256 units ----------
+const LOOP = [[28,93],[50,72],[78,55],[108,48],[138,53],[160,68],[173,88],[180,110],[180,135],[170,160],[150,183],[124,200],[100,207],[78,201],[63,186],[60,167],[68,147],[86,131],[110,120],[136,112],[160,114],[184,122],[210,137],[236,155],[246,161]];
+// Catmull-Rom through the loop, every couple of pixels, light at the ends and firm through the middle, slower where it's firm.
+function loopPoints(w, h, pad, x0 = 0, y0 = 0) {
+  const sc = Math.min((w - 2 * pad) / 218, (h - 2 * pad) / 159), ox = x0 + (w - 218 * sc) / 2 - 28 * sc, oy = y0 + (h - 159 * sc) / 2 - 48 * sc;
+  const P = LOOP.map(([x, y]) => [ox + x * sc, oy + y * sc]), dense = [];
+  for (let i = 0; i < P.length - 1; i++) {
+    const p0 = P[Math.max(0, i - 1)], p1 = P[i], p2 = P[i + 1], p3 = P[Math.min(P.length - 1, i + 2)];
+    const n = Math.max(2, Math.ceil(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / 2));
+    for (let s = 0; s < n; s++) {
+      const t = s / n, t2 = t * t, t3 = t2 * t;
+      dense.push([0, 1].map(k => .5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t3)));
+    }
+  }
+  dense.push(P[P.length - 1]);
+  const pts = []; let time = 0;
+  dense.forEach(([x, y], i) => { const u = i / (dense.length - 1), p = .15 + .75 * Math.pow(Math.sin(Math.PI * u), .7); time += 2 + 3 * p; addPoint(pts, x, y, p, time); });
+  return pts;
+}
+// Lays a whole stroke and settles it, in the brush's texture.
+function lay(surf, b, pts, size, dark) {
+  useTexture(surf, b);
+  if (b.kind === "ink") { const rect = stampInk(surf, b, pts, size, true, 1); settleInk(surf, b, rect, dark ?? INK_DARK[0]); }
+  else { const rect = stampPaint(surf, b, pts, size, 1); settlePaint(surf, b, rect, dark ?? PAINT_DARK[0]); }
+}
+const surfaces = new Map();
+function drawLoop(canvas, b) {
+  const w = canvas.width, h = canvas.height, key = w + "x" + h;
+  if (!surfaces.has(key)) surfaces.set(key, surface(w, h, 7));
+  const s = surfaces.get(key); s.ink.fill(0); s.wash.fill(0); s.scratch.fill(0);
+  if (b.kind === "ink") { const size = Math.max(2.5, h / 30); lay(s, b, loopPoints(w, h, size * 2 + 6), size); }
+  else { const size = h * .13; lay(s, b, loopPoints(w, h, size * .7 + 4), size); }
+  compose(canvas.getContext("2d"), s, [0, 0, w - 1, h - 1], null, QUANT);
+}
+function loopCanvas(b, w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; drawLoop(c, b); return c; }
+
+;
+// ---------- Pen Paint Blend: one brush, a pen part and a paint part, one Wet dial between them ----------
+// Builds on engine.js (the weblab port of WildInkStroke and the Wild paint settle), unchanged.
+const BL_INK = [3, 8, 16], BL_WASH = [24, 120, 220];
+const smooth = t => { t = clamp(t); return t * t * (3 - 2 * t); };
+// lerp that lands exactly on its ends, so Wet 0 and Wet 1 are today's pen and paint to the bit.
+const mix = (a, b, t) => t <= 0 ? a : t >= 1 ? b : a + (b - a) * t;
+// How dark the wet share of a line settles, as a share of the wash's 1.6 ceiling.
+const LINE_WET_K = 1.4;
+
+// A blend brush: every dial of both kinds, the pairs that mean the same thing merged into one dial each.
+//   wet 0..1 (0 = today's pen, 1 = today's paint), line 0..1 (how much crisp line survives at Wet 1),
+//   nib, aspect, angle, taperIn, taperOut, pressure, speed, thicker,
+//   grain   = paper tooth (pen)    + granulation (paint)
+//   bristle = dry brush (pen)      + brush streaks (paint)
+//   pool    = pooling (pen)        + hollow edge (paint)
+//   wobble, splatter (pen only today), mode wet|flat, soft, bleed (= feathered bleed), bloom, backrun, drying (paint only today), texture.
+function blankBlend(seed, name) {
+  return { seed: seed >>> 0, name: name || "brush", style: "Wild", wet: 0, line: 1, nib: "round", aspect: 1, angle: 45, taperIn: 0, taperOut: 0,
+    pressure: .5, speed: 0, thicker: false, grain: 0, bristle: 0, wobble: 0, pool: 0, splatter: 0, mode: "wet", soft: .45, bleed: 0,
+    bloom: 0, backrun: 0, drying: .5, texture: "plain", lines: "centre", count: 3, spread: .6, breathe: .8, offset: 0, chaos: 0 };
+}
+function normBlend(b) {
+  b.count = Math.max(1, Math.min(5, Math.round(b.count ?? 3)));
+  if (b.nib === "round") b.aspect = 1;
+  else { const [lo, hi] = b.nib === "chisel" ? [.3, .55] : [.14, .28]; b.aspect = b.aspect === 1 ? (lo + hi) / 2 : clamp(b.aspect, lo, hi); }
+  return b;
+}
+
+// ---------- A: two parts, a line (the pen engine) and a wash (the paint engine), fed the same samples ----------
+function partsA(bb, inkSize, washSize) {
+  const w = bb.wet, s = smooth(w), mid = 4 * w * (1 - w), wetPaint = bb.mode === "wet";
+  const pen = { seed: bb.seed, nib: bb.nib, aspect: bb.aspect, angle: bb.angle, taperIn: bb.taperIn, taperOut: bb.taperOut,
+    pressure: bb.pressure, speed: bb.speed, dry: bb.bristle * (1 - w), tooth: bb.grain * (1 - w), wobble: bb.wobble,
+    pool: bb.pool * (1 - w), splatter: bb.splatter,
+    lines: bb.lines || "centre", count: bb.count, spread: bb.spread, breathe: bb.breathe, wetGap: clamp(w * 1.8),
+    offset: bb.offset || 0, chaos: bb.chaos || 0, skipStart: 0, skipEnd: 0 };
+  const inkShare = mix(1, bb.line, s);           // of the line, what stays crisp on the ink layer
+  const lineWet = mid * 1.2 + w * bb.line;              // of the line, what loosens into the wash
+  const bodyAmt = smooth((w - .08) / .75);        // the wash body, from Wet .08 up, full by .83
+  const body = { seed: bb.seed, mode: bb.mode, pressure: bb.pressure, soft: mix(1, bb.soft, s), streaks: bb.bristle,
+    aspect: mix(bb.aspect, 1, s), angle: bb.angle, taperIn: bb.taperIn * (1 - w), taperOut: bb.taperOut * (1 - w), amount: bodyAmt, skipStart: 0, skipEnd: 0 };
+  const bodySize = mix(inkSize * 2.2, washSize, Math.pow(w, 1.4));
+  if (pen.offset > 0) {
+    // Lag: the line starts or ends a little before or after the wash, decided by the seed; one of the two skips ahead.
+    const r = rng(bb.seed ^ 0x1a6), len = () => pen.offset * (14 + bodySize * .55) * (.4 + .6 * r());
+    const a = len(), b = len();
+    if (r() < .5) pen.skipStart = a; else body.skipStart = a;
+    if (r() < .5) pen.skipEnd = b; else body.skipEnd = b;
+  }
+  const settle = { feather: clamp(bb.bleed * s + .3 * mid), hollow: wetPaint ? bb.pool * s : 0, bloom: wetPaint ? bb.bloom * s : 0,
+    backrun: wetPaint ? bb.backrun * s : 0, gran: bb.grain * s, streaks: 0 };
+  return { engine: "A", w, pen, inkShare, lineWet, body, bodyAmt, settle, lineSize: inkSize,
+    bodySize, diffuse: mid, diffR: Math.round(1 + mid * (1.5 + inkSize * .5)),
+    stampLine: inkShare > 0 || lineWet > 0, placed: pen.lines !== "centre" || pen.offset > 0 || pen.chaos > 0 };
+}
+
+// ---------- B: one engine, one nib; wetness swells its water and moves its pigment ----------
+function partsB(bb, inkSize, washSize) {
+  const w = bb.wet, s = smooth(w), mid = 4 * w * (1 - w), wetPaint = bb.mode === "wet";
+  const nib = { seed: bb.seed, nib: bb.nib, aspect: bb.aspect, angle: bb.angle, taperIn: bb.taperIn, taperOut: bb.taperOut,
+    pressure: bb.pressure, speed: bb.speed, dry: bb.bristle * (1 - .6 * w), tooth: bb.grain * (1 - w), wobble: bb.wobble,
+    pool: bb.pool * (1 - w), splatter: bb.splatter, soft: bb.soft,
+    swell: lerp(1, washSize / inkSize * .55, Math.pow(w, 1.3)), waterAspect: lerp(bb.aspect, 1, w * w) };
+  const fixed = mix(1, bb.line, s);
+  const settle = { feather: clamp(bb.bleed * s), hollow: 0, bloom: wetPaint ? bb.bloom * s : 0,
+    backrun: wetPaint ? bb.backrun * s : 0, gran: bb.grain * s, streaks: 0 };
+  return { engine: "B", w, nib, fixed, mobile: (1 - fixed) + mid * .6, bodyAmt: smooth((w - .05) / .95) * (wetPaint ? .8 : 1),
+    settle, size: inkSize, edge: (wetPaint ? .5 + bb.pool : .15) * w, contain: wetPaint };
+}
+
+// ---------- the paint stamp, with a nib's shape, angle and tapers: stampPaint when round and untapered ----------
+function stampWash(surf, buf, b, pts, size, final, from) {
+  const { w, h } = surf;
+  let rect = [w, h, 0, 0];
+  const hairs = []; if (b.streaks > 0) { const rnd = rng(b.seed ^ 0x51ed); for (let i = 0; i < 130; i++) hairs.push(rnd()); }
+  const round = !(b.aspect < 1), cosA = Math.cos(b.angle * Math.PI / 180), sinA = Math.sin(b.angle * Math.PI / 180);
+  const grow = Math.max(1, size / 24), inLen = (b.taperIn || 0) * 70 * grow, outLen = (b.taperOut || 0) * 90 * grow;
+  const total = pts.length ? pts[pts.length - 1].d : 0, amount = b.amount ?? 1;
+  for (let k = Math.max(1, from); k < pts.length; k++) {
+    const p0 = pts[k - 1], p1 = pts[k], seg = p1.d - p0.d;
+    const dirx = seg > 0 ? (p1.x - p0.x) / seg : 1, diry = seg > 0 ? (p1.y - p0.y) / seg : 0;
+    const steps = Math.max(1, Math.ceil(seg / Math.max(0.8, paintWidth(b, size, p1.p) * 0.12)));
+    for (let s = (k === 1 ? 0 : 1); s <= steps; s++) {
+      const t = s / steps, x = lerp(p0.x, p1.x, t), y = lerp(p0.y, p1.y, t), pr = lerp(p0.p, p1.p, t);
+      if (b.skipStart || b.skipEnd) { const d = lerp(p0.d, p1.d, t); if (d < b.skipStart || (final && d > total - b.skipEnd)) continue; }
+      let tf = 1;
+      if (inLen > 0) { const d = lerp(p0.d, p1.d, t); tf *= Math.pow(clamp(d / inLen), 0.6) * 0.92 + 0.08; }
+      if (final && outLen > 0) { const d = lerp(p0.d, p1.d, t); tf *= Math.pow(clamp((total - d) / outLen), 0.6) * 0.92 + 0.08; }
+      const r = Math.max(0.8, paintWidth(b, size, pr) / 2 * tf), edge = Math.max(1, r * lerp(0.08, 0.6, b.soft));
+      const dens = (b.mode === "wet" ? lerp(0.7, 1, pr) : 1) * amount;
+      const R = Math.ceil(r + 1), rq = Math.max(0.8, r * b.aspect), sq = r / rq;
+      const x0 = Math.max(0, Math.floor(x - R)), x1 = Math.min(w - 1, Math.ceil(x + R));
+      const y0 = Math.max(0, Math.floor(y - R)), y1 = Math.min(h - 1, Math.ceil(y + R));
+      for (let py = y0; py <= y1; py++) {
+        const dy = py + 0.5 - y;
+        let xa = x0, xb = x1;
+        if (round) {
+          const span = r * r - dy * dy;
+          if (span <= 0) continue;
+          const sx = Math.sqrt(span); xa = Math.max(x0, Math.floor(x - 0.5 - sx)); xb = Math.min(x1, Math.ceil(x - 0.5 + sx));
+        }
+        for (let px = xa; px <= xb; px++) {
+          const i = py * w + px;
+          if (buf[i] >= dens) continue;
+          const dx = px + 0.5 - x;
+          let dist;
+          if (round) dist = Math.sqrt(dx * dx + dy * dy);
+          else { const u = dx * cosA + dy * sinA, q = (-dx * sinA + dy * cosA) * sq; dist = Math.sqrt(u * u + q * q); if (dist >= r) continue; }
+          let cov = clamp((r - dist) / edge) * dens;
+          if (b.streaks > 0 && cov > 0) {
+            const f = clamp(((-dx * diry + dy * dirx) / r + 1) / 2) * Math.min(120, 6 + r / 2.5), h0 = f | 0, tt = f - h0;
+            cov *= 1 - b.streaks * 0.75 * lerp(hairs[h0], hairs[h0 + 1], tt * tt * (3 - 2 * tt));
+          }
+          if (cov > buf[i]) buf[i] = cov;
+        }
+      }
+      if (x0 < rect[0]) rect[0] = x0; if (y0 < rect[1]) rect[1] = y0; if (x1 > rect[2]) rect[2] = x1; if (y1 > rect[3]) rect[3] = y1;
+    }
+  }
+  return rect;
+}
+
+// ---------- B's stamp: the pen's nib ellipse, a pigment core in scratch and its swollen water in scratch2 ----------
+function stampWetNib(surf, b, pts, size, final, from) {
+  const { w, h, scratch: core, scratch2: water, fine, mid } = surf;
+  const total = pts.length ? pts[pts.length - 1].d : 0;
+  const rnd = rng(b.seed ^ 0x9e37);
+  const bristles = []; for (let i = 0; i < 48; i++) bristles.push(rnd());
+  const cosA = Math.cos(b.angle * Math.PI / 180), sinA = Math.sin(b.angle * Math.PI / 180);
+  const inLen = b.taperIn * 70 * Math.sqrt(b.swell), outLen = b.taperOut * 90 * Math.sqrt(b.swell);
+  let rect = [w, h, 0, 0];
+  for (let k = Math.max(1, from); k < pts.length; k++) {
+    const p0 = pts[k - 1], p1 = pts[k], seg = p1.d - p0.d;
+    const dirx = seg > 0 ? (p1.x - p0.x) / seg : 1, diry = seg > 0 ? (p1.y - p0.y) / seg : 0;
+    const steps = Math.max(1, Math.ceil(seg / Math.max(0.4, size * 0.1 * Math.min(b.swell, 4))));
+    for (let s = (k === 1 ? 0 : 1); s <= steps; s++) {
+      const t = s / steps, x = lerp(p0.x, p1.x, t), y = lerp(p0.y, p1.y, t), d = lerp(p0.d, p1.d, t);
+      const pr = lerp(p0.p, p1.p, t), v = lerp(p0.v, p1.v, t);
+      let wd = size * lerp(1 - 0.75 * b.pressure, 1 + 0.6 * b.pressure, pr);
+      wd *= clamp(1 + b.speed * 0.55 * (clamp(v / 2.5) - 0.3), 0.35, 1.6);
+      if (inLen > 0) wd *= Math.pow(clamp(d / inLen), 0.6) * 0.92 + 0.08;
+      if (final && outLen > 0) wd *= Math.pow(clamp((total - d) / outLen), 0.6) * 0.92 + 0.08;
+      const xi = clamp(x | 0, 0, w - 1), yi = clamp(y | 0, 0, h - 1);
+      if (b.wobble > 0) wd *= 1 + b.wobble * 0.7 * (mid[yi * w + xi] - 0.5);
+      if (b.pool > 0) wd *= 1 + b.pool * 0.9 * (1 - clamp(v / 0.25)) ** 2;
+      const a = Math.max(0.6, wd / 2), bq = Math.max(0.6, Math.min(a, Math.max(1, a * b.aspect)));
+      const aw = a * b.swell, bw = Math.max(0.6, Math.min(aw, Math.max(1, aw * b.waterAspect))), edgeW = Math.max(1, aw * lerp(0.08, 0.6, b.soft));
+      const load = 1 - b.dry * (0.35 + 0.8 * clamp(d / 600) + 0.7 * clamp(v / 2.5) - 0.6 * pr);
+      const nBr = Math.min(48, 6 + Math.round(a));
+      const R = Math.ceil(aw + 1.5);
+      const x0 = Math.max(0, Math.floor(x - R)), x1 = Math.min(w - 1, Math.ceil(x + R));
+      const y0 = Math.max(0, Math.floor(y - R)), y1 = Math.min(h - 1, Math.ceil(y + R));
+      for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
+        const i = py * w + px;
+        if (core[i] >= 1 && water[i] >= 1) continue;
+        const dx = px + 0.5 - x, dy = py + 0.5 - y;
+        const u = dx * cosA + dy * sinA, q = -dx * sinA + dy * cosA;
+        const dW = Math.sqrt(u * u + (q * aw / bw) * (q * aw / bw));
+        let covW = clamp((aw - dW) / edgeW);
+        if (covW <= 0) continue;
+        const dist = Math.sqrt((u / a) * (u / a) + (q / bq) * (q / bq));
+        let cov = 0;
+        if (dist < 1.6) {
+          const g = Math.hypot(u / (a * a), q / (bq * bq)) / Math.max(dist, 1e-6);
+          cov = clamp(0.5 - (dist - 1) / Math.max(g, 1e-6));
+        }
+        if (b.dry > 0) {
+          const across = clamp(((-dx * diry + dy * dirx) / aw + 1) / 2, 0, 0.9999);
+          if (bristles[(across * nBr) | 0] > load + 0.25 * (fine[i] - 0.5)) { cov = 0; covW *= 0.35; }
+        }
+        if (cov > core[i]) core[i] = cov;
+        if (covW > water[i]) water[i] = covW;
+      }
+      if (x0 < rect[0]) rect[0] = x0; if (y0 < rect[1]) rect[1] = y0; if (x1 > rect[2]) rect[2] = x1; if (y1 > rect[3]) rect[3] = y1;
+    }
+  }
+  if (final && b.splatter > 0) splatter(surf, b, pts, size, rect);
+  return rect;
+}
+
+// ---------- the wash settle: settlePaint, with an optional step that reshapes the pigment first ----------
+// prep(P, X0, Y0, rw, rh) runs on the copied pigment before feathering; without it this is settlePaint exactly.
+function settleWash(surf, buf, b, rect, dark, prep, extraPad) {
+  const { w, h, wash, fine, mid, low, blob } = surf;
+  const fr = Math.round(2 + b.feather * 12), pad = fr + 8 + (extraPad || 0);
+  const X0 = Math.max(0, rect[0] - pad), Y0 = Math.max(0, rect[1] - pad), X1 = Math.min(w - 1, rect[2] + pad), Y1 = Math.min(h - 1, rect[3] + pad);
+  const rw = X1 - X0 + 1, rh = Y1 - Y0 + 1;
+  if (rw <= 0 || rh <= 0) return;
+  let P = new Float32Array(rw * rh);
+  for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) P[y * rw + x] = buf[(y + Y0) * w + x + X0];
+  if (prep) prep(P, X0, Y0, rw, rh);
+  if (b.feather > 0) {
+    const B = blur(blur(P, rw, rh, fr), rw, rh, Math.max(1, fr >> 1));
+    for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
+      const j = y * rw + x, i = (y + Y0) * w + x + X0;
+      const reach = clamp((B[j] - (0.42 - 0.3 * b.feather) - 0.45 * (low[i] - 0.5) - 0.25 * (mid[i] - 0.5)) * 6);
+      const f = reach * B[j] * 1.4 * b.feather;
+      if (f > P[j]) P[j] = clamp(f);
+    }
+  }
+  let rim = null;
+  if (b.hollow > 0) {
+    const B2 = blur(blur(P, rw, rh, 3 + Math.round(b.hollow * 5)), rw, rh, 2);
+    rim = new Float32Array(rw * rh);
+    for (let j = 0; j < rim.length; j++) rim[j] = Math.max(0, P[j] - B2[j]);
+  }
+  for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
+    const j = y * rw + x, i = (y + Y0) * w + x + X0; let d = P[j];
+    if (d <= 0) continue;
+    if (rim) d = d * (1 - 0.6 * b.hollow) + rim[j] * b.hollow * 5;
+    if (b.bloom > 0) d *= clamp(1 + b.bloom * 2.6 * (low[i] - 0.5) + b.bloom * 0.5 * (mid[i] - 0.5), 0.25, 2);
+    if (b.backrun > 0) {
+      const th = 0.7 - 0.05 * b.backrun, n = 0.55 * blob[i] + 0.45 * low[i];
+      const inside = clamp((n - th) * 40), ring = Math.exp(-(((n - th) / 0.02) ** 2));
+      d = d * (1 - 0.4 * b.backrun * inside) + d * b.backrun * 0.9 * ring;
+    }
+    if (b.gran > 0) d *= 1 + b.gran * 1.5 * (fine[i] - 0.5) + b.gran * 0.6 * (mid[i] - 0.5);
+    d = clamp(d, 0, 1.6) * dark;
+    wash[i] = 1 - (1 - wash[i]) * (1 - clamp(d));
+  }
+  for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) buf[(y + Y0) * w + x + X0] = 0;
+}
+
+const union = (a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
+const emptyRect = r => r[2] < r[0] || r[3] < r[1];
+function blendSurface(w, h, seed) { const s = surface(w, h, seed); s.scratch2 = new Float32Array(w * h); s.water = new Float32Array(w * h); return s; }
+
+// ---------- a stroke, live and at lift, for either engine ----------
+class BlendStroke {
+  constructor(surf, bb, engine, inkSize, washSize, inkDark, washDark) {
+    this.surf = surf; this.bb = bb; this.engine = engine; this.inkDark = inkDark; this.washDark = washDark;
+    this.P = engine === "B" ? partsB(bb, inkSize, washSize) : partsA(bb, inkSize, washSize);
+    this.pts = []; this.done = 1; this.rect = [surf.w, surf.h, 0, 0];
+    this.sampleMs = []; this.liftStampMs = 0; this.settleMs = 0;
+  }
+  // The live view's tones: crisp ink and the unsettled wash, as compose() reads them.
+  get live() {
+    const P = this.P;
+    if (P.engine === "A") return { inkK: P.inkShare * this.inkDark, bodyK: 1, lineK: P.lineWet * LINE_WET_K, washDark: this.washDark };
+    return { inkK: P.fixed * this.inkDark, bodyK: P.bodyAmt, lineK: P.mobile * LINE_WET_K, washDark: this.washDark };
+  }
+  stamp(final, from) {
+    const P = this.P, s = this.surf;
+    let r = [s.w, s.h, 0, 0];
+    if (P.engine === "A") {
+      if (P.stampLine) r = union(r, !P.placed ? stampInk(s, P.pen, this.pts, P.lineSize, final, from) : stampPlaced(s, P.pen, P.body, this.pts, P.lineSize, P.bodySize, final, from));
+      if (P.bodyAmt > 0) r = union(r, stampWash(s, s.scratch2, P.body, this.pts, P.bodySize, final, from));
+    } else r = stampWetNib(s, P.nib, this.pts, P.size, final, from);
+    this.rect = union(this.rect, r);
+    return r;
+  }
+  add(x, y, p, t) {
+    if (!addPoint(this.pts, x, y, p, t) || this.pts.length < 2) return null;
+    const t0 = performance.now(), r = this.stamp(false, this.done);
+    this.sampleMs.push(performance.now() - t0);
+    this.done = this.pts.length;
+    return r;
+  }
+  // At lift: the whole stroke again with its taper out and splatter, then settled onto the ink and wash layers.
+  finish() {
+    const s = this.surf, P = this.P;
+    if (this.pts.length < 2) { const p = this.pts[0]; if (!p) return null; addPoint(this.pts, p.x + .8, p.y, p.p, p.t + 16); }
+    clearRect(s, this.rect);
+    let t0 = performance.now();
+    this.rect = [s.w, s.h, 0, 0];
+    this.stamp(true, 1);
+    this.liftStampMs = performance.now() - t0;
+    t0 = performance.now();
+    const rect = this.rect;
+    if (!emptyRect(rect)) {
+      if (P.engine === "A") settleA(s, P, rect, this.inkDark, this.washDark);
+      else settleB(s, P, rect, this.inkDark, this.washDark);
+    }
+    this.settleMs = performance.now() - t0;
+    return rect;
+  }
+}
+function clearRect(s, r) {
+  const x0 = Math.max(0, r[0] - 40), x1 = Math.min(s.w - 1, r[2] + 40);
+  for (let y = Math.max(0, r[1] - 40); y <= Math.min(s.h - 1, r[3] + 40); y++) {
+    s.scratch.fill(0, y * s.w + x0, y * s.w + x1 + 1); s.scratch2.fill(0, y * s.w + x0, y * s.w + x1 + 1);
+  }
+}
+function settleA(s, P, rect, inkDark, washDark) {
+  const { w, scratch: L, scratch2: W, low, mid } = s;
+  // Mixing: only where a line and a wash body meet (never at Wet 0, nor at Wet 1 with no line), so old codes are untouched.
+  const mixing = P.stampLine && P.bodyAmt > 0;
+  let R0;
+  if (mixing) {
+    const g = 6, X0 = Math.max(0, rect[0] - g), Y0 = Math.max(0, rect[1] - g), X1 = Math.min(s.w - 1, rect[2] + g), Y1 = Math.min(s.h - 1, rect[3] + g);
+    const rw = X1 - X0 + 1, rh = Y1 - Y0 + 1;
+    R0 = [X0, Y0, rw, rh];
+    // The line and the body as laid, kept for the wash's settle (page-sized buffers, reused).
+    const LS = s.lineSave ??= new Float32Array(s.w * s.h), BS = s.bodySave ??= new Float32Array(s.w * s.h);
+    for (let y = Y0; y <= Y1; y++) { const a0 = y * w + X0, a1 = a0 + rw; LS.set(L.subarray(a0, a1), a0); BS.set(W.subarray(a0, a1), a0); }
+    // The line passing through wet wash loosens: greyer and fuzzier where the wash is heavy, crisp on dry paper.
+    // What it loses goes into the wash. The noise makes it dissolve in and out along the stroke.
+    // Sparse: only the line's own pixels are visited; each loosens and spills a little into its neighbours (the fuzz).
+    const k = smooth(P.w * 1.5), reachF = 1 + Math.round(P.w);
+    for (let y = Y0; y <= Y1; y++) for (let i = y * w + X0, end = i + rw; i < end; i++) {
+      const l = LS[i];
+      if (l <= 0 || BS[i] <= 0) continue;
+      const soft = clamp(BS[i] * 1.5) * k * .9 * clamp((low[i] - .38) * 3.2 + .15 * (mid[i] - .5));
+      if (soft <= 0) continue;
+      const nl = l * (1 - .72 * soft);
+      L[i] = l >= .5 ? nl : Math.max(nl, Math.min(L[i], l));
+      W[i] += (l - nl) * 1.2;
+      const halo = l * soft * .5, x = i - y * w;
+      for (let dy = -reachF; dy <= reachF; dy++) for (let dx = -reachF; dx <= reachF; dx++) {
+        const xx = x + dx, yy = y + dy;
+        if (xx < X0 || yy < Y0 || xx > X1 || yy > Y1 || (dx === 0 && dy === 0)) continue;
+        const v = halo / (1 + Math.abs(dx) + Math.abs(dy)), ii = yy * w + xx;
+        if (LS[ii] < .5 && v > L[ii]) L[ii] = v;
+      }
+    }
+  }
+  if (P.lineWet > 0) {
+    const k = P.lineWet * LINE_WET_K;
+    // The line's loose ink joins the wash, and the wash gathers a little darker along the line: one mark, not two layered.
+    const along = .3 * P.bodyAmt;
+    for (let y = rect[1]; y <= rect[3]; y++) for (let x = rect[0]; x <= rect[2]; x++) { const i = y * w + x, v = L[i] * k; if (v > 0) W[i] = Math.max(W[i], v) + along * L[i]; }
+  }
+  if (P.stampLine) settleInk(s, P.pen, mixing ? [R0[0], R0[1], R0[0] + R0[2] - 1, R0[1] + R0[3] - 1] : rect, inkDark * P.inkShare);
+  if (P.bodyAmt > 0 || P.lineWet > 0) {
+    // The loosened line spreads a little in the water before the wash's own bleed: none at Wet 0 and 1.
+    const diffuse = P.diffuse > 0 ? (Q, X0, Y0, rw, rh) => {
+      const B = blur(blur(Q, rw, rh, P.diffR), rw, rh, Math.max(1, P.diffR >> 1)), m = P.diffuse;
+      for (let j = 0; j < Q.length; j++) Q[j] = Q[j] * (1 - .45 * m) + B[j] * m * 1.1;
+    } : null;
+    const rT = Math.round(3 + 9 * P.w);
+    const prep = mixing ? (Q, X0, Y0, rw, rh) => {
+      if (diffuse) diffuse(Q, X0, Y0, rw, rh);
+      const LS = s.lineSave, BS = s.bodySave, [mx0, my0, mw, mh] = R0, H = s.h;
+      // The line blurred at half resolution: where the wash pulls ink out of it.
+      const hw = (rw + 1) >> 1, hh = (rh + 1) >> 1, down = new Float32Array(hw * hh);
+      for (let y = Math.max(Y0, my0); y < Math.min(Y0 + rh, my0 + mh); y++) {
+        const row = ((y - Y0) >> 1) * hw;
+        for (let x = Math.max(X0, mx0); x < Math.min(X0 + rw, mx0 + mw); x++) { const l = LS[y * w + x]; if (l > 0) down[row + ((x - X0) >> 1)] += l * .25; }
+      }
+      const BL = blur(down, hw, hh, Math.max(1, rT >> 1)), tk = smooth(P.w * 1.4);
+      for (let y = 0; y < rh; y++) {
+        const fy = Math.max(0, y / 2 - .25), hy0 = Math.min(hh - 1, fy | 0), hy1 = Math.min(hh - 1, hy0 + 1), ty = fy - hy0, Y = y + Y0;
+        for (let x = 0; x < rw; x++) {
+          if (BL[hy0 * hw + (x >> 1)] < .006 && BL[hy1 * hw + (x >> 1)] < .006) continue;
+          const fx = Math.max(0, x / 2 - .25), hx0 = Math.min(hw - 1, fx | 0), hx1 = Math.min(hw - 1, hx0 + 1), tx = fx - hx0;
+          const bl = lerp(lerp(BL[hy0 * hw + hx0], BL[hy0 * hw + hx1], tx), lerp(BL[hy1 * hw + hx0], BL[hy1 * hw + hx1], tx), ty);
+          if (bl < .012) continue;
+          const j = y * rw + x, X = x + X0, i = Y * w + X, br = BS[i], inWash = clamp(br * 2.5);
+          // The wash pulls ink out of the line in branching feathers.
+          const reach = clamp((bl * 5 - (.45 - .25 * tk) - .45 * (low[i] - .5) - 1.1 * (mid[i] - .5)) * 4);
+          let add = reach * clamp(bl * 3) * .9 * tk * (.35 + .65 * inWash);
+          // Where the line crosses the wash's edge, the edge pools darker.
+          if (br > 0 && X >= 3 && Y >= 3 && X < w - 3 && Y < H - 3) {
+            const rim = Math.max(0, br - (BS[i - 3] + BS[i + 3] + BS[i - 3 * w] + BS[i + 3 * w]) * .25);
+            add += rim * clamp(bl * 7) * 3.2 * tk;
+          }
+          Q[j] += add;
+        }
+      }
+      for (let y = my0; y < my0 + mh; y++) { LS.fill(0, y * w + mx0, y * w + mx0 + mw); BS.fill(0, y * w + mx0, y * w + mx0 + mw); }
+    } : diffuse;
+    settleWash(s, W, P.settle, rect, washDark, prep, prep ? Math.max(P.diffR * 2, mixing ? rT * 2 : 0) : 0);
+  }
+}
+function settleB(s, P, rect, inkDark, washDark) {
+  const { w, scratch: C, scratch2: W, water } = s;
+  const k = P.mobile * LINE_WET_K;
+  // The water, kept as the mask; the pigment it holds in its place: the swollen body and the core's loose share.
+  for (let y = rect[1]; y <= rect[3]; y++) for (let x = rect[0]; x <= rect[2]; x++) {
+    const i = y * w + x; water[i] = W[i]; W[i] = Math.max(W[i] * P.bodyAmt, C[i] * k);
+  }
+  settleInk(s, P.nib, rect, inkDark * P.fixed);
+  const R = Math.max(1, Math.round(1 + P.w * P.size * P.nib.swell * .18)), E = Math.max(2, Math.round(2 + P.w * 4));
+  const prep = (Q, X0, Y0, rw, rh) => {
+    const M = new Float32Array(rw * rh);
+    for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) M[y * rw + x] = water[(y + Y0) * w + x + X0];
+    // Pigment runs through the water it was laid in, and gathers where that water ends.
+    const B = blur(blur(Q, rw, rh, R), rw, rh, Math.max(1, R >> 1)), ME = blur(M, rw, rh, E);
+    for (let j = 0; j < Q.length; j++) {
+      const inWater = P.contain ? clamp(M[j] * 1.5) : 1, loose = P.w;
+      Q[j] = (Q[j] * (1 - loose) + B[j] * loose * 1.15) * inWater + Math.max(0, M[j] - ME[j]) * P.edge * 2.2;
+    }
+    for (let y = 0; y < rh; y++) water.fill(0, (y + Y0) * w + X0, (y + Y0) * w + X0 + rw);
+  };
+  settleWash(s, W, P.settle, rect, washDark, prep, R * 2);
+}
+
+// ---------- compositing, with a stroke in progress ----------
+function composeBlend(ctx, surf, rect, lv, quant) {
+  const { w, ink, wash, scratch, scratch2 } = surf;
+  const x0 = Math.max(0, rect[0]), y0 = Math.max(0, rect[1]), x1 = Math.min(surf.w - 1, rect[2]), y1 = Math.min(surf.h - 1, rect[3]);
+  if (x1 < x0 || y1 < y0) return;
+  const rw = x1 - x0 + 1, rh = y1 - y0 + 1, img = ctx.createImageData(rw, rh), data = img.data;
+  for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
+    const i = (y + y0) * w + x + x0;
+    let wd = wash[i], id = ink[i];
+    if (lv) {
+      const l = scratch[i], m = scratch2[i];
+      if (l > 0) id = Math.max(id, l * lv.inkK);
+      const pig = Math.max(m * lv.bodyK, l * lv.lineK);
+      if (pig > 0) wd = 1 - (1 - wd) * (1 - clamp(pig) * lv.washDark);
+    }
+    let tone = PAPER * (1 - wd) * (1 - id);
+    if (quant) tone = Math.round(tone / 17) * 17;
+    const o = (y * rw + x) * 4;
+    data[o] = data[o + 1] = data[o + 2] = tone; data[o + 3] = 255;
+  }
+  ctx.putImageData(img, x0, y0);
+}
+
+// A whole stroke laid and settled, as a sample tile draws it.
+function layBlend(surf, bb, engine, pts, inkSize, washSize, inkDark, washDark) {
+  const st = new BlendStroke(surf, bb, engine, inkSize, washSize, inkDark, washDark);
+  st.pts = pts; st.rect = [0, 0, surf.w - 1, surf.h - 1];
+  return st.finish();
+}
+
+// ---------- rolls: one continuous Wild space ----------
+const ADJ_NOUN = r => ADJ[(r() * ADJ.length) | 0] + "-" + NOUN[(r() * NOUN.length) | 0];
+function rollBlend(seed) {
+  const r = rng(seed), maybe = p => r() < p ? r() : 0;
+  const b = blankBlend(seed, ADJ_NOUN(r));
+  // About a fifth each are today's pens and today's paints; the rest fall anywhere between.
+  const at = r();
+  b.wet = at < .2 ? 0 : at < .4 ? 1 : r();
+  b.line = b.wet === 1 && r() < .6 ? 0 : r();
+  b.nib = ["round", "chisel", "flat"][(r() * 3) | 0];
+  b.aspect = b.nib === "round" ? 1 : b.nib === "chisel" ? lerp(.3, .55, r()) : lerp(.14, .28, r());
+  b.angle = lerp(20, 70, r());
+  b.taperIn = maybe(.7); b.taperOut = maybe(.75); b.pressure = r(); b.speed = lerp(-1, 1, r());
+  b.bristle = maybe(.45); b.grain = maybe(.5); b.wobble = maybe(.45);
+  const rough = b.bristle + b.grain + b.wobble;
+  if (rough > 1.3) { const k = 1.3 / rough; b.bristle *= k; b.grain *= k; b.wobble *= k; }
+  b.pool = maybe(.45); b.splatter = maybe(.3);
+  b.mode = r() < .65 ? "wet" : "flat"; b.soft = r(); b.bleed = maybe(.5);
+  b.bloom = b.mode === "wet" ? maybe(.6) : 0; b.backrun = b.mode === "wet" ? maybe(.4) : 0; b.drying = r();
+  // Drawn last, so seeds rolled before Lines keep the rest of their character. About 15% split or multi.
+  const ln = r(); b.lines = ln < .15 ? PLACEMENTS[1 + ((ln / .15 * 4) | 0)] : "centre";
+  b.count = 2 + ((r() * 4) | 0); b.spread = lerp(.25, 1, r()); b.breathe = r() < .75 ? lerp(.5, 1, r()) : 0;
+  b.offset = maybe(.3) * .9; b.chaos = maybe(.25) * .8;
+  return normBlend(b);
+}
+
+// ---------- share codes: old I and P codes still read; B is the blend's ----------
+const CODE_STEPS = 1295, AT_ZERO = [647, 648];
+const TEX = ["plain", "cold press", "laid", "felt", "crumpled", "canvas"];
+const R01 = [0, 1];
+const OLD = {
+  I: [["nib", ["round", "chisel", "flat"]], ["texture", TEX], ["aspect", [.14, .55]], ["angle", [20, 70]], ["taperIn", R01], ["taperOut", R01],
+      ["pressure", R01], ["speed", [-1, 1]], ["dry", R01], ["tooth", R01], ["wobble", R01], ["pool", R01], ["splatter", R01]],
+  P: [["mode", ["wet", "flat"]], ["texture", TEX], ["pressure", R01], ["soft", R01], ["gran", R01], ["feather", R01], ["hollow", R01],
+      ["bloom", R01], ["streaks", R01], ["backrun", R01], ["drying", R01]]
+};
+// Never reorder: the B code's settings, every merged pair once.
+const BLEND_ORDER = [["nib", ["round", "chisel", "flat"]], ["mode", ["wet", "flat"]], ["texture", TEX], ["wet", R01], ["line", R01],
+  ["aspect", [.14, .55]], ["angle", [20, 70]], ["taperIn", R01], ["taperOut", R01], ["pressure", R01], ["speed", [-1, 1]],
+  ["grain", R01], ["bristle", R01], ["wobble", R01], ["pool", R01], ["splatter", R01], ["soft", R01], ["bleed", R01],
+  ["bloom", R01], ["backrun", R01], ["drying", R01]];
+// Appended later: a B code that ends before these reads them as Single (how new settings join a code version).
+const PLACEMENTS = ["centre", "spread", "outline", "squiggle", "split"];
+const BLEND_TAIL = [["lines", PLACEMENTS], ["count", [1, 5]], ["spread", R01], ["breathe", R01], ["offset", R01], ["chaos", R01]];
+const hasTail = b => (b.lines && b.lines !== "centre") || b.offset > 0 || b.chaos > 0;
+// One list of styles, pens to paints, the two blends between; old style indexes map into it.
+const BLEND_STYLES = ["Fineliner", "Brush pen", "Dip pen", "Marker", "Pencil", "Charcoal", "Pen and wash", "Wet line",
+  "Ink wash", "Watercolor", "Gouache", "Oils", "Pastels", "Dry brush", "Wild"];
+const OLD_STYLES = { I: ["Fineliner", "Brush pen", "Dip pen", "Marker", "Pencil", "Charcoal", "Wild"],
+  P: ["Watercolor", "Ink wash", "Gouache", "Oils", "Pastels", "Dry brush", "Wild"] };
+const MERGE = { I: { dry: "bristle", tooth: "grain" }, P: { gran: "grain", streaks: "bristle", hollow: "pool", feather: "bleed" } };
+
+function writeDials(obj, order) {
+  let out = "";
+  for (const [k, spec] of order) {
+    if (typeof spec[0] === "string") { out += Math.max(0, spec.indexOf(obj[k])); continue; }
+    let step;
+    if (k === "speed" && obj.speed === 0) step = AT_ZERO[obj.thicker ? 1 : 0];
+    else step = Math.round((clamp(obj[k], spec[0], spec[1]) - spec[0]) / (spec[1] - spec[0]) * CODE_STEPS);
+    const d = step.toString(36); out += (d.length < 2 ? "0" : "") + d;
+  }
+  return out;
+}
+function readDials(digits, order, into) {
+  let at = 0;
+  for (const [k, spec] of order) {
+    if (typeof spec[0] === "string") {
+      if (at >= digits.length) return false;
+      const o = digits.charCodeAt(at++) - 48; if (o < 0 || o >= spec.length) return false;
+      into[k] = spec[o]; continue;
+    }
+    if (at + 2 > digits.length) return false;
+    const step = parseInt(digits.slice(at, at + 2), 36); at += 2;
+    if (k === "speed" && AT_ZERO.includes(step)) { into.speed = 0; into.thicker = step === AT_ZERO[1]; continue; }
+    into[k] = spec[0] + step / CODE_STEPS * (spec[1] - spec[0]);
+  }
+  return at === digits.length;
+}
+const codeSlug = n => n.toLowerCase().replace(/[^a-z]+/g, "-").replace(/^-|-$/g, "") || "brush";
+function encodeBlend(b) {
+  return codeSlug(b.name) + ".B" + Math.max(0, BLEND_STYLES.indexOf(b.style)).toString(36) + writeDials(b, BLEND_ORDER) + (hasTail(b) ? writeDials(b, BLEND_TAIL) : "") + "." + (b.seed >>> 0).toString(36);
+}
+// An old pen or paint, as the app writes it today (for the demo): kind "I" or "P", its own dials.
+function encodeOld(kind, o) {
+  return codeSlug(o.name) + "." + kind + Math.max(0, OLD_STYLES[kind].indexOf(o.style || "Wild")) + writeDials(o, OLD[kind]) + "." + (o.seed >>> 0).toString(36);
+}
+function decodeAny(code) {
+  if (code == null) return null;
+  let c = String(code).trim().toLowerCase();
+  const dot = c.indexOf(".") + 1;
+  if (dot > 0 && dot < c.length) c = c.slice(0, dot) + c[dot].toUpperCase() + c.slice(dot + 1);
+  let m = /^([a-z]+(?:-[a-z]+)*)\.B([0-9a-z])([0-9a-z]+)\.([0-9a-z]{1,7})$/.exec(c);
+  if (m) {
+    const seed = parseInt(m[4], 36), style = parseInt(m[2], 36);
+    if (style >= BLEND_STYLES.length || seed > 0xffffffff) return null;
+    const b = blankBlend(seed, m[1]); b.style = BLEND_STYLES[style];
+    const base = writeDials(blankBlend(0, "x"), BLEND_ORDER).length, digits = m[3];
+    if (digits.length === base) return readDials(digits, BLEND_ORDER, b) ? normBlend(b) : null;
+    return readDials(digits.slice(0, base), BLEND_ORDER, b) && readDials(digits.slice(base), tailFor(digits.length - base), b) ? normBlend(b) : null;
+  }
+  m = /^([a-z]+(?:-[a-z]+)*)\.([IP])(\d)([0-9a-z]+)\.([0-9a-z]{1,7})$/.exec(c);
+  if (!m) return null;
+  const kind = m[2], seed = parseInt(m[5], 36), style = m[3].charCodeAt(0) - 48;
+  if (style >= OLD_STYLES[kind].length || seed > 0xffffffff) return null;
+  const o = {};
+  if (!readDials(m[4], OLD[kind], o)) return null;
+  return fromOld(kind, o, seed, m[1], OLD_STYLES[kind][style]);
+}
+// An old pen is Wet 0 with all its line; an old paint is Wet 1 with none. Each merged pair has one member per kind, so nothing is lost.
+function fromOld(kind, o, seed, name, style) {
+  const b = blankBlend(seed, name); b.style = style || "Wild";
+  for (const [k, v] of Object.entries(o)) b[MERGE[kind][k] || k] = v;
+  if (kind === "I") { b.wet = 0; b.line = 1; }
+  else { b.wet = 1; b.line = 0; b.nib = "round"; b.aspect = 1; b.taperIn = 0; b.taperOut = 0; b.speed = 0; b.wobble = 0; b.splatter = 0; if (b.mode !== "wet") { b.pool = 0; b.bloom = 0; b.backrun = 0; } }
+  return normBlend(b);
+}
+
+// ---------- Lines: placements inside the wash's footprint, so line and wash are one mark ----------
+// Each step finds the wash body's ellipse there (its size from pressure, Wet and tapers, its nib angle and shape),
+// then places the ink inside it. Centre is stampInk. Spread: count lines across the body's long axis. Outline: two lines
+// on the body's edges either side of the path, softened and broken where it's thin. Squiggle: one line meandering
+// within the half-width. Split: the dip pen's tines parting under pressure. Breathe 0 holds the footprint at a firm
+// touch's size; at 1 it follows pressure, so the lines converge as the touch lightens.
+const breath = (b, pr) => mix(1, smooth((pr - .2) / .65), b.breathe);
+function stampPlaced(surf, b, body, pts, size, bodySize, final, from) {
+  const { w, h, scratch: buf, scratch2: wet, fine, mid, low } = surf;
+  const total = pts.length ? pts[pts.length - 1].d : 0;
+  const rnd = rng(b.seed ^ 0x9e37);
+  const bristles = []; for (let i = 0; i < 48; i++) bristles.push(rnd());
+  const lr = rng(b.seed ^ 0x11e5), loads = [], widths = [], phase = [];
+  for (let j = 0; j < 5; j++) { loads.push(.8 + .2 * lr()); widths.push(.85 + .3 * lr()); phase.push([lr() * 997, lr() * 991]); }
+  const sq0 = lr() * 6.283, sq1 = lr() * 6.283;
+  const cosA = Math.cos(b.angle * Math.PI / 180), sinA = Math.sin(b.angle * Math.PI / 180);
+  const inLen = b.taperIn * 70, outLen = b.taperOut * 90, kind = b.lines;
+  const grow = Math.max(1, bodySize / 24), bIn = (body.taperIn || 0) * 70 * grow, bOut = (body.taperOut || 0) * 90 * grow;
+  const n = kind === "spread" ? b.count : kind === "outline" ? 2 : 1, chaos = b.chaos, sd = b.seed >>> 0;
+  // Seeded smooth noise along the stroke for line j, channel c: 0..1, irregular, never a sine.
+  const cn = (j, c, x) => noise1((sd + j * 1013 + c * 7919) >>> 0, x);
+  const sub = kind === "spread" ? .7 : kind === "outline" ? .6 : kind === "squiggle" ? .85 : 1;
+  const reach = lerp(.3, .95, b.spread), bodyRef = paintWidth(body, bodySize, .7) / 2;
+  const lambda = Math.max(30, bodyRef * 3);
+  // Small steps when the squiggle swings fast sideways, so it stays one unbroken line.
+  const swing = (kind === "squiggle" ? 1 + 6.283 * reach * bodyRef / lambda * (1 + 2 * chaos) : 1) * (1 + chaos);
+  let rect = [w, h, 0, 0];
+  for (let k = Math.max(1, from); k < pts.length; k++) {
+    const p0 = pts[k - 1], p1 = pts[k], seg = p1.d - p0.d;
+    const dirx = seg > 0 ? (p1.x - p0.x) / seg : 1, diry = seg > 0 ? (p1.y - p0.y) / seg : 0;
+    const steps = Math.max(1, Math.ceil(seg * swing / Math.max(0.4, size * sub * 0.1)));
+    for (let s = (k === 1 ? 0 : 1); s <= steps; s++) {
+      const t = s / steps, x = lerp(p0.x, p1.x, t), y = lerp(p0.y, p1.y, t), d = lerp(p0.d, p1.d, t);
+      if (d < b.skipStart || (final && d > total - b.skipEnd)) continue;
+      const pr = lerp(p0.p, p1.p, t), v = lerp(p0.v, p1.v, t), open = breath(b, pr);
+      let wd = size * lerp(1 - 0.75 * b.pressure, 1 + 0.6 * b.pressure, pr);
+      wd *= clamp(1 + b.speed * 0.55 * (clamp(v / 2.5) - 0.3), 0.35, 1.6);
+      if (inLen > 0) wd *= Math.pow(clamp(d / inLen), 0.6) * 0.92 + 0.08;
+      if (final && outLen > 0) wd *= Math.pow(clamp((total - d) / outLen), 0.6) * 0.92 + 0.08;
+      if (b.pool > 0) wd *= 1 + b.pool * 0.9 * (1 - clamp(v / 0.25)) ** 2;
+      // The wash body's ellipse here: long radius rB along the nib angle, short rB * aspect.
+      let tf = 1;
+      if (bIn > 0) tf *= Math.pow(clamp(d / bIn), 0.6) * 0.92 + 0.08;
+      if (final && bOut > 0) tf *= Math.pow(clamp((total - d) / bOut), 0.6) * 0.92 + 0.08;
+      const rB = Math.max(0.8, mix(bodyRef, paintWidth(body, bodySize, pr) / 2, b.breathe) * tf);
+      const nx = -diry, ny = dirx, an = nx * cosA + ny * sinA, pn = -nx * sinA + ny * cosA;
+      const edge = Math.sqrt((rB * an) ** 2 + (rB * body.aspect * pn) ** 2);   // the body's half-width across the path
+      const g = kind === "split" ? b.spread * open * (chaos > 0 ? 1 + chaos * (2 * cn(9, 1, d / 60) - 1) * .7 : 1) : 0;
+      // Offset: a slow seeded drift off the wash's centre, able to leave the wash altogether.
+      let drift = 0;
+      if (b.offset > 0) drift = b.offset * (edge * 1.6 + size * 2.5) * clamp((2 * noise1(sd ^ 0x0ff5e7, d / (60 + bodyRef * 2)) - 1) * 1.8, -1, 1);
+      if (g > 0) wd *= 1 + .9 * g;
+      const load = 1 - b.dry * (0.35 + 0.8 * clamp(d / 600) + 0.7 * clamp(v / 2.5) - 0.6 * pr);
+      for (let j = 0; j < n; j++) {
+        let cx = x + nx * drift, cy = y + ny * drift, wj = wd * sub * (n > 1 ? widths[j] : 1), ink = n > 1 ? loads[j] : 1;
+        if (chaos > 0) {
+          // Chaos: lines break and restart, and their width, ink and place wander irregularly.
+          if (cn(j, 5, d / (14 + size * 2)) < chaos * .34) continue;
+          wj *= Math.max(.25, 1 + chaos * .9 * (2 * cn(j, 3, d / 30) - 1));
+          ink *= 1 - chaos * .45 * cn(j, 4, d / 45);
+          const jit = chaos * (edge * .55 + size) * (2 * cn(j, 2, d / 38) - 1);
+          cx += nx * jit; cy += ny * jit;
+        }
+        const lw = wj / 2;
+        if (kind === "spread") {
+          // Across the body's long axis, so a chisel at an angle staggers them; they meet as the body narrows.
+          let u = (j - (n - 1) / 2) / Math.max(1, (n - 1) / 2) * Math.max(0, rB * reach - lw);
+          if (chaos > 0) u *= 1 + chaos * .8 * (2 * cn(j, 1, d / 50) - 1);
+          cx += cosA * u; cy += sinA * u;
+        } else if (kind === "outline") {
+          const off = Math.max(0, edge * .97 - lw * .8) * (j ? 1 : -1);
+          cx += nx * off; cy += ny * off;
+          // Thin wash: the edges come together and the ink there is fainter and broken, as at a drying rim.
+          const thin = clamp((edge - wd * .9) / (wd * 1.5)), xi = clamp(cx | 0, 0, w - 1), yi = clamp(cy | 0, 0, h - 1);
+          ink *= 1 - (1 - thin) * b.wetGap * (.2 + .6 * clamp((.5 - low[yi * w + xi]) * 7));
+          wj *= 1 - .3 * (1 - thin) * b.wetGap;
+          if (ink <= .02) continue;
+        } else if (kind === "squiggle") {
+          // With chaos the meander loses its rhythm: the phase is pushed about by noise and the swing comes and goes.
+          const ph = 6.283 * (d / lambda + chaos * 1.6 * noise1(sd ^ 0x5a1, d / (lambda * 1.4))) + sq0 + .9 * (1 - chaos) * Math.sin(d / lambda * 1.7 + sq1);
+          const off = Math.max(0, edge * reach - lw) * Math.sin(ph) * (1 - chaos * .6 * cn(0, 6, d / (lambda * .9)));
+          cx += nx * off; cy += ny * off;
+        }
+        if (n > 1 || kind === "squiggle" || chaos > 0) {
+          // Each line wanders on its own patch of the noise, so they never read as copies.
+          const px0 = clamp((cx + phase[j][0]) % w | 0, 0, w - 1), py0 = clamp((cy + phase[j][1]) % h | 0, 0, h - 1);
+          const jit = (.2 + b.wobble) * (mid[py0 * w + px0] - .5) * size * .5;
+          cx += nx * jit; cy += ny * jit;
+          wj *= 1 + b.wobble * 0.7 * (mid[py0 * w + px0] - 0.5);
+        } else if (b.wobble > 0) { const xi = clamp(x | 0, 0, w - 1), yi = clamp(y | 0, 0, h - 1); wj *= 1 + b.wobble * 0.7 * (mid[yi * w + xi] - 0.5); }
+        const a = Math.max(0.6, wj / 2), bb = Math.max(0.6, Math.min(a, Math.max(1, a * b.aspect)));
+        const nBr = Math.min(48, (g > 0 ? 4 : 6) + Math.round(a));
+        const R = Math.ceil(a + 1.5);
+        const x0 = Math.max(0, Math.floor(cx - R)), x1 = Math.min(w - 1, Math.ceil(cx + R));
+        const y0 = Math.max(0, Math.floor(cy - R)), y1 = Math.min(h - 1, Math.ceil(cy + R));
+        for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
+          const i = py * w + px;
+          if (buf[i] >= ink) continue;
+          const dx = px + 0.5 - cx, dy = py + 0.5 - cy;
+          const u = dx * cosA + dy * sinA, q = -dx * sinA + dy * cosA;
+          const dist = Math.sqrt((u / a) * (u / a) + (q / bb) * (q / bb));
+          const gr = Math.hypot(u / (a * a), q / (bb * bb)) / Math.max(dist, 1e-6);
+          let cov = clamp(0.5 - (dist - 1) / Math.max(gr, 1e-6));
+          if (cov <= 0) continue;
+          const across = (-dx * diry + dy * dirx) / a;
+          if (g > 0) {
+            // The gap between the tines: no ink in the middle, the rails either side; wetter ink pooled there as Wet rises.
+            const gap = clamp((g * .72 - Math.abs(across)) / .14);
+            if (gap > 0 && b.wetGap > 0) { const v2 = cov * gap * b.wetGap * .8; if (v2 > wet[i]) wet[i] = v2; }
+            cov *= 1 - gap;
+            if (cov <= 0) continue;
+          }
+          if (b.dry > 0 && bristles[(clamp((across + 1) / 2, 0, .9999) * nBr) | 0] > load + 0.25 * (fine[i] - 0.5)) continue;
+          cov *= ink;
+          if (cov > buf[i]) buf[i] = cov;
+        }
+        if (x0 < rect[0]) rect[0] = x0; if (y0 < rect[1]) rect[1] = y0; if (x1 > rect[2]) rect[2] = x1; if (y1 > rect[3]) rect[3] = y1;
+      }
+    }
+  }
+  if (final && b.splatter > 0) splatter(surf, b, pts, size, rect);
+  return rect;
+}
+
+// ---------- 1-D value noise along a stroke: seeded, smooth, irregular ----------
+function hash01(seed, i) {
+  let t = (seed ^ Math.imul(i | 0, 0x27d4eb2d)) >>> 0;
+  t = Math.imul(t ^ (t >>> 15), 0x2c1b3c6d); t = Math.imul(t ^ (t >>> 12), 0x297a2d39); t ^= t >>> 15;
+  return (t >>> 0) / 4294967296;
+}
+function noise1(seed, x) {
+  const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f);
+  const a = lerp(hash01(seed, i), hash01(seed, i + 1), u), b = lerp(hash01(seed ^ 0x9e3779b9, Math.floor(x * 2.3)), hash01(seed ^ 0x9e3779b9, Math.floor(x * 2.3) + 1), (x * 2.3) % 1);
+  return a * .75 + b * .25;
+}
+// The tail settings a code of this many extra digits holds: codes written before Offset and Chaos stop after Breathe.
+function tailFor(len) { let n = 0, at = 0; for (const [, spec] of BLEND_TAIL) { const c = typeof spec[0] === "string" ? 1 : 2; if (at + c > len) break; at += c; n++; } return BLEND_TAIL.slice(0, n); }
+
+
+;
+// ---------- the page ----------
+const $ = id => document.getElementById(id);
+const INK_DARKEST = 1, WASH_DARKEST = .34;
+const newSeedB = () => (Math.random() * 4294967296) >>> 0;
+const S = { bb: rollBlend(20261014), engine: "A", size: 1 };
+S.bb.wet = .45; S.bb.line = .6; S.bb.lines = "spread"; S.bb.count = 3; S.bb.spread = .7; S.bb.breathe = .9; S.bb.pressure = .6; S.bb.offset = .5; S.bb.chaos = .15; S.bb.mode = "wet"; S.bb.nib = "chisel"; S.bb.aspect = .4; S.bb.bleed = .35; S.bb.bloom = .35; S.bb.grain = .3; S.bb.bristle = .15; S.bb.splatter = .15; normBlend(S.bb);
+
+// ---------- dials ----------
+const pct = v => v === 0 ? "off" : v.toFixed(2);
+const KEY = [
+  ["wet", "Wet", 0, 1, v => v.toFixed(2), true],
+  ["line", "Line", 0, 1, v => v.toFixed(2)],
+  ["pressure", "Pressure", 0, 1, v => v.toFixed(2)],
+  ["angle", "Nib angle", 20, 70, v => Math.round(v) + "°"],
+  ["grain", "Grain", 0, 1, pct],
+  ["bleed", "Bleed", 0, 1, pct],
+  ["bloom", "Bloom", 0, 1, pct]
+];
+const MORE = [
+  ["aspect", "Nib width", .14, .55, v => v.toFixed(2)],
+  ["taperIn", "Taper in", 0, 1, pct], ["taperOut", "Taper out", 0, 1, pct],
+  ["speed", "Speed", -1, 1, v => v === 0 ? "off" : v.toFixed(2)],
+  ["bristle", "Bristle", 0, 1, pct], ["wobble", "Wobble", 0, 1, pct], ["pool", "Pool", 0, 1, pct],
+  ["splatter", "Splatter", 0, 1, pct], ["soft", "Soft edge", 0, 1, v => v.toFixed(2)], ["backrun", "Backruns", 0, 1, pct],
+  ["drying", "Drying", 0, 1, v => (Math.round(750 + 4250 * v * v) / 1000).toFixed(1) + " s"]
+];
+const inputs = {};
+function dialRow(parent, [k, label, min, max, fmt, big]) {
+  const row = document.createElement("div"); row.className = "dial" + (big ? " big" : "");
+  const id = "d_" + k;
+  row.innerHTML = `<label class="lab" for="${id}">${label}</label><input type="range" id="${id}" min="${min}" max="${max}" step="${(max - min) / 200}"><span class="val"></span>` +
+    (big ? `<span class="ends"><span>pen</span><span>paint</span></span>` : "");
+  const inp = row.querySelector("input"), val = row.querySelector(".val");
+  inp.addEventListener("input", () => { S.bb[k] = +inp.value; if (k === "speed" && Math.abs(S.bb.speed) < .02) S.bb.speed = 0; normBlend(S.bb); val.textContent = fmt(S.bb[k]); changed(false); });
+  inputs[k] = { inp, val, fmt, row };
+  parent.appendChild(row);
+}
+function chipRow(parent, k, label, options) {
+  const row = document.createElement("div"); row.className = "chiprow";
+  row.innerHTML = `<span class="lab">${label}</span><span class="chips" role="group" aria-label="${label}"></span>`;
+  const box = row.querySelector(".chips");
+  const chips = options.map(o => {
+    const c = document.createElement("button"); c.className = "chip"; c.textContent = o;
+    c.addEventListener("click", () => { S.bb[k] = o; normBlend(S.bb); changed(true); });
+    box.appendChild(c); return c;
+  });
+  inputs[k] = { chips, options };
+  parent.appendChild(row);
+}
+const dialsBox = $("dials"), dials2 = $("dials2");
+dialRow(dialsBox, KEY[0]); dialRow(dialsBox, KEY[1]);
+chipRow(dialsBox, "nib", "Nib", ["round", "chisel", "flat"]);
+chipRow(dialsBox, "lines", "Lines", PLACEMENTS);
+[["count", "Count", 1, 5, v => String(Math.round(v))], ["spread", "Reach", 0, 1, v => v.toFixed(2)],
+ ["breathe", "Breathe", 0, 1, v => v === 0 ? "fixed" : v.toFixed(2)],
+ ["offset", "Offset", 0, 1, pct], ["chaos", "Chaos", 0, 1, pct]].forEach(d => dialRow(dialsBox, d));
+inputs.count.inp.step = 1;
+chipRow(dialsBox, "mode", "Paint", ["wet", "flat"]);
+KEY.slice(2).forEach(d => dialRow(dialsBox, d));
+MORE.forEach(d => dialRow(dials2, d));
+function showDials() {
+  for (const [k, c] of Object.entries(inputs)) {
+    if (c.chips) { c.chips.forEach((ch, i) => ch.setAttribute("aria-pressed", String(S.bb[k] === c.options[i]))); continue; }
+    c.inp.value = S.bb[k]; c.val.textContent = c.fmt(S.bb[k]);
+  }
+  inputs.aspect.inp.disabled = S.bb.nib === "round";
+  inputs.count.inp.disabled = S.bb.lines !== "spread";
+  inputs.spread.inp.disabled = S.bb.lines === "centre" || S.bb.lines === "outline";
+  inputs.breathe.inp.disabled = S.bb.lines === "centre";
+  stripChips.forEach((c, i) => c.setAttribute("aria-pressed", String(S.bb.lines === PLACEMENTS[i])));
+  inputs.angle.inp.disabled = S.bb.nib === "round" && S.engine === "A" && S.bb.wet === 0;
+  $("bname").textContent = S.bb.name;
+  const code = encodeBlend(S.bb);
+  $("bcode").textContent = code; $("codeOut").value = code;
+}
+function changed(full) { if (full) showDials(); else { const code = encodeBlend(S.bb); $("bcode").textContent = code; $("codeOut").value = code; } drawStripSoon(); }
+
+// ---------- the test pad ----------
+const pad = $("pad"), pctx = pad.getContext("2d");
+const DENSITY = 1.5, MAX_PIXELS = 1.7e6;
+let surf = blendSurface(pad.width, pad.height, 2026);
+function fit() {
+  const box = pad.parentElement;
+  let w = Math.max(200, Math.round(box.clientWidth * DENSITY)), h = Math.max(200, Math.round(box.clientHeight * DENSITY));
+  if (w * h > MAX_PIXELS) { const k = Math.sqrt(MAX_PIXELS / (w * h)); w = Math.round(w * k); h = Math.round(h * k); }
+  if (w === surf.w && h === surf.h) return;
+  const old = surf, next = blendSurface(w, h, 2026), cw = Math.min(w, old.w);
+  for (let y = 0; y < Math.min(h, old.h); y++) {
+    next.ink.set(old.ink.subarray(y * old.w, y * old.w + cw), y * w);
+    next.wash.set(old.wash.subarray(y * old.w, y * old.w + cw), y * w);
+  }
+  surf = next; pad.width = w; pad.height = h;
+  composeBlend(pctx, surf, [0, 0, w - 1, h - 1], null, QUANT);
+}
+let fitting = 0;
+new ResizeObserver(() => { cancelAnimationFrame(fitting); fitting = requestAnimationFrame(fit); }).observe(pad.parentElement);
+
+let live = null, dirty = null, frame = 0;
+function padPoint(e) {
+  const r = pad.getBoundingClientRect(), sx = pad.width / r.width, sy = pad.height / r.height;
+  let p = .6;
+  if (e.pointerType === "pen" && e.pressure > 0) p = e.pressure;
+  else if (e.pointerType === "touch" && e.pressure > 0 && e.pressure < 1) p = e.pressure;
+  return [(e.clientX - r.left) * sx, (e.clientY - r.top) * sy, p, e.timeStamp];
+}
+function paintDirty() {
+  frame = 0;
+  if (!dirty) return;
+  composeBlend(pctx, surf, dirty, live ? live.live : null, QUANT);
+  dirty = null;
+}
+function markDirty(r) { if (!r || emptyRect(r)) return; dirty = dirty ? union(dirty, r) : r.slice(); if (!frame) frame = requestAnimationFrame(paintDirty); }
+pad.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  pad.setPointerCapture(e.pointerId);
+  live = new BlendStroke(surf, { ...S.bb }, S.engine, BL_INK[S.size], BL_WASH[S.size], INK_DARKEST, WASH_DARKEST);
+  live.add(...padPoint(e));
+});
+pad.addEventListener("pointermove", e => {
+  if (!live) return;
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  for (const ev of (evs.length ? evs : [e])) markDirty(live.add(...padPoint(ev)));
+});
+function endStroke() {
+  if (!live) return;
+  const L = live; live = null;
+  const r = L.finish();
+  if (frame) { cancelAnimationFrame(frame); frame = 0; }
+  if (r) { const g = 90; dirty = union(dirty || r, [r[0] - g, r[1] - g, r[2] + g, r[3] + g]); }
+  paintDirty();
+  const n = L.sampleMs.length, mean = n ? L.sampleMs.reduce((a, b) => a + b, 0) / n : 0, max = n ? Math.max(...L.sampleMs) : 0;
+  $("cost").textContent = `Last stroke, ${S.engine === "A" ? "A · line + wash" : "B · wet nib"}, Wet ${S.bb.wet.toFixed(2)}: ${n} samples · ` +
+    `stamp ${mean.toFixed(3)} ms a sample (max ${max.toFixed(2)}) · lift ${(L.liftStampMs + L.settleMs).toFixed(1)} ms ` +
+    `(stamp again ${L.liftStampMs.toFixed(1)}, settle ${L.settleMs.toFixed(1)})`;
+}
+pad.addEventListener("pointerup", endStroke);
+pad.addEventListener("pointercancel", endStroke);
+$("clear").addEventListener("click", () => { surf.ink.fill(0); surf.wash.fill(0); surf.scratch.fill(0); surf.scratch2.fill(0); composeBlend(pctx, surf, [0, 0, surf.w - 1, surf.h - 1], null, QUANT); });
+[0, 1, 2].forEach(i => $("sz" + i).addEventListener("click", () => { S.size = i; [0, 1, 2].forEach(j => $("sz" + j).setAttribute("aria-pressed", String(i === j))); }));
+function setEngine(e) {
+  S.engine = e; $("engA").setAttribute("aria-pressed", String(e === "A")); $("engB").setAttribute("aria-pressed", String(e === "B"));
+  [...document.querySelectorAll(".tile")].forEach(t => t.classList.toggle("on", t.dataset.engine === e));
+  showDials();
+}
+$("engA").addEventListener("click", () => setEngine("A"));
+$("engB").addEventListener("click", () => setEngine("B"));
+$("rand").addEventListener("click", () => { S.bb = rollBlend(newSeedB()); changed(true); });
+
+// ---------- the strip: the same loop at Wet 0, .25, .5, .75 and 1, both engines ----------
+// The strip's placement switch: the same Lines setting as the dials, beside the strip so a phone needn't scroll.
+const stripChips = PLACEMENTS.map(o => {
+  const c = document.createElement("button"); c.className = "chip"; c.textContent = o;
+  c.addEventListener("click", () => { S.bb.lines = o; normBlend(S.bb); changed(true); });
+  $("stripLines").appendChild(c); return c;
+});
+const WETS = [0, .25, .5, .75, 1], TW = 480, TH = 300, T_INK = 5, T_WASH = 64;
+const stripSurf = blendSurface(TW, TH, 7), tiles = [];
+for (const e of ["A", "B"]) for (const w of WETS) {
+  const f = document.createElement("figure"); f.className = "tile" + (e === "A" ? " on" : ""); f.dataset.engine = e;
+  const c = document.createElement("canvas"); c.width = TW; c.height = TH;
+  const cap = document.createElement("figcaption"); cap.textContent = e + " · wet " + (w === 0 ? "0" : w === 1 ? "1" : String(w).slice(1));
+  f.append(c, cap); $("strip").appendChild(f); tiles.push({ e, w, c });
+}
+// Offset and Chaos rows: this brush at a middling Wet, each dial stepped 0 to 1 with the other at 0.
+const tiles2 = [], STEPS5 = [0, .25, .5, .75, 1];
+for (const dial of ["offset", "chaos"]) for (const v of STEPS5) {
+  const f = document.createElement("figure"); f.className = "tile on";
+  const c = document.createElement("canvas"); c.width = TW; c.height = TH;
+  const cap = document.createElement("figcaption"); cap.textContent = dial + " " + (v === 0 ? "0" : v === 1 ? "1" : String(v).slice(1));
+  f.append(c, cap); $("strip2").appendChild(f); tiles2.push({ dial, v, c });
+}
+const loopPts = loopPoints(TW, TH, T_WASH * .7 + 4);
+let stripTimer = 0;
+function drawStripSoon() { clearTimeout(stripTimer); stripTimer = setTimeout(drawStrip, 90); }
+function drawStrip() {
+  for (const t of tiles) {
+    const s = stripSurf; s.ink.fill(0); s.wash.fill(0); s.scratch.fill(0); s.scratch2.fill(0);
+    layBlend(s, { ...S.bb, wet: t.w }, t.e, loopPts, T_INK, T_WASH, INK_DARKEST, WASH_DARKEST);
+    composeBlend(t.c.getContext("2d"), s, [0, 0, TW - 1, TH - 1], null, QUANT);
+  }
+  const wet = clamp(S.bb.wet, .3, .7);
+  $("strip2Wet").textContent = wet.toFixed(2);
+  for (const t of tiles2) {
+    const s = stripSurf; s.ink.fill(0); s.wash.fill(0); s.scratch.fill(0); s.scratch2.fill(0);
+    layBlend(s, { ...S.bb, wet, offset: 0, chaos: 0, [t.dial]: t.v }, "A", loopPts, T_INK, T_WASH, INK_DARKEST, WASH_DARKEST);
+    composeBlend(t.c.getContext("2d"), s, [0, 0, TW - 1, TH - 1], null, QUANT);
+  }
+}
+
+// ---------- share codes ----------
+function loadCode(code, how) {
+  const b = decodeAny(code);
+  if (!b) { $("codeSay").textContent = "That code didn't read. Codes look like dapper-fig.B…, .I… or .P…, copied whole."; return; }
+  S.bb = b; changed(true);
+  $("codeSay").textContent = how + " Loaded " + b.name + " (" + b.style + ") at Wet " + b.wet.toFixed(2) + ", Line " + b.line.toFixed(2) + ". Its blend code is above.";
+}
+$("load").addEventListener("click", () => loadCode($("codeIn").value, ""));
+$("codeIn").addEventListener("keydown", e => { if (e.key === "Enter") loadCode($("codeIn").value, ""); });
+$("oldPen").addEventListener("click", () => { const o = roll("ink", newSeedB()); o.style = "Wild"; const c = encodeOld("I", o); $("codeIn").value = c; loadCode(c, "An old pen code (" + c + "):"); });
+$("oldPaint").addEventListener("click", () => { const o = roll("paint", newSeedB()); o.mode = o.mode || "flat"; o.style = "Wild"; const c = encodeOld("P", o); $("codeIn").value = c; loadCode(c, "An old paint code (" + c + "):"); });
+
+// ---------- old codes draw as today: a decoded pen at Wet 0 and a decoded paint at Wet 1, against today's engine ----------
+function tones(s) { const t = new Uint8Array(s.w * s.h); for (let i = 0; i < t.length; i++) t[i] = Math.round(PAPER * (1 - s.wash[i]) * (1 - s.ink[i]) / 17); return t; }
+function identityCheck() {
+  const W = 360, H = 240, pts = loopPoints(W, H, 40), s = blendSurface(W, H, 11);
+  let same = 0, total = 0, worst = 0;
+  for (let n = 0; n < 16; n++) {
+    const kind = n % 2 ? "paint" : "ink", seed = (0x9e3779b9 * (n + 1)) >>> 0, o = roll(kind, seed);
+    o.style = "Wild"; if (kind === "paint") o.mode = o.mode || "flat";
+    const bb = decodeAny(encodeOld(kind === "ink" ? "I" : "P", o));
+    // Today's brush, from the same decoded dials.
+    const today = kind === "ink"
+      ? { kind, seed: bb.seed, nib: bb.nib, aspect: bb.aspect, angle: bb.angle, taperIn: bb.taperIn, taperOut: bb.taperOut, pressure: bb.pressure, speed: bb.speed, dry: bb.bristle, tooth: bb.grain, wobble: bb.wobble, pool: bb.pool, splatter: bb.splatter }
+      : { kind, seed: bb.seed, mode: bb.mode, pressure: bb.pressure, soft: bb.soft, gran: bb.grain, feather: bb.bleed, hollow: bb.pool, bloom: bb.bloom, streaks: bb.bristle, backrun: bb.backrun };
+    const size = kind === "ink" ? 6 : 44, dark = kind === "ink" ? INK_DARKEST : WASH_DARKEST;
+    s.ink.fill(0); s.wash.fill(0); s.scratch.fill(0); s.scratch2.fill(0);
+    if (kind === "ink") settleInk(s, today, stampInk(s, today, pts, size, true, 1), dark);
+    else settlePaint(s, today, stampPaint(s, today, pts, size, 1), dark);
+    const a = tones(s);
+    s.ink.fill(0); s.wash.fill(0); s.scratch.fill(0); s.scratch2.fill(0);
+    layBlend(s, bb, "A", pts, 6, 44, INK_DARKEST, WASH_DARKEST);
+    const b = tones(s);
+    let diff = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) diff++;
+    total++; if (diff === 0) same++; worst = Math.max(worst, diff);
+  }
+  $("ident").textContent = same === total
+    ? `Old codes draw as today: ${same} of ${total} random old pens (at Wet 0) and paints (at Wet 1) give the same pixels through A as through today's engines.`
+    : `Old codes: ${same} of ${total} identical; worst ${worst} pixels differ.`;
+  return same === total;
+}
+
+// ---------- cost ----------
+function benchBrush(wet, line, lines, wild) {
+  const b = blankBlend(4242, "bench");
+  Object.assign(b, { wet, line, nib: "chisel", aspect: .45, angle: 40, taperIn: .5, taperOut: .6, pressure: .7, speed: .5, grain: .8, bristle: .6,
+    wobble: .3, pool: .8, splatter: .6, mode: "wet", soft: .5, bleed: 1, bloom: 1, backrun: 1, lines: lines || "centre", count: 5, spread: 1, breathe: .8, offset: wild || 0, chaos: wild || 0 });
+  return b;
+}
+function bench() {
+  const W = 1400, H = 900, s = blendSurface(W, H, 5), pts = loopPoints(W, H, 140);
+  const rows = [["Pen today (= A, Wet 0)", "A", 0, 1], ["Paint today (= A, Wet 1, Line 0)", "A", 1, 0]];
+  for (const w of [.25, .5, .75, 1]) rows.push(["A · Wet " + w + ", Line .5", "A", w, .5]);
+  for (const w of [.25, .5, .75, 1]) rows.push(["B · Wet " + w + ", Line .5", "B", w, .5]);
+  for (const pl of ["spread", "outline", "squiggle", "split"]) for (const w of [0, .75]) rows.push(["A · " + pl + (pl === "spread" ? " ×5" : "") + ", Wet " + w, "A", w, .5, pl]);
+  for (const w of [.5, .75]) rows.push(["A · centre, offset 1, chaos 1, Wet " + w, "A", w, .5, "centre", 1]);
+  rows.push(["A · spread ×5, offset 1, chaos 1, Wet .75", "A", .75, .5, "spread", 1]);
+  const med = a => a.slice().sort((x, y) => x - y)[a.length >> 1];
+  const out = [];
+  for (const [label, eng, wet, line, lines, wild] of rows) {
+    const runs = [];
+    for (let r = 0; r < 3; r++) {
+      s.ink.fill(0); s.wash.fill(0); s.scratch.fill(0); s.scratch2.fill(0);
+      const st = new BlendStroke(s, benchBrush(wet, line, lines, wild), eng, BL_INK[2], BL_WASH[2], INK_DARKEST, WASH_DARKEST);
+      for (const p of pts) st.add(p.x, p.y, p.p, p.t);
+      st.finish();
+      const n = st.sampleMs.length, sorted = st.sampleMs.slice().sort((x, y) => x - y);
+      runs.push({ n, mean: sorted.reduce((a, b) => a + b, 0) / n, p95: sorted[Math.floor(n * .95)], max: sorted[n - 1], restamp: st.liftStampMs, settle: st.settleMs });
+    }
+    out.push({ label, n: runs[0].n, mean: med(runs.map(r => r.mean)), p95: med(runs.map(r => r.p95)), max: med(runs.map(r => r.max)),
+      restamp: med(runs.map(r => r.restamp)), settle: med(runs.map(r => r.settle)) });
+  }
+  const paint = out[1].settle;
+  const f = v => v.toFixed(3), g = v => v.toFixed(1);
+  $("benchT").innerHTML = "<thead><tr><th>Brush</th><th>samples</th><th>ms/sample</th><th>p95</th><th>max</th><th>settle (after lift)</th><th>settle × paint</th><th>full re-stamp*</th></tr></thead><tbody>" +
+    out.map(o => `<tr><td>${o.label}</td><td>${o.n}</td><td>${f(o.mean)}</td><td>${f(o.p95)}</td><td>${f(o.max)}</td><td>${g(o.settle)}</td><td>${(o.settle / paint).toFixed(2)}</td><td>${g(o.restamp)}</td></tr>`).join("") + "</tbody>";
+  return out;
+}
+$("bench").addEventListener("click", () => { $("bench").disabled = true; $("benchT").innerHTML = "<tbody><tr><td>Measuring…</td></tr></tbody>"; setTimeout(() => { bench(); $("bench").disabled = false; }, 30); });
+
+// ---------- start ----------
+showDials();
+fit();
+drawStrip();
+setTimeout(identityCheck, 50);
+if (/[?&]bench\b/.test(location.search)) setTimeout(() => { const r = bench(); document.body.dataset.bench = JSON.stringify(r); }, 200);
+{ const m = /[?&]lines=(centre|spread|outline|squiggle|split)/.exec(location.search); if (m) { S.bb.lines = m[1]; const o = /[?&]offset=([\d.]+)/.exec(location.search), c = /[?&]chaos=([\d.]+)/.exec(location.search); if (o) S.bb.offset = +o[1]; if (c) S.bb.chaos = +c[1]; showDials(); drawStrip(); } }
+if (/[?&]demo\b/.test(location.search)) setTimeout(demoStrokes, 120);
+// For the screenshots: a few strokes across the pad at Wet 0, .5 and 1.
+function demoStrokes() {
+  const base = { ...S.bb };
+  [[0, .18], [.5, .5], [1, .82]].forEach(([wet, fy], n) => {
+    const st = new BlendStroke(surf, { ...base, wet, line: wet === 1 ? 0 : base.line }, S.engine, BL_INK[1], BL_WASH[1] * .7, INK_DARKEST, WASH_DARKEST);
+    const x0 = surf.w * .08, x1 = surf.w * .92, y = surf.h * fy;
+    for (let i = 0; i <= 80; i++) { const t = i / 80; st.add(lerp(x0, x1, t), y + Math.sin(t * Math.PI * 2 + n) * surf.h * .05, .25 + .65 * Math.sin(Math.PI * t), i * 9); }
+    st.finish();
+  });
+  composeBlend(pctx, surf, [0, 0, surf.w - 1, surf.h - 1], null, QUANT);
+}
+
+</script>
+</body>
+</html>

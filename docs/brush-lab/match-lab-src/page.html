@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brush Scan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&display=swap">
+<style>
+/* Daily Puzzle Style: six greys, Roboto Mono, square corners, 2 px strokes and 3 px borders, no shadows or gradients.
+   One light theme on purpose: the canvases show ink on paper as the e-ink screen does, so dark mode keeps the paper. */
+:root { --g0: #ffffff; --g1: #dddddd; --g2: #bbbbbb; --g3: #888888; --g4: #555555; --g5: #000000;
+  --mono: "Roboto Mono", ui-monospace, Menlo, monospace; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --g0: #ffffff; --g5: #000000; } }
+:root[data-theme="dark"] { --g0: #ffffff; --g5: #000000; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--g1); color: var(--g5); }
+body { font-family: var(--mono); font-size: 15px; line-height: 1.4; overflow-x: hidden; }
+button, input, select { font: inherit; color: inherit; border-radius: 0; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+header { display: grid; gap: 8px; }
+.titlerow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
+h2 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.sub { margin: 0; color: var(--g4); font-size: 13px; max-width: 76ch; }
+.tabs { display: inline-flex; border: 3px solid var(--g5); background: var(--g0); }
+.tabs button { border: 0; border-right: 2px solid var(--g5); background: var(--g0); height: 40px; padding: 0 16px; font-size: 14px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.tabs button:last-child { border-right: 0; }
+.tabs button[aria-pressed="true"] { background: var(--g5); color: var(--g0); }
+.box { background: var(--g0); border: 3px solid var(--g5); }
+.boxhead { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 3px solid var(--g5); }
+.boxhead .key { width: 26px; height: 26px; border: 3px solid var(--g5); display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none; }
+.boxhead .sp { flex: 1; }
+.boxbody { padding: 14px; display: grid; gap: 12px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 2px solid var(--g5); background: var(--g0); font-size: 14px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+.btn.solid { background: var(--g5); color: var(--g0); }
+.btn:disabled { color: var(--g3); border-color: var(--g2); background: var(--g0); cursor: default; }
+.btn svg { width: 20px; height: 20px; fill: currentColor; flex: none; }
+.chip { min-height: 36px; padding: 0 10px; border: 2px solid var(--g5); background: var(--g0); font-size: 13px; cursor: pointer; white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--g5); color: var(--g0); }
+.lab { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.note { font-size: 13px; color: var(--g4); margin: 0; }
+.drop { border: 2px dashed var(--g3); padding: 10px 12px; font-size: 13px; color: var(--g4); }
+.howto { display: flex; gap: 16px; align-items: center; max-width: 62ch; }
+.howto svg { width: 56px; height: 70px; flex: none; color: var(--g5); }
+.howto p { margin: 0; }
+.drop.over { border-color: var(--g5); color: var(--g5); background: var(--g1); }
+canvas { display: block; max-width: 100%; }
+.stage { position: relative; border: 2px solid var(--g5); background: var(--g0); touch-action: none; }
+.stage canvas { width: 100%; height: auto; }
+.progress { height: 12px; border: 2px solid var(--g5); background: var(--g0); }
+.progress i { display: block; height: 100%; width: 0; background: var(--g5); }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0; border: 2px solid var(--g5); }
+.split > div { min-width: 0; }
+.split > div + div { border-left: 2px solid var(--g5); }
+.split canvas { width: 100%; height: auto; }
+.cap { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 4px 8px; border-top: 2px solid var(--g5); }
+.cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+table.nums { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.nums th, table.nums td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--g2); vertical-align: top; overflow-wrap: anywhere; }
+table.nums th { font-weight: 600; letter-spacing: .04em; text-transform: uppercase; font-size: 12px; color: var(--g4); }
+table.nums td.v { font-variant-numeric: tabular-nums; }
+.bar { display: inline-block; width: 64px; height: 10px; border: 1px solid var(--g5); vertical-align: middle; margin-left: 6px; }
+.bar i { display: block; height: 100%; background: var(--g4); }
+.parts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font-size: 14px; margin: 0; }
+.parts dt { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--g4); padding-top: 2px; }
+.parts dd { margin: 0; }
+.codeline { display: flex; gap: 0; border: 2px solid var(--g5); }
+.codeline input { flex: 1; min-width: 0; border: 0; padding: 0 10px; height: 44px; font-size: 13px; background: var(--g0); }
+.codeline .btn { border: 0; border-left: 2px solid var(--g5); }
+.brushname { font-size: 20px; font-weight: 600; }
+.tried { font-size: 12px; color: var(--g4); margin: 0; padding-left: 1.2em; }
+.slider { display: grid; grid-template-columns: auto minmax(0, 1fr) 4.5em; gap: 10px; align-items: center; }
+input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 30px; background: transparent; margin: 0; cursor: pointer; }
+input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--g5); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 24px; margin-top: -11px; background: var(--g5); border: 0; border-radius: 0; }
+input[type="range"]::-moz-range-track { height: 2px; background: var(--g5); }
+input[type="range"]::-moz-range-thumb { width: 12px; height: 24px; background: var(--g5); border: 0; border-radius: 0; }
+.tiles { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.tiles figure { margin: 0; border: 2px solid var(--g5); background: var(--g0); max-width: 100%; }
+.tiles canvas { width: 256px; max-width: 100%; height: auto; }
+.tiles figcaption { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 4px 8px; border-top: 2px solid var(--g5); }
+.previews { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.previews figure { margin: 0; border: 2px solid var(--g5); }
+.previews canvas { width: 100%; height: auto; }
+.previews figcaption { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 4px 8px; border-top: 2px solid var(--g5); }
+.err { border: 3px solid var(--g5); background: var(--g1); padding: 8px 12px; font-size: 13px; }
+.pad { width: 100%; height: 300px; border: 2px solid var(--g5); background: var(--g0); touch-action: none; }
+.setlist { list-style: none; margin: 0; padding: 0; display: grid; border-top: 2px solid var(--g5); }
+.setlist li { display: grid; grid-template-columns: 2em minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 0; border-bottom: 2px solid var(--g5); }
+.setlist .n { font-weight: 700; }
+.setlist input { min-width: 0; height: 40px; border: 2px solid var(--g5); padding: 0 8px; background: var(--g0); }
+.setlist .about { grid-column: 2 / 4; font-size: 12px; color: var(--g4); overflow-wrap: anywhere; }
+textarea.export { width: 100%; min-height: 9em; border: 2px solid var(--g5); padding: 8px 10px; font: 12px/1.4 var(--mono); background: var(--g0); color: var(--g5); resize: vertical; border-radius: 0; }
+.howto ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; font-size: 13px; max-width: 86ch; }
+@media (max-width: 760px) {
+  .wrap { padding: 12px; gap: 12px; }
+  h1 { font-size: 22px; }
+  .cols { grid-template-columns: minmax(0, 1fr); }
+  .boxbody { padding: 10px; }
+  .pad { height: 240px; }
+  .tabs button { padding: 0 12px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="titlerow">
+      <h1>Brush Scan</h1>
+      <div class="tabs" role="tablist" aria-label="Lab">
+        <button data-tab="stroke" aria-pressed="true">Stroke</button>
+        <button data-tab="paper" aria-pressed="false">Paper</button>
+      </div>
+    </div>
+    <p class="sub">Scan a photo of one brushstroke and get a Scribulor brush that paints like it (a whole pencil case into one set), or scan a sheet of paper for its grain. No AI.</p>
+  </header>
+
+  <!-- ===================== STROKE ===================== -->
+  <section id="tab-stroke" class="tabpane">
+    <div class="box">
+      <div class="boxhead"><span class="key">1</span><h2>Photo</h2></div>
+      <div class="boxbody">
+        <div class="row">
+          <label class="btn solid" for="file-stroke"><svg viewBox="0 0 256 256"><path d="M208 56h-27.7l-13.6-20.4A8 8 0 0 0 160 32H96a8 8 0 0 0-6.7 3.6L75.7 56H48a24 24 0 0 0-24 24v112a24 24 0 0 0 24 24h160a24 24 0 0 0 24-24V80a24 24 0 0 0-24-24Zm8 136a8 8 0 0 1-8 8H48a8 8 0 0 1-8-8V80a8 8 0 0 1 8-8h32a8 8 0 0 0 6.7-3.6L100.3 48h55.4l13.6 20.4A8 8 0 0 0 176 72h32a8 8 0 0 1 8 8ZM128 88a44 44 0 1 0 44 44 44 44 0 0 0-44-44Zm0 72a28 28 0 1 1 28-28 28 28 0 0 1-28 28Z"/></svg>Choose a photo</label>
+          <input id="file-stroke" type="file" accept="image/*" hidden>
+          <span class="drop" id="drop-stroke">or drop or paste one: a single stroke on plain paper, evenly lit</span>
+        </div>
+        <div class="howto">
+          <svg viewBox="0 0 80 100" aria-hidden="true"><path d="M60 12 C34 4 14 20 22 37" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M22 37 C30 54 56 48 60 66" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/><path d="M60 66 C64 84 40 95 18 88" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+          <p>Draw one slow S, about a hand long: light at the start, firmer in the middle, easing off at the end. Don't cross or go over it. Photograph it straight on, in even light.</p>
+        </div>
+        <div class="row" id="pick-tip" role="group" aria-label="Tip"><span class="lab">Tip</span></div>
+        <div class="row" id="pick-category" role="group" aria-label="Category"><span class="lab">Category</span></div>
+        <div class="row" id="samples"><span class="lab">Try a sample</span></div>
+        <div id="photo-wrap" hidden>
+          <div class="stage" id="photo-stage"><canvas id="photo"></canvas></div>
+          <p class="note" id="photo-note">Drag to box the stroke. The line shows its centre, the dot its start.</p>
+        </div>
+        <div class="row" id="match-row" hidden>
+          <button class="btn" id="flip">Flip start</button>
+          <button class="btn" id="rebox">Whole photo</button>
+          <button class="btn solid" id="match">Scan</button>
+        </div>
+        <div id="prog-wrap" hidden><div class="progress"><i id="prog"></i></div><p class="note" id="phase"></p></div>
+        <div class="err" id="err-stroke" hidden></div>
+      </div>
+    </div>
+
+    <div class="cols" id="result" hidden>
+      <div class="box">
+        <div class="boxhead"><span class="key">2</span><h2>Result</h2></div>
+        <div class="boxbody">
+          <div class="split">
+            <div><canvas id="cv-photo"></canvas><div class="cap">Photo</div></div>
+            <div><canvas id="cv-fit"></canvas><div class="cap">Brush, 16 greys</div></div>
+          </div>
+          <table class="nums" id="nums"></table>
+          <details><summary class="lab">Brushes tried</summary><ol class="tried" id="tried"></ol></details>
+        </div>
+      </div>
+      <div class="box">
+        <div class="boxhead"><span class="key">3</span><h2>Brush</h2></div>
+        <div class="boxbody">
+          <div class="brushname" id="bname"></div>
+          <dl class="parts" id="bparts"></dl>
+          <p class="note" id="bwords"></p>
+          <p class="note" id="bdraw"></p>
+          <div class="codeline"><input id="code" readonly aria-label="Share code"><button class="btn solid" id="copy">Copy</button><a class="btn" id="studio" target="_blank" rel="noopener" hidden>Open in Brush Studio</a></div>
+          <p class="note" id="copied" hidden>Copied</p>
+          <p class="note" id="bdrawn"></p>
+          <div class="codeline"><input id="tool-name" placeholder="Name: Blackwing 602" aria-label="Tool's name"><button class="btn solid" id="add">Add Tool</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="box" id="try" hidden>
+      <div class="boxhead"><span class="key">4</span><h2>Try it</h2><span class="sp"></span><button class="btn" id="clear">Clear</button></div>
+      <div class="boxbody">
+        <div class="row" id="trypaper"><span class="lab">Paper</span><button class="chip" data-paper="own" aria-pressed="true">The brush's</button><button class="chip" data-paper="imported" aria-pressed="false" disabled>Imported</button></div>
+        <canvas class="pad" id="pad"></canvas>
+        <p class="note">A mouse or finger presses harder when slow.</p>
+      </div>
+    </div>
+
+    <div class="box" id="set" hidden>
+      <div class="boxhead"><span class="key">5</span><h2>Pencil case</h2><span class="sp"></span><button class="btn" id="set-clear">Clear</button></div>
+      <div class="boxbody">
+        <ol class="setlist" id="setlist"></ol>
+        <textarea class="export" id="set-text" readonly aria-label="Import file"></textarea>
+        <div class="row"><button class="btn solid" id="set-copy">Copy All</button><button class="btn" id="set-dl">Download</button><span class="note" id="set-copied" hidden>Copied</span></div>
+        <p class="note">For the app: save as Scribulor import.txt, or any name ending .scribulor.txt, in the folder beside the drawings. Each brush joins the library once, under its name.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PAPER ===================== -->
+  <section id="tab-paper" class="tabpane" hidden>
+    <div class="box">
+      <div class="boxhead"><span class="key">1</span><h2>Paper photo</h2></div>
+      <div class="boxbody">
+        <div class="row">
+          <label class="btn solid" for="file-paper"><svg viewBox="0 0 256 256"><path d="M208 56h-27.7l-13.6-20.4A8 8 0 0 0 160 32H96a8 8 0 0 0-6.7 3.6L75.7 56H48a24 24 0 0 0-24 24v112a24 24 0 0 0 24 24h160a24 24 0 0 0 24-24V80a24 24 0 0 0-24-24Zm8 136a8 8 0 0 1-8 8H48a8 8 0 0 1-8-8V80a8 8 0 0 1 8-8h32a8 8 0 0 0 6.7-3.6L100.3 48h55.4l13.6 20.4A8 8 0 0 0 176 72h32a8 8 0 0 1 8 8ZM128 88a44 44 0 1 0 44 44 44 44 0 0 0-44-44Zm0 72a28 28 0 1 1 28-28 28 28 0 0 1-28 28Z"/></svg>Choose a photo</label>
+          <input id="file-paper" type="file" accept="image/*" hidden>
+          <span class="drop" id="drop-paper">or drop or paste one: blank paper, close up, lit from one side</span>
+          <button class="chip" id="paper-sample">Sample sheet</button>
+        </div>
+        <div id="sheet-wrap" hidden>
+          <div class="stage" id="sheet-stage"><canvas id="sheet"></canvas></div>
+          <p class="note">Drag to pick a square. The inner square becomes one tile.</p>
+          <div class="slider"><span class="lab">Grain size</span><input type="range" id="grain" min="-1" max="1" step=".05" value="0" aria-label="Grain size"><span id="grain-v">×1.00</span></div>
+        </div>
+        <div class="err" id="err-paper" hidden></div>
+      </div>
+    </div>
+    <div class="box" id="paper-out" hidden>
+      <div class="boxhead"><span class="key">2</span><h2>Grain</h2></div>
+      <div class="boxbody">
+        <div class="tiles">
+          <figure><canvas id="tile" width="256" height="256"></canvas><figcaption>Tile, 256 px</figcaption></figure>
+          <figure><canvas id="tile4" width="512" height="512"></canvas><figcaption>Repeated 2 × 2</figcaption></figure>
+        </div>
+        <table class="nums" id="paper-nums"></table>
+        <div class="row">
+          <button class="btn solid" id="dl-png">Download PNG</button>
+          <button class="btn" id="dl-bin">Download .bin</button>
+          <button class="btn" id="use-paper">Use in Try it</button>
+        </div>
+        <p class="note">Same format as the app's papers: 256 by 256 grey, 8 bits, mean 128, spread 52. The .bin is the raw file the app keeps in assets/textures; the PNG holds the same pixels.</p>
+        <h2>On four brushes</h2>
+        <div class="previews" id="previews"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="box howto">
+    <div class="boxhead"><h2>How it works</h2></div>
+    <div class="boxbody">
+      <ol>
+        <li><b>Photo.</b> The page evens out the lighting, then reads the bare paper around the stroke: its tone and its texture. The paper becomes white, and black ink that photographed grey is darkened back to black. Faint flecks on the paper are dropped, so they can't pass for a halo or a wash.</li>
+        <li><b>Measure.</b> The stroke is scaled to about 440 px long, as drawn on the Manta, and thinned to its centre line. Along that line the page measures width, tapers, the shape of each end (square, round or pointed), edge roughness, tone, dry-brush gaps, any halo past the edge, splatter, parallel lines and grain.</li>
+        <li><b>Scan.</b> Trial brushes are painted along the photo's own centre line, with pressure taken from its widths, and compared with the photo. The closest few get their dials tuned (Nelder–Mead), then each paper is tried if grain shows. About five seconds; about three with a tip or a category chosen first. A chosen tip is the only one tried; a category's tips and media are tried first and favoured. A ragged edge and a little wobble are smoothed out before measuring, so only a plainly rough edge, like charcoal's or crayon's, reads as rough.</li>
+        <li><b>Drawn tools.</b> The app's drawn tools (the tool picker's, or the chosen category's) are each painted along the same line at a few sizes; the closest are named, to show which drawing a scan could stand in for.</li>
+        <li><b>Pencil case.</b> Name each scan and add it. The set becomes one import file of named share codes, kept in this browser until cleared.</li>
+        <li><b>Paper.</b> The lighting is evened out, the grain is scaled to the app's papers, broad blotches are removed, and the edges are blended so the tile repeats without a seam.</li>
+      </ol>
+    </div>
+  </section>
+</div>
+<script id="core">
+/*@@CORE@@*/
+</script>
+<script>
+/*@@TEXTURES@@*/
+</script>
+<script>
+/*@@UI@@*/
+</script>
+</body>
+</html>

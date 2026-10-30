@@ -5,7 +5,8 @@
 #include <jni.h>
 #include <stdint.h>
 
-#define MAX_LAYERS 8
+/* Inkwash: every layer's base and kind planes (ToneDocument.STACK). */
+#define MAX_LAYERS 40
 
 static void fail(JNIEnv *env,const char *message) {
     jclass type=(*env)->FindClass(env,"java/lang/IllegalStateException");

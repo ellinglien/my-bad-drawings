@@ -25,9 +25,24 @@ final class PaintPreferences {
     /** Preview a smaller tablet's layout (on a Manta, the Nomad's). The key predates other tablets. */
     boolean simulateSmallerPanel() { return flag("nomad_mode", false); }
     void setSimulateSmallerPanel(boolean value) { setFlag("nomad_mode", value); }
+    /**
+     * Tools First ({@link DrawLayout#TOOLS_FIRST}; the owner, 2026-10-28): a slot's long press opens the Tools page straight
+     * away, not the tool picker. Off at first; switched in the picker and on the Tools page.
+     */
+    boolean toolsFirst() { return flag(TOOLS_FIRST, false); }
+    void setToolsFirst(boolean value) { setFlag(TOOLS_FIRST, value); }
+    static final String TOOLS_FIRST = "tools_first";
     /** Wet paint runs toward whichever page edge the tablet tilts down. */
     boolean wetGravity() { return flag("wet_gravity", true); }
     void setWetGravity(boolean value) { setFlag("wet_gravity", value); }
+    /**
+     * Draw once (the wet paint spec's experiment, the owner's "one write per pixel", 2026-10-22): Pastels and Dry brush
+     * drawn with no preview, each pixel written once ({@link QuickStroke#drawOnce}). Off unless the drawing screen is
+     * launched with the extra {@link #DRAW_ONCE} (adb: {@code am start -S -n ing.ell.mybaddrawings/io.github.mpdairy.monopaint.PaintActivity --ez drawOnce true}).
+     */
+    boolean drawOnce() { return flag(DRAW_ONCE, false); }
+    void setDrawOnce(boolean value) { setFlag(DRAW_ONCE, value); }
+    static final String DRAW_ONCE = "drawOnce";
     /** Dry brush strokes anti-alias their edges, for cleaner exports. */
     boolean smoothEdges() { return flag("smooth_edges", false); }
     void setSmoothEdges(boolean value) { setFlag("smooth_edges", value); }
@@ -37,8 +52,8 @@ final class PaintPreferences {
     /** The untested firmware build the user was last told about; empty before any. */
     String untestedFirmwareNoticed() { return store.getString("untested_firmware_noticed", ""); }
     void setUntestedFirmwareNoticed(String build) { store.edit().putString("untested_firmware_noticed", build).apply(); }
-    /** The shared-storage folder the last imported picture came from. */
-    String importFolder() { return store.getString("import_folder", "Download"); }
+    /** The shared-storage folder the last imported picture came from; Document at first (Scribulor: where the Supernote keeps PDFs). */
+    String importFolder() { return store.getString("import_folder", "Document"); }
     void setImportFolder(String folder) { store.edit().putString("import_folder", folder).apply(); }
     /** Whether the last imported picture went on a new layer; the current layer at first. */
     boolean importNewLayer() { return flag("import_new_layer", false); }

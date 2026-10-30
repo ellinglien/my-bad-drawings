@@ -11,7 +11,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Input goes through Android's dispatcher, including the firmware's global swipe listener. */
 final class EdgeBarChecks {

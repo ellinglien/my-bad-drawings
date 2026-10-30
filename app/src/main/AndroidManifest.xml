@@ -1,22 +1,31 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <!-- Drawings live in Documents/MonoPaint so they survive reinstalling the app; see DrawingStorage. -->
+    <!-- Drawings live in Document/<app folder> so they survive reinstalling the app; see DrawingStorage. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
         tools:ignore="ScopedStorage" />
-    <application android:requestLegacyExternalStorage="true"
+    <!-- largeHeap: the Manta's apps get 192 MB unless they ask, 512 MB if they do (4 GB of RAM); wet paint, fills and
+         pages need the room. -->
+    <application android:requestLegacyExternalStorage="true" android:largeHeap="true"
         android:label="@string/app_name" android:icon="@mipmap/ic_launcher"
         android:theme="@style/AppTheme" android:allowBackup="false" android:supportsRtl="true">
+        <!-- Lets adb take heap dumps and profiles of the release build (owner's request, 2026-10-25). -->
+        <profileable android:shell="true" tools:targetApi="29" />
         <activity android:name=".ProbeActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".PaintActivity" android:exported="true" android:screenOrientation="portrait"
+        <!-- Brush Lab: opened from a slot's panel; adjustPan keeps the test page its size while the keyboard is up for
+             renaming or the Load sheet, both at the top. -->
+        <activity android:name=".BrushLabActivity" android:exported="false" android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustPan|stateHidden" />
+        <!-- The Tools page: tapping the selected slot again; turned as the drawing is by its own layout. adjustPan keeps
+             its size while the keyboard is up for the search: no new layout, no full redraw. -->
+        <activity android:name=".ToolsActivity" android:exported="false" android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustPan|stateHidden" />
+        <activity android:name=".PaintActivity" android:exported="true" android:screenOrientation="portrait" android:theme="@style/AppTheme.Loading"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!-- Keep existing launcher shortcuts working across the source-package rename. -->
-        <activity-alias android:name="dev.tilesmile.supernote.PaintActivity"
-            android:targetActivity=".PaintActivity" android:exported="true" />
     </application>
 </manifest>

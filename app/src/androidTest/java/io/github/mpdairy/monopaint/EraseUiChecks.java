@@ -15,7 +15,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
-import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Mode controls and real pen routing on a disposable book; restores the user's session. */
 final class EraseUiChecks {
@@ -136,7 +135,7 @@ final class EraseUiChecks {
                 }
                 call(activity,"replaceBook",new Class<?>[]{DrawingBook.class},original);
                 call(activity,"requestQuarter",new Class<?>[]{int.class},rotation);call(activity,"applyToolboxSide");call(activity,"refreshPaintModes");
-                call(activity,"saveToolState");call(activity,"recovery");
+                call(activity,"saveToolState");call(activity,"recoveryNow");
             });
             TestSessionSave.await(activity);
         }

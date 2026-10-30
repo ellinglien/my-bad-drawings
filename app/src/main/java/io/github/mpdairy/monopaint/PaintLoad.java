@@ -32,6 +32,11 @@ final class PaintLoad {
         float t = Math.min(1, travelled / length);
         amount = 1 - t * t * (3 - 2 * t);
     }
+    /**
+     * Inkwash: how much of its own paint the brush still lays, 1 to 0, as Smudge's Paint Load spends it ({@link
+     * LoadedPaint}), in place of {@link #travel}'s own run out (travel still paces the pick-up).
+     */
+    void left(float share) { amount = Math.max(0, Math.min(1, share)); }
     /** How far each new pixel moves toward the brush's tone: fully while loaded, a smear once empty. */
     float deposit() { return SMUDGE + (1 - SMUDGE) * amount; }
 

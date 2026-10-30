@@ -13,7 +13,7 @@ public final class ToolChecks {
         brushPenMigration(0x54535041, 10); brushPenMigration(0x54535042, 11);
         beforeOilField(0x54535045, 62); beforeOilField(0x54535046, 66); beforeOilField(0x54535047, 70);
         ToolSettings wetPen=ToolSettings.defaults(ToolSettings.Tool.WET_BRUSH_PEN);
-        check(wetPen.tool.water && wetPen.tool.flowing && !ToolSettings.Tool.BRUSH_PEN.flowing && wetPen.pull(.1f)==wetPen.pull(.45f) && wetPen.pull(.45f)==wetPen.strength/100f,"The wet brush pen lays the same water, set by strength, at any pressure");
+        check(wetPen.tool.water && wetPen.tool.flowing && !ToolSettings.Tool.BRUSH_PEN.flowing && wetPen.pull(.1f)==wetPen.pull(.78f) && wetPen.pull(.78f)==wetPen.strength/100f,"The wet brush pen lays the same water, set by strength, at any pressure");
         check(wetPen.supportsEraseMode(),"The wet brush pen, dipped in a color, erases like other colored tools");
         check(wetPen.holdsInk() && !wetPen.clearWater(true).holdsInk() && !ToolSettings.defaults(ToolSettings.Tool.BRUSH_PEN).holdsInk(),"Only the wet brush pen holds ink, unless it lays clear water");
         check(!ToolSettings.defaults(ToolSettings.Tool.BRUSH).clearWater(true).clearWater,"Only the wet brush pen lays clear water");
@@ -79,11 +79,11 @@ public final class ToolChecks {
         try {brush.paintLoad(0);throw new AssertionError("Empty paint load accepted");}catch(IllegalArgumentException expected) {}
         ToolSettings pen=ToolSettings.defaults(ToolSettings.Tool.BRUSH_PEN);
         try {pen.carry(101);throw new AssertionError("Carry above 100% accepted");}catch(IllegalArgumentException expected) {}
-        check(pen.diameter(.1f,0,0)==pen.minimum && pen.diameter(.45f,0,0)==pen.minimum,"An upright brush pen stays at its minimum size at any pressure");
+        check(pen.diameter(.1f,0,0)==pen.minimum && pen.diameter(.78f,0,0)==pen.minimum,"An upright brush pen stays at its minimum size at any pressure");
         check(pen.diameter(.1f,70,0)==pen.maximum && pen.diameter(.1f,30,0)>pen.minimum && pen.diameter(.1f,30,0)<pen.maximum,"Leaning widens the brush pen up to its maximum");
         ToolSettings strong=pen.strength(100);
-        check(strong.pull(.45f)==1 && strong.pull(0)>0 && strong.pull(.25f)<1,"Pressure sets the brush pen's pull");
-        check(pen.pull(.45f)<strong.pull(.45f) && pen.strength(30).pull(.45f)<pen.pull(.45f),"Strength sets the most the brush pen pulls");
+        check(strong.pull(.78f)==1 && strong.pull(0)>0 && strong.pull(.25f)<1,"Pressure sets the brush pen's pull");
+        check(pen.pull(.78f)<strong.pull(.78f) && pen.strength(30).pull(.78f)<pen.pull(.78f),"Strength sets the most the brush pen pulls");
         check(strong.pressureResponse(0).pull(.1f)>strong.pull(.1f) && strong.pull(.1f)>strong.pressureResponse(100).pull(.1f),"Lower response pulls more with a light touch");
         check(strong.pressureResponse(50).pull(.25f)==.15f+.85f*.5f,"The middle response is linear");
         check(!pen.supportsEraseMode(),"Clear water has no erase mode");
@@ -206,7 +206,7 @@ public final class ToolChecks {
         library.edit(library.current().size(256).minimum(256));
         ToolLibrary.Preset favorite=library.add();library.edit(library.current().minimum(1));
         library=ToolLibrary.decode(library.encode());
-        check(library.current().maximum==256&&library.current().diameter(.05f)==1&&Math.abs(library.current().diameter(.45f)-256)<.001f,
+        check(library.current().maximum==256&&library.current().diameter(.05f)==1&&Math.abs(library.current().diameter(.78f)-256)<.001f,
                 "Wide Flat keeps full pressure range through persistence");
         library.select(ToolSettings.Tool.BRUSH);check(library.current().minimum==256,"256px fixed-width regular Flat persists independently");
         library.recall(favorite.id);library.selectHead(ToolSettings.Head.FILBERT);
@@ -323,13 +323,13 @@ public final class ToolChecks {
                 float pressure=sample/1000f, diameter=settings.diameter(pressure);
                 check(diameter>=previous && diameter>=settings.minimum && diameter<=settings.maximum,"Every response grows monotonically within size limits");
                 if(response>0) check(diameter<=original.pressureResponse(response-1).diameter(pressure)+1e-4f,"Moving toward Firm never broadens a stroke at the same pressure");
-                if(response==50) {
+                if(response==50 && pressure<=ToolSettings.KNEE) {
                     float p=Math.max(0,Math.min(1,(pressure-.05f)/.40f));
-                    check(diameter==original.minimum+(original.maximum-original.minimum)*p*p,"Default exactly preserves legacy width");
+                    check(diameter==original.minimum+(original.maximum-original.minimum)*p*p,"Default exactly preserves legacy width up to a usual press");
                 }
                 previous=diameter;
             }
-            check(settings.diameter(-1)==settings.minimum && Math.abs(settings.diameter(.45f)-settings.maximum)<.0001f
+            check(settings.diameter(-1)==settings.minimum && Math.abs(settings.diameter(.78f)-settings.maximum)<.0001f
                     && settings.diameter(2)==settings.maximum,"Every response retains reachable thin and full-width endpoints");
             for(float invalid:new float[]{Float.NaN,Float.NEGATIVE_INFINITY,Float.POSITIVE_INFINITY})
                 check(settings.diameter(invalid)==settings.minimum,"Malformed pressure remains bounded");
@@ -347,7 +347,7 @@ public final class ToolChecks {
             ToolSettings settings=ToolSettings.defaults(tool);
             check(settings.diameter(.2f)==settings.pressureResponse(100).diameter(.2f),"Brush response leaves other tools unchanged");
         }
-        for(int response:new int[]{0,50,100})for(float pressure:new float[]{0,.1f,.2f,.3f,.45f,1})
+        for(int response:new int[]{0,50,100})for(float pressure:new float[]{0,.1f,.2f,.3f,.45f,.6f,.78f,1})
             check(ToolSettings.defaults(ToolSettings.Tool.WATERCOLOR).size(original.maximum).minimum(original.minimum).pressureResponse(response).diameter(pressure)
                     ==original.pressureResponse(response).diameter(pressure),"Watercolor shares brush pressure response");
         ToolLibrary library=new ToolLibrary();library.edit(firm);

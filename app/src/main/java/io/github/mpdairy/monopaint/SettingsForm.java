@@ -2,7 +2,6 @@ package io.github.mpdairy.monopaint;
 
 import android.content.Context;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -170,8 +169,8 @@ final class SettingsForm {
         choice.setMinWidth(0); choice.setMinimumWidth(0); choice.setStateListAnimator(null);
         android.graphics.drawable.Drawable glyph = context.getDrawable(icon); glyph.setBounds(0, 0, Ui.dp(context, 32), Ui.dp(context, 32));
         choice.setCompoundDrawables(null, glyph, null, null); choice.setCompoundDrawablePadding(Ui.dp(context, 6));
-        choice.setBackground(Ui.outline(selected ? 0xffeeeeee : Color.WHITE, Ui.dp(context, selected ? 2 : 1),
-                selected ? Color.BLACK : 0xffbbbbbb, Ui.dp(context, 8)));
+        choice.setBackground(Ui.outline(selected ? Theme.GREY_200 : Theme.PAPER, Ui.dp(context, selected ? 2 : 1),
+                selected ? Theme.INK : Theme.GREY_400, 0));
         choice.setSelected(selected);
         choice.setOnClickListener(v -> choose.run());
         return choice;
@@ -201,13 +200,14 @@ final class SettingsForm {
 
     /** Applies the panel typography to every text view in a tree, honoring {@link #HINT} and {@link #CLOSE} tags. */
     static void style(View view, boolean largeText) {
+        if (view instanceof LabButton) return; // styles itself: its chosen chip is on-ink
         if (view instanceof TextView) {
             TextView text = (TextView)view;
             boolean hint = HINT.equals(text.getTag());
             float size = textSize(largeText);
             text.setTextSize(CLOSE.equals(text.getTag()) ? 22 : hint ? size-1 : size);
             text.setTextColor(Color.BLACK);
-            text.setTypeface(null, hint || text instanceof EditText ? Typeface.NORMAL : Typeface.BOLD);
+            text.setTypeface(Theme.face(hint || text instanceof EditText ? 400 : 700));
             if (text instanceof Button) ((Button)text).setAllCaps(false);
         }
         if (view instanceof ViewGroup) {

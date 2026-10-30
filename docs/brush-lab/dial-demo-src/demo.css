@@ -1,0 +1,119 @@
+:root {
+  --paper: #ffffff; --g1: #dddddd; --g2: #bbbbbb; --g3: #888888; --g4: #555555; --ink: #000000;
+  --face: "iA Writer Duo", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+/* Dark: the page's chrome turns; the tiles stay paper, as the Manta draws them. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --paper: #161616; --g1: #2a2a2a; --g2: #444444; --g3: #888888; --g4: #b4b4b4; --ink: #f2f2f2; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --paper: #161616; --g1: #2a2a2a; --g2: #444444; --g3: #888888; --g4: #b4b4b4; --ink: #f2f2f2; color-scheme: dark; }
+* { box-sizing: border-box; }
+html { background: var(--paper); color: var(--ink); -webkit-text-size-adjust: 100%; scroll-padding-top: 120px; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 400 15px/1.45 var(--face); overflow-x: hidden; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
+
+/* Head */
+.top { padding-top: 28px; padding-bottom: 18px; }
+.kicker { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--g4); margin: 0 0 8px; }
+h1 { font-size: 32px; line-height: 1.15; font-weight: 700; margin: 0 0 14px; }
+.lead { max-width: 78ch; margin: 0 0 12px; }
+.key { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 14px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--g4); }
+.key li { display: flex; align-items: center; gap: 8px; }
+.key b { font-weight: 700; color: var(--ink); text-transform: uppercase; letter-spacing: .06em; }
+
+/* The sticky bar: the six parts and the two controls */
+.bar { position: sticky; top: 0; z-index: 5; background: var(--paper); border-top: 4px solid var(--ink); border-bottom: 4px solid var(--ink); }
+.bar .wrap { display: flex; align-items: stretch; gap: 12px; padding-top: 8px; padding-bottom: 8px; }
+#parts { flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; min-width: 0; }
+#parts a { display: flex; align-items: center; justify-content: center; min-height: 40px; padding: 4px 6px; border: 2px solid var(--ink); min-width: 0;
+  color: var(--ink); text-decoration: none; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; overflow: hidden; }
+#parts a:hover { background: var(--g1); }
+#parts a.here { background: var(--ink); color: var(--paper); }
+.controls { display: flex; gap: 6px; }
+button { font: 700 13px/1 var(--face); text-transform: uppercase; letter-spacing: .06em; color: var(--ink);
+  background: var(--paper); border: 3px solid var(--ink); border-radius: 0; min-height: 40px; min-width: 84px; padding: 0 12px; cursor: pointer; }
+button:hover { background: var(--g1); }
+button:focus-visible, #parts a:focus-visible { outline: 3px solid var(--g3); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+/* Parts */
+.part { padding: 34px 0 10px; }
+.part-head { display: flex; align-items: center; gap: 14px; border-bottom: 4px solid var(--ink); padding-bottom: 10px; }
+.part-head .num { display: inline-flex; align-items: center; justify-content: center; min-width: 46px; height: 40px; border: 3px solid var(--ink); font-weight: 700; font-size: 18px; }
+h2 { margin: 0; font-size: 28px; line-height: 1.1; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.blurb { font-size: 18px; margin: 12px 0 4px; }
+.intro { color: var(--g4); margin: 4px 0 0; max-width: 80ch; }
+h3.group { margin: 22px 0 12px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--g4);
+  display: flex; align-items: center; gap: 12px; }
+h3.group::after { content: ""; flex: 1; border-top: 2px solid var(--g2); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 16px; }
+
+/* Tiles */
+.tile { border: 3px solid var(--ink); padding: 10px 10px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; background: var(--paper); }
+.tile.choice { border-width: 4px; }
+.tile-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.tile-head h4 { margin: 0; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; line-height: 1.25; }
+.tile.choice h4 { font-size: 17px; }
+.tile-head .val { margin-left: auto; font-size: 13px; color: var(--g4); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; padding: 1px 6px; border: 2px solid var(--g3); color: var(--g4); line-height: 1.4; align-self: center; }
+.sub { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--g4); margin-top: -4px; }
+/* The picture is paper in either theme. */
+.frame { position: relative; border: 2px solid var(--g2); background: #ffffff; }
+.frame canvas { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; }
+.frame .wait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .08em; color: #888888; background: #ffffff; }
+.frame .wait[hidden] { display: none; }
+.strip { display: none; }
+.say { margin: 0; font-size: 14px; line-height: 1.45; }
+.on { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--g4); margin-top: auto; padding-top: 2px; }
+.on + .on { margin-top: -4px; padding-top: 0; }
+
+/* The slider under a tile */
+.track { padding: 2px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.track.blank { display: none; }
+.rule { position: relative; height: 14px; margin: 0 6px; }
+.rule::before { content: ""; position: absolute; left: -6px; right: -6px; top: 6px; border-top: 2px solid var(--ink); }
+.rule i { position: absolute; top: 0; width: 12px; height: 14px; margin-left: -6px; background: var(--ink); }
+.ends { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--g4); margin-top: -2px; }
+.ends .now { color: var(--ink); font-weight: 700; text-align: center; }
+.ends.center { justify-content: center; }
+.segs { display: flex; gap: 4px; }
+.segs span { flex: 1; text-align: center; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 5px 2px;
+  border: 2px solid var(--ink); color: var(--ink); background: var(--paper); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.segs span.on { background: var(--ink); color: var(--paper); margin: 0; padding: 5px 2px; font-size: 12px; }
+.clock { position: relative; height: 12px; border: 2px solid var(--ink); }
+.clock i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--g3); width: 0; }
+.clock b { position: absolute; top: -6px; bottom: -6px; width: 3px; margin-left: -1px; background: var(--ink); }
+
+/* Steps: a few moments side by side, for reduced motion or on request */
+body.stepped .grid { grid-template-columns: 1fr; }
+body.stepped .frame { border: 0; background: none; }
+body.stepped .frame > canvas { display: none; }
+body.stepped .strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+body.stepped .strip figure { margin: 0; border: 2px solid var(--g2); background: #ffffff; }
+body.stepped .strip canvas { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; }
+body.stepped .strip figcaption { font-size: 12px; font-weight: 700; text-align: center; padding: 3px 2px; border-top: 2px solid var(--g2); color: #000000; }
+body.stepped .track, body.stepped .tile-head .val { display: none; }
+body.stepped .tile { display: grid; grid-template-columns: minmax(200px, 1fr) 3fr; gap: 6px 16px; }
+body.stepped .tile > * { grid-column: 1; }
+body.stepped .tile > .frame { grid-column: 2; grid-row: 1 / span 6; }
+
+footer { margin-top: 40px; padding-top: 16px; padding-bottom: 40px; border-top: 4px solid var(--ink); color: var(--g4); font-size: 13px; }
+footer p { margin: 0 0 8px; max-width: 90ch; }
+footer pre { white-space: pre-wrap; font-size: 11px; }
+
+@media (max-width: 760px) {
+  h1 { font-size: 26px; }
+  .bar .wrap { gap: 6px; padding-top: 6px; padding-bottom: 6px; }
+  #parts { grid-template-columns: repeat(3, 1fr); }
+  #parts a { min-height: 34px; font-size: 11px; padding: 2px; letter-spacing: .02em; }
+  .controls { flex-direction: column; }
+  .controls button { min-height: 34px; min-width: 72px; padding: 0 6px; font-size: 12px; border-width: 2px; }
+  html { scroll-padding-top: 100px; }
+  h2 { font-size: 22px; }
+  .blurb { font-size: 16px; }
+  body.stepped .tile { display: flex; }
+  body.stepped .strip { grid-template-columns: repeat(2, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

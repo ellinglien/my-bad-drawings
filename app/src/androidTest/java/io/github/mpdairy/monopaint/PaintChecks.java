@@ -17,9 +17,6 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import io.github.mpdairy.fasteink.FastEink;
-import io.github.mpdairy.fasteink.PanelCoordinates;
-import io.github.mpdairy.fasteink.Session;
 
 /** App-local replay on an isolated temporary document; restores the user's document afterward. */
 final class PaintChecks {
@@ -115,6 +112,10 @@ final class PaintChecks {
             });
             test.waitForIdleSync(); SystemClock.sleep(300);
             if (brushOnly) {
+                // Retired: every brushOnly check drives MonoPaint's ToolLibrary brush and toolbar through the pen; Inkwash's
+                // pen draws with its slots (318e016). The brush engine's rasters run in the default suite and on the desktop.
+                report.append("RETIRED: brushOnly: MonoPaint brush/toolbar UI through the pen.\n");
+                if (true) return;
                 brushTiltInput(test,current,report);
                 brushHeadUi(test,current,report);
                 favoriteUi(test,current,report);
@@ -147,56 +148,25 @@ final class PaintChecks {
                 // is shared with the compositor, not a retained screenshot.
                 event(view,start,MotionEvent.ACTION_MOVE,428,150,.1f);
                 try {
-                    driverPixel[0] = ((Session)field(firstPad,"direct")).readGray(428,150);
-                    driverPixel[1] = (((Bitmap)field(firstPad,"display")).getPixel(428,150) >>> 16 & 255) / 16;
+                    driverPixel[0] = ((DirectEink)field(firstPad,"direct")).readGray(428,150);
+                    // A page that doesn't fit the canvas is shown through the screen-sized viewport raster, in view pixels as the driver.
+                    ViewportBitmap screen = (ViewportBitmap)field(firstPad,"viewportBitmap");
+                    Bitmap shown = screen != null ? screen.bitmap : (Bitmap)field(firstPad,"display");
+                    driverPixel[1] = (shown.getPixel(428,150) >>> 16 & 255) / 16;
                 } catch (Exception failure) { throw new IllegalStateException(failure); }
             });
-            check(doc.tone(260,150) == 128, "Logical gray while pen is down");
+            check(doc.tone(260,150) < 255, "Ink on the page while pen is down");
             int[] bounds = doc.dirty(); check(bounds == null, "Dirty tones rendered before pen-up");
             check(driverPixel[0] == driverPixel[1], "Driver receives derived dots: expected " + driverPixel[1] + ", actual " + driverPixel[0]);
             test.runOnMainSync(() -> event(view, start, MotionEvent.ACTION_UP, 428, 150, 0));
             test.waitForIdleSync(); SystemClock.sleep(100);
             check((Integer)field(pad, "drawCount") == drawCount, "No Android redraw during stroke or pen-up");
-            check(doc.canUndo() && doc.tone(260,150) == 128, "Stroke committed");
-            report.append("Gray paints live, driver pixels agree, and pen-up causes no Android redraw.\n");
+            check(doc.canUndo() && doc.tone(260,150) < 255, "Stroke committed");
+            report.append("Ink paints live, driver pixels agree, and pen-up causes no Android redraw.\n");
 
-            test.runOnMainSync(() -> {
-                set(get(firstActivity,"paint"),"gray", 0); TestAccess.setMaximum(firstActivity, 64);
-                event(view, start, MotionEvent.ACTION_DOWN, 260, 270, .45f);
-                event(view, start, MotionEvent.ACTION_UP, 260, 270, 0);
-                set(get(firstActivity,"paint"),"gray", 255); TestAccess.setMaximum(firstActivity, 16);
-                event(view, start, MotionEvent.ACTION_DOWN, 260, 270, .45f);
-                event(view, start, MotionEvent.ACTION_UP, 260, 270, 0);
-            });
-            check(doc.tone(260,270) == 255 && doc.tone(280,270) == 0, "White over logical black preserves surround");
-            test.runOnMainSync(() -> findButton(firstActivity, "Undo").performClick());
-            check(doc.tone(260,270) == 0, "Undo white stroke");
-            test.runOnMainSync(() -> findButton(firstActivity, "Redo").performClick());
-            check(doc.tone(260,270) == 255, "Redo white stroke");
-            test.runOnMainSync(() -> { set(get(firstActivity,"paint"),"gray", 128); TestAccess.setMaximum(firstActivity, 128); });
-            long largeStart = SystemClock.uptimeMillis();
-            test.runOnMainSync(() -> {
-                event(view, start, MotionEvent.ACTION_DOWN, 200, 450, .45f);
-                for (int x = 208; x <= 1000; x += 8) event(view, start, MotionEvent.ACTION_MOVE, x, 450, .45f);
-                event(view, start, MotionEvent.ACTION_UP, 1000, 450, 0);
-            });
-            long largeMillis = SystemClock.uptimeMillis() - largeStart;
-            int diameter = 0;
-            for (int y = 350; y < 550; y++) if (doc.tone(600,y) != 255) diameter++;
-            check(diameter == 128, "Maximum brush diameter is 128 px");
-            report.append("128 px brush stays capped; 101 controlled samples and commit took " + largeMillis + " ms (not panel latency).\n");
-            checkTools(test,firstActivity,firstPad,doc,report);
-            checkToolTaps(test,firstActivity,doc,report);
-            checkLargeFill(test,firstActivity,firstPad,doc,report);
-            checkSelectionFeedback(test,firstActivity,doc,report);
+            // Retired: MonoPaint gray/size/white-over-black, its toolbar tools, taps, fill, picker and selection feedback,
+            // and palm/finger ignored: the pen draws with Inkwash's slots and one finger with its finger tool (318e016).
             byte[] expected = doc.snapshot();
-            test.runOnMainSync(() -> {
-                event(view, start, MotionEvent.ACTION_DOWN, 600, 500, 1, MotionEvent.TOOL_TYPE_FINGER);
-                event(view, start, MotionEvent.ACTION_UP, 600, 500, 0, MotionEvent.TOOL_TYPE_FINGER);
-            });
-            check(Arrays.equals(expected, doc.snapshot()), "Palm/finger ignored");
-            report.append("Black/white share the logical document; undo, redo and palm rejection pass.\n");
-            checkPicker(test, current, report);
             DocumentStore store = (DocumentStore)field(current, "store");
             final Exception[] error = new Exception[1];
             store.recoverLater(new DocumentStore.Snapshot(doc), (value, failure) -> error[0] = failure);
@@ -222,19 +192,11 @@ final class PaintChecks {
             pad = field(current, "pad");
             check(Arrays.equals(expectedActive, ((ToneDocument)field(pad,"document")).snapshot()), "Activity restart recovers active page");
             DrawingBook recoveredBook=(DrawingBook)field(current,"book");
-            check(recoveredBook.count()==2&&recoveredBook.index()==1,"Restart restores page count and position");
+            check(recoveredBook.count()==expectedPages&&recoveredBook.index()==expectedIndex,"Restart restores page count and position: "+(recoveredBook.index()+1)+" of "+recoveredBook.count());
             int[] origin=new int[2];((View)pad).getLocationOnScreen(origin);
             check(origin[0]==0&&((android.content.SharedPreferences)field(current,"preferences")).getBoolean("toolbox_right",false),"Right-side toolbox survives restart");
-            ToolLibrary restarted=(ToolLibrary)field(current,"library");
-            check(restarted.presets().size()==1&&restarted.presets().get(0).name.equals("Renamed check preset")
-                    &&restarted.presets().get(0).settings.soft&&restarted.presets().get(0).settings.maximum==9,"Edited custom settings survive Activity restart");
             report.append("Atomic recovery and Activity restart preserve exact logical tones.\n");
-            customToolbarChecks(test, current, report);
-            brushTiltInput(test, current, report);
-            brushHeadUi(test,current,report);
-            presetDragChecks(test, current, report);
-            adaptiveWetReplay(test,current,report);
-            wetWatercolorUi(test, current, report);
+            // Retired: MonoPaint toolbar, brush head, preset rail and wet watercolor UI (never shown in Inkwash).
         } finally {
             Object restorePad = field(current, "pad"); PaintActivity restoreActivity = current;
             test.runOnMainSync(() -> {
@@ -252,7 +214,7 @@ final class PaintChecks {
                 call(restoreActivity,"saveToolState", new Class<?>[0]);
                 try { ((View)field(restoreActivity, "shadePicker")).invalidate(); ((View)field(restoreActivity, "wetnessBar")).invalidate(); }
                 catch (Exception error) { throw new IllegalStateException(error); }
-                call(restoreActivity, "recovery", new Class<?>[0]);
+                call(restoreActivity, "recoveryNow", new Class<?>[0]);
             });
             CountDownLatch restored = new CountDownLatch(1);
             ((DocumentStore)field(current,"store")).open("_recovery", (d,e) -> restored.countDown());
@@ -727,7 +689,7 @@ final class PaintChecks {
                 int dx=grown[0],dy=grown[1];
                 DirtyRegions pending=(DirtyRegions)field(pad,"pending");
                 float[] pen=TestAccess.firmwareTilt(activity,0,tilt);
-                Session direct=(Session)field(pad,"direct");
+                DirectEink direct=(DirectEink)field(pad,"direct");
                 long start=SystemClock.uptimeMillis();
                 test.runOnMainSync(() -> {
                     library.edit(live);TestAccess.setMaximum(activity,64);set(get(activity,"paint"),"gray",0);call(get(activity,"toolbar"),"rebuildTools",new Class<?>[0]);
@@ -917,31 +879,30 @@ final class PaintChecks {
         View pages=(View)field(activity,activity.compactLayout()?"pagesButton":"previousPage");pages.getLocationOnScreen(page);
         check(actionsRight?page[0]+pages.getWidth()<=shade[0]:page[0]>=shade[0]+picker.getWidth(), "Page selector stays opposite the page actions");
     }
+    private static int expectedPages,expectedIndex;
     private static byte[] checkPages(Instrumentation test,PaintActivity activity,StringBuilder report) throws Exception {
         // Start from a one-page book; the recovered one may keep pages from an interrupted run.
         ToneDocument page=((DrawingBook)field(activity,"book")).current();
         test.runOnMainSync(() -> call(activity,"replaceBook",new Class<?>[]{DrawingBook.class},new DrawingBook(new ToneDocument(page.width,page.height,page.snapshot()))));
         test.waitForIdleSync();
         DrawingBook book=(DrawingBook)field(activity,"book");byte[] first=book.current().snapshot();
-        // Compact layouts move the page row into the Pages popup; detached header buttons never run their posted actions.
-        boolean compact=activity.compactLayout();
-        test.runOnMainSync(() -> call(activity,"showPageMenu",new Class<?>[0]));test.waitForIdleSync();
-        View add=PageNavigationChecks.pageMenuItem(activity,"Add page");
-        test.runOnMainSync(add::performClick);test.waitForIdleSync();
-        if(compact){test.runOnMainSync(() -> call(activity,"showPagePanel",new Class<?>[0]));test.waitForIdleSync();}
-        View previous=(View)field(activity,compact?"popupPrevious":"previousPage"),next=(View)field(activity,compact?"popupNext":"nextPage");
-        check(book.count()==2&&book.index()==1,"Add page appends and selects a new page");
+        // Inkwash turns pages from its page bar, never MonoPaint's header: the activity's own page actions.
+        test.runOnMainSync(() -> call(activity,"addPage",new Class<?>[0]));test.waitForIdleSync();
+        // Counts are read, not assumed (Inkwash kept a blank page after the last marked one until 2026-10-24).
+        int drawn=book.index();
+        check(drawn>=1,"Add page selects a new page: "+(book.index()+1)+" of "+book.count());
         for(byte tone:book.current().snapshot())check((tone&255)==255,"New page starts white");
         Object pad=field(activity,"pad");View canvas=(View)pad;long start=SystemClock.uptimeMillis();
         ToolLibrary tools=(ToolLibrary)field(activity,"library");
         test.runOnMainSync(() -> {
             tools.select(ToolSettings.Tool.BRUSH);TestAccess.setMaximum(activity,32);set(get(activity,"paint"),"gray",0);
-            event(canvas,start,MotionEvent.ACTION_DOWN,200,200,.45f);event(canvas,start,MotionEvent.ACTION_UP,200,200,0);
+            event(canvas,start,MotionEvent.ACTION_DOWN,200,200,.45f);event(canvas,start,MotionEvent.ACTION_MOVE,260,200,.45f);
+            event(canvas,start,MotionEvent.ACTION_UP,260,200,0);
         });
-        byte[] second=book.current().snapshot();check(book.current().tone(200,200)==0,"New page accepts drawing events");
-        test.runOnMainSync(previous::performClick);test.waitForIdleSync();
+        byte[] second=book.current().snapshot();check(book.current().tone(230,200)<255,"New page accepts drawing events");
+        test.runOnMainSync(() -> call(activity,"changePage",new Class<?>[]{int.class},0));test.waitForIdleSync();
         check(Arrays.equals(first,book.current().snapshot()),"Previous page retains all marks");
-        test.runOnMainSync(next::performClick);test.waitForIdleSync();
+        test.runOnMainSync(() -> call(activity,"changePage",new Class<?>[]{int.class},drawn));test.waitForIdleSync();
         check(Arrays.equals(second,book.current().snapshot())&&book.current().canUndo(),"Next page retains marks and recent undo");
         android.content.SharedPreferences preferences=(android.content.SharedPreferences)field(activity,"preferences");
         for(boolean right:new boolean[]{false,true}) {
@@ -957,13 +918,13 @@ final class PaintChecks {
         check(saved.await(10,TimeUnit.SECONDS)&&error[0]==null,"Whole-book save completes");
         CountDownLatch opened=new CountDownLatch(1);DrawingBook[] loaded={null};
         store.openBook(name,(value,failure)->{loaded[0]=value;error[0]=failure;opened.countDown();});
-        check(opened.await(10,TimeUnit.SECONDS)&&error[0]==null&&loaded[0].count()==2&&loaded[0].index()==1,"Named save/open preserves pages and position");
+        check(opened.await(10,TimeUnit.SECONDS)&&error[0]==null&&loaded[0].count()==book.count()&&loaded[0].index()==drawn,"Named save/open preserves pages and position");
         check(Arrays.equals(second,loaded[0].current().snapshot()),"Saved active page is exact");loaded[0].select(0);check(Arrays.equals(first,loaded[0].current().snapshot()),"Saved earlier page is exact");
         new java.io.File(DrawingStorage.library(activity),name+DrawingFiles.EXTENSION).delete();
         CountDownLatch barrier=new CountDownLatch(1);store.openBook("_recovery",(value,failure)->{error[0]=failure;barrier.countDown();});
         check(barrier.await(10,TimeUnit.SECONDS)&&error[0]==null,"Whole-book recovery finishes");
+        expectedPages=book.count();expectedIndex=drawn;
         report.append("Blank-page creation, navigation, recent-page undo, whole-book save/open and both toolbox sides pass.\n");
-        if(compact){test.runOnMainSync(() -> call(activity,"closePagePanel",new Class<?>[0]));test.waitForIdleSync();}
         return second;
     }
     private static void checkSelectionFeedback(Instrumentation test, PaintActivity activity, ToneDocument doc, StringBuilder report) throws Exception {
@@ -1005,7 +966,7 @@ final class PaintChecks {
             android.graphics.Rect region=feedback.lastBufferRegion;
             View canvas=(View)field(activity,"pad");
             android.graphics.RectF canvasBounds=new android.graphics.RectF(0,0,canvas.getWidth(),canvas.getHeight());
-            PanelCoordinates.fromView(canvas).mapRect(canvasBounds);FastEink.bufferFromPanel().mapRect(canvasBounds);
+            PanelCoordinates.fromView(canvas).mapRect(canvasBounds);DirectEink.bufferFromPanel().mapRect(canvasBounds);
             check(!android.graphics.RectF.intersects(canvasBounds,new android.graphics.RectF(region)),"Selection request excludes document canvas");
             test.runOnMainSync(() -> restored[0]=controlBitmap(pencil));
             check(baseline[0].sameAs(restored[0]),"Changing tools restores exact inactive control pixels after redraw");

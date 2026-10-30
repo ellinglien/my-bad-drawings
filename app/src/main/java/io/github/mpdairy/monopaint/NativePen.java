@@ -15,8 +15,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
-import io.github.mpdairy.fasteink.Mode;
-import io.github.mpdairy.fasteink.Session;
 
 /** Adapted from AnimInk's MIT-licensed PW bridge. See THIRD_PARTY_NOTICES.md. */
 final class NativePen {
@@ -35,7 +33,7 @@ final class NativePen {
     private boolean grayCanvas;
     private final Paint canvasPaint = new Paint();
     private Canvas penCanvas;
-    private Session directEink;
+    private DirectEink directEink;
     private Bitmap directBitmap;
     private Bitmap dotTile;
     private int directMaximum, directPointer = -1;
@@ -85,6 +83,12 @@ final class NativePen {
             Log.i(ProbeActivity.TAG, "Document canvas: firmware writable area is empty");
             return true;
         } catch (Exception error) { fail("Document input setup", error); disable(); return false; }
+    }
+
+    /** The host back under partial grey as {@link #prepareDocumentCanvas} leaves it, after {@link Ui#cleanWindow}. */
+    void partialGrey() {
+        try { View.class.getMethod("setEinkUpdateMode", int.class, int.class).invoke(host, 3, 7); }
+        catch (ReflectiveOperationException | RuntimeException ignored) { }
     }
 
     boolean configure(int type, int size, int color, boolean nativeInk) {
@@ -158,9 +162,7 @@ final class NativePen {
                         directBitmap=Bitmap.createBitmap(host.getWidth(),host.getHeight(),Bitmap.Config.ARGB_8888);
                         directBitmap.eraseColor(Color.WHITE);
                     }
-                    // The probe compares both request settings observed in installed display clients.
-                    directEink=Session.forView(host,directBitmap,new android.graphics.Matrix(),
-                            requestFlags==1 ? Mode.GRAY_FLAGGED : Mode.GRAY);
+                    directEink=DirectEink.forView(host,directBitmap,new android.graphics.Matrix(),requestFlags,7);
                     directMaximum=size; directTilt=tiltBrush; directPointer=-1;
                     canvasPaint.setColor(color); canvasPaint.setAntiAlias(false);
                     canvasPaint.setFilterBitmap(false);
@@ -290,8 +292,7 @@ final class NativePen {
     static float inclination(float tx, float ty) { return BrushDirection.inclination(tx, ty); }
 
     static float diameter(int maximum, float pressure, float tx, float ty, boolean tilt) {
-        if (!Float.isFinite(pressure)) pressure = 0;
-        float p = Math.max(0, Math.min(1, (pressure - .05f) / .40f));
+        float p = ToolSettings.travel(pressure);
         float d = 2 + (maximum - 2) * p * p;
         if (tilt) d += (maximum - d) * .65f * Math.max(0, Math.min(1, (inclination(tx,ty)-20) / 45));
         return d;
@@ -420,8 +421,8 @@ final class NativePen {
         long start=System.nanoTime();
         int result=directEink.present(directBitmap,pendingGray);
         directNanos+=System.nanoTime()-start;
-        if (result!=Session.BUSY) pendingGray.setEmpty();
-        if (result==Session.PRESENTED) { directUpdates++; grayUpdates++; }
+        if (result>=0) pendingGray.setEmpty();
+        if (result>0) { directUpdates++; grayUpdates++; }
     }
 
     private synchronized void releaseDirect() {

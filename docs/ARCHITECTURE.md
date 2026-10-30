@@ -1,6 +1,7 @@
 # Code structure
 
-All app code is in `app/src/main/java/io/github/mpdairy/monopaint`.
+All app code is in `app/src/main/java/io/github/mpdairy/monopaint` (MonoPaint's package, kept; see
+[INTEGRATION.md](INTEGRATION.md) for which classes are upstream's and which are My Bad Drawings').
 
 ## The painting screen
 
@@ -11,42 +12,48 @@ app's upright coordinates and mapped back to the portrait window (`Popups`).
 
 | Class | Role |
 | --- | --- |
-| `DrawingPad` | The canvas: rendering, direct e-ink presentation, pen gestures, pinch/pan, wet paint |
-| `Toolbar` | Side toolbar: tools, Layers, Zoom, palette strip and favorites (drag to reorder) |
-| `ToolSettingsPanel` | Settings popup for the selected tool, opened beside its toolbar button |
-| `PaletteEditor`, `LayersPanel`, `AppSettingsDialog` | The other panels |
-| `RotationPrompt` | Sensor-driven "Rotate" suggestion |
-| `ShadePicker`, `WetnessBar` | Color bar controls |
-| `ToolButton`, `PageActionButton`, `PressOutline` | Icon controls and their immediate pressed outline |
+| `DrawingPad` | The canvas: rendering, direct e-ink presentation, pen and finger gestures, pinch/pan, wet paint |
+| `InkWashBar` | The one side column: Menu, the tray of ten slots, the smudge tool and the eraser, the size and grey box, the icon block, the wet indicator, Template Visibility and Play |
+| `DrawLayout` | The screen's measures in dp: the column, the page bar, the brush line, the menus' and the tool picker's sizes |
+| `PageTurner` | The page bar along the page's top: Notebook, Zoom, the page count and previews |
+| `InkWash`, `ToolSlots` | The selected tool, each tool's size and grey, what one finger does (`FingerTool`), and the strokes they start |
+| `SwatchBar`, `PickerBox`, `GreyStrip`, `SizeSlider` | The column's size and grey controls (the picker box is Brush Lab's too, turned on its side) |
+| `WetIndicator` | The droplet while paint is wet; a tap lays it |
+| `NotebookScreens` | The shelf of notebooks and the inside of one |
+| `ToolsActivity`, `BrushLabActivity` | The Tools page (the brush library) and Brush Lab, where brushes are made |
+| `ToolButton`, `PressOutline` | Icon controls and their immediate pressed outline |
 | `SelectionFeedback` | Sends small control changes straight to the panel |
-| `PaintState` | Current color, erase mode and wet/transparent paint |
+| `Theme` | Every colour, stroke, type style and typeface the screens use (see [DESIGN.md](DESIGN.md)) |
 | `PaintPreferences` | Typed access to saved settings |
+
+MonoPaint's own controls (`Toolbar`, `ToolSettingsPanel`, `LayersPanel`, `WetnessBar` and the rest) are still built
+but hidden; My Bad Drawings' column replaces them, and a page's layers are in Page Settings (`NotebookScreens`).
 
 ## Tablets
 
 `Device` is the only class that identifies hardware. Code asks it about a named
-fact, such as `landscapeTilt` or `compactControls`, and asks the fasteink
-library's `FastEink` about the e-ink driver. It never checks for a model. `PanelPreviewLayout`
+fact, such as `landscapeTilt` or `compactControls`, and asks `DirectEink` about
+the e-ink driver's buffer. It never checks for a model. `PanelPreviewLayout`
 previews a smaller tablet's panel (the Manta's Nomad simulation). See
 [DEVICES.md](DEVICES.md) for the profiles and how to add a tablet.
 
 ## Tools
 
-Tool settings are immutable `ToolSettings` objects. `ToolLibrary` remembers the
-settings of each built-in tool and the user's favorites, and stores them in a
-versioned binary format.
+Every slot and the smudge tool hold a `Brush`: a six-part brush (`ModularBrush`: a name, a seed, a style
+and one `PartChoice` per `BrushPart`, with its dials), stored and shared as an `M` share code. `ResolvedBrush` turns
+it into what is drawn, and `InkWash` starts its stroke (`QuickStroke`, or `EraseBothStroke` for the eraser). A stroke
+receives pen samples in page coordinates and edits the `ToneDocument`; it commits one undo step. The brush's medium,
+not the slot, decides which layer it draws on.
 
 To add a tool:
 
-1. Append a constant to `ToolSettings.Tool` with its label and kind. Never reorder
-   the constants. Add a format version in `ToolLibrary` (`FORMAT` and `toolCount`).
-2. Give it an icon in `ToolIcons`.
-3. Describe its settings rows in `ToolControls`, using `SettingsForm`'s bound
-   sliders, checkboxes and hints. Each control reads and edits the current
-   `ToolSettings`; the panel saves and refreshes the toolbar automatically.
-4. Return its `DrawingStroke` from `ToolStrokes.create`. A stroke receives pen samples
-   in page coordinates and edits the `ToneDocument`; `finish()` commits one undo step.
-5. Add it to `Toolbar.TOOLS` to show it in the side toolbar.
+1. Make the brush in Brush Lab and copy its share code.
+2. Add a row to `ToolPresets.ROWS` (style, name, share code, a one-line description, seed). It shows on the Tools
+   page as a Basic tool.
+3. To offer it in the tool picker (a slot's long press), add it with its drawing to `DrawLayout.PICKER`, the drawing
+   a `res/drawable/tip_*.xml` named in that row.
+4. A new kind of behaviour, not a new brush, is a new `PartChoice` with its dials, drawn in `ResolvedBrush`;
+   `ModularFeatures` decides whether rolls may pick it.
 
 Fill, Shapes and Lasso are drag-and-release gestures rather than strokes. `DrawingPad` runs
 them itself. Live previews draw straight into the display raster without touching the
@@ -54,10 +61,11 @@ document: `ShapePreview` and `SelectionPreview` composite the layers natively (s
 `cpp/layers.h` with page composition), and `CanvasGuide` draws guide lines over the artwork,
 such as the gradient's direction or a selection's frame, and restores what was beneath.
 
-A Lasso loop lifts a `FloatingSelection` from the active layer, and **Import image…**
-(`ImageImport`) floats a picture the same way. The piece moves, scales and turns over the
+A Lasso loop lifts a `FloatingSelection` from the active layer. The piece moves, scales and turns over the
 page; `DrawingPad.placeSelection` lays it as one undo step when the pen lands elsewhere or
-any other action calls `finishStroke`, and Undo drops it instead (`cancelSelection`).
+any other action calls `finishStroke`, and Undo drops it instead (`cancelSelection`). **Import**
+(`PaintActivity.importFile`, `ImportPicker`, `PictureImport`) shows a picture, or one page of a PDF, over the page with `PicturePlacer`, to move and
+size until Place or Cancel; Place lays its greys on the layer drawn on as one undo step.
 
 ## Documents
 
@@ -65,8 +73,9 @@ any other action calls `finishStroke`, and Undo drops it instead (`cancelSelecti
 pages and tracks whether it has unsaved changes, and `DocumentStore` saves books
 and the autosave/recovery file in the background (`BookCodec`, `DocumentCodec`,
 `RecoveryCodec`). `DrawingStorage` chooses the library folder: shared
-`Document/MonoPaint` on a Supernote (the folder its Files app shows) or
-`Documents/MonoPaint` elsewhere, once the app has file access, so drawings outlive the app,
+`Document/<folder>` on a Supernote (the folder its Files app shows) or
+`Documents/<folder>` elsewhere, where `<folder>` is `BuildConfig.LIBRARY_FOLDER` (the app's name, from `AppName`),
+once the app has file access, so drawings outlive the app,
 otherwise its private files. At launch `DocumentStore.relocate` moves drawings
 left in private storage into the shared library before the drawing loads. The
 recovery file always stays private: Supernote Cloud syncs `Document/`, and syncing

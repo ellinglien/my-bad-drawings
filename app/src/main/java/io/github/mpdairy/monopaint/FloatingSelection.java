@@ -48,6 +48,24 @@ final class FloatingSelection {
      * ({@code x, y} pairs, page coordinates), or returns null when it has nothing there.
      */
     static FloatingSelection lift(ToneDocument document, float[] points, int count) {
+        int[] box = new int[4];
+        byte[] inside = inside(document.width, document.height, points, count, box);
+        if (inside == null) return null;
+        int w = box[2], h = box[3];
+        byte[] tones = new byte[w * h], alpha = new byte[w * h];
+        document.copyLayer(box[0], box[1], w, h, tones, alpha);
+        for (int i = 0; i < inside.length; i++) if (inside[i] == 0) { tones[i] = (byte)255; alpha[i] = 0; }
+        // Trim to what was found, so the handles hug the artwork.
+        int[] found = found(new byte[][]{alpha}, w, h);
+        if (found == null) return null;
+        return piece(document, found[2], found[3], crop(tones, w, found), crop(alpha, w, found), box[0] + found[0], box[1] + found[1]);
+    }
+    /**
+     * Which pixels of the loop's box lie inside the closed loop through {@code count} points: pixel centers between
+     * pairs of edge crossings on their row, 1 each, row by row; {@code box} gets the box, {left, top, width, height}
+     * on a {@code pageWidth × pageHeight} page. Null for no loop or none of it on the page.
+     */
+    static byte[] inside(int pageWidth, int pageHeight, float[] points, int count, int[] box) {
         if (count < 3) return null;
         float minX = Float.MAX_VALUE, minY = Float.MAX_VALUE, maxX = -Float.MAX_VALUE, maxY = -Float.MAX_VALUE;
         for (int i = 0; i < count; i++) {
@@ -55,14 +73,11 @@ final class FloatingSelection {
             minY = Math.min(minY, points[2*i+1]); maxY = Math.max(maxY, points[2*i+1]);
         }
         int left = Math.max(0, (int)Math.floor(minX)), top = Math.max(0, (int)Math.floor(minY));
-        int right = Math.min(document.width, (int)Math.ceil(maxX)), bottom = Math.min(document.height, (int)Math.ceil(maxY));
+        int right = Math.min(pageWidth, (int)Math.ceil(maxX)), bottom = Math.min(pageHeight, (int)Math.ceil(maxY));
         if (left >= right || top >= bottom) return null;
         int w = right - left, h = bottom - top;
-        byte[] tones = new byte[w * h], alpha = new byte[w * h];
-        document.copyLayer(left, top, w, h, tones, alpha);
-        // Keep what lies inside the loop: pixel centers between pairs of edge crossings on their row.
+        byte[] inside = new byte[w * h];
         float[] crossings = new float[count];
-        int l = w, t = h, r = 0, b = 0;
         for (int row = 0; row < h; row++) {
             float y = top + row + .5f;
             int found = 0;
@@ -77,21 +92,43 @@ final class FloatingSelection {
             for (int col = 0; col < w; col++) {
                 float x = left + col + .5f;
                 while (pair < found && crossings[pair] <= x) pair++;
-                int i = row * w + col;
-                if (pair % 2 == 0) { tones[i] = (byte)255; alpha[i] = 0; }
-                else if (alpha[i] != 0) { l = Math.min(l, col); r = Math.max(r, col + 1); t = Math.min(t, row); b = Math.max(b, row + 1); }
+                if (pair % 2 == 1) inside[row * w + col] = 1;
             }
         }
-        if (l >= r) return null;
-        // Trim to what was found, so the handles hug the artwork.
-        int cw = r - l, ch = b - t;
-        byte[] pieceTones = new byte[cw * ch], pieceAlpha = new byte[cw * ch];
-        for (int row = 0; row < ch; row++) {
-            System.arraycopy(tones, (t + row) * w + l, pieceTones, row * cw, cw);
-            System.arraycopy(alpha, (t + row) * w + l, pieceAlpha, row * cw, cw);
-        }
-        return new FloatingSelection(document.width, document.height, cw, ch, pieceTones, pieceAlpha, true, left + l, top + t, false);
+        box[0] = left; box[1] = top; box[2] = w; box[3] = h;
+        return inside;
     }
+    /** The pixels some of {@code alphas} (null ones skipped) cover in a {@code w × h} block: {left, top, width, height}, or null for none. */
+    static int[] found(byte[][] alphas, int w, int h) {
+        int l = w, t = h, r = 0, b = 0;
+        for (byte[] alpha : alphas) if (alpha != null) for (int row = 0; row < h; row++) for (int col = 0; col < w; col++)
+            if (alpha[row * w + col] != 0) { l = Math.min(l, col); r = Math.max(r, col + 1); t = Math.min(t, row); b = Math.max(b, row + 1); }
+        return l >= r ? null : new int[]{l, t, r - l, b - t};
+    }
+    /** {@code found}'s part of the {@code w}-wide block {@code plane}, row by row. */
+    static byte[] crop(byte[] plane, int w, int[] found) {
+        byte[] out = new byte[found[2] * found[3]];
+        for (int row = 0; row < found[3]; row++) System.arraycopy(plane, (found[1] + row) * w + found[0], out, row * found[2], found[2]);
+        return out;
+    }
+    /** A piece lifted from the page at ({@code x}, {@code y}), unturned, at its own size. */
+    static FloatingSelection piece(ToneDocument document, int width, int height, byte[] tones, byte[] alpha, int x, int y) {
+        return new FloatingSelection(document.width, document.height, width, height, tones, alpha, true, x, y, false);
+    }
+    /**
+     * Inkwash: the same piece in the same place, lifted from nowhere: what floats on after Copy lays one, or after the
+     * page it was lifted from is left ({@code DrawingPad.carrySelection}). Its planes are shared: nothing writes them.
+     */
+    FloatingSelection copy() {
+        FloatingSelection copy = new FloatingSelection(pageWidth, pageHeight, width, height, tones, alpha, false, cutX, cutY, newLayer);
+        copy.centerX = centerX; copy.centerY = centerY; copy.scale = scale; copy.angle = angle;
+        copy.knobEdge = knobEdge; copy.knobInside = knobInside; copy.planes = planes;
+        return copy;
+    }
+    /** Inkwash: whether the piece came from a page of {@code document}'s size, so it can float there (a carried or pasted piece). */
+    boolean fits(ToneDocument document) { return document.width == pageWidth && document.height == pageHeight; }
+    /** Inkwash: every plane of what was lifted ({@link LassoPlanes}), placed in place of {@link #tones} and {@link #alpha}, which show it; null for MonoPaint's pieces. */
+    LassoPlanes planes;
 
     /**
      * A picture to place, centered on the page and turned by {@code angle} so it stands upright
@@ -252,6 +289,10 @@ final class FloatingSelection {
     }
     /** Ends a drag. */
     void release() { turning = false; }
+    /** Inkwash: whether it lies just as {@code other} does. */
+    boolean samePose(FloatingSelection other) {
+        return centerX == other.centerX && centerY == other.centerY && scale == other.scale && angle == other.angle;
+    }
     /** Whether the piece would land just as it was lifted, changing nothing. */
     boolean unmoved() {
         return lifted && angle == 0 && scale == 1 && centerX == cutX + width / 2f && centerY == cutY + height / 2f;
@@ -259,6 +300,11 @@ final class FloatingSelection {
 
     // Placing
 
+    /** Inkwash: the piece pixel page pixel ({@code x}, {@code y})'s center shows, nearest, as the preview shows it; -1 off the piece. */
+    int at(float[] m, int x, int y) {
+        float px = x + .5f, py = y + .5f, ux = m[0] * px + m[1] * py + m[2], uy = m[3] * px + m[4] * py + m[5];
+        return ux < 0 || uy < 0 || ux >= width || uy >= height ? -1 : (int)uy * width + (int)ux;
+    }
     /**
      * The piece's tone and coverage at page pixel ({@code x}, {@code y}) as placed, blended
      * between its nearest pixels, packed as tone << 8 | coverage; 0 where it leaves the page bare.
@@ -290,6 +336,7 @@ final class FloatingSelection {
      */
     boolean place(ToneDocument document) {
         if (unmoved()) return false;
+        if (planes != null) return planes.place(document, this, true, lifted);
         float[] m = inverse();
         int[] area = bounds();
         if (newLayer) {

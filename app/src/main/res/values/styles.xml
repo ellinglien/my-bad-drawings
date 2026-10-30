@@ -1,8 +1,23 @@
 <resources>
     <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:colorAccent">#000000</item>
-        <item name="android:fontFamily">sans</item>
+        <item name="android:fontFamily">@font/ukulele_family</item>
         <item name="android:colorControlActivated">#000000</item>
         <item name="android:colorControlNormal">#000000</item>
+        <item name="android:alertDialogTheme">@style/AppDialog</item>
+    </style>
+    <!-- The drawing screen's: the loading screen (drawable/splash) shows the moment it's launched, until the first page is
+         ready (PaintActivity.reveal). -->
+    <style name="AppTheme.Loading">
+        <item name="android:windowBackground">@drawable/splash</item>
+    </style>
+    <!-- No least width: a dialog turned with the app (PaintActivity.orientDialog) wraps its words; with the platform's
+         least width (most of the portrait width) a landscape dialog stood as tall as the screen, half of it empty. -->
+    <style name="AppDialog" parent="android:style/Theme.Material.Light.Dialog.Alert">
+        <item name="android:colorAccent">#000000</item>
+        <item name="android:windowMinWidthMajor">0%</item>
+        <item name="android:windowMinWidthMinor">0%</item>
+        <!-- Flat on e-ink: no grey shadow round the box (its ink outline is the edge). -->
+        <item name="android:windowElevation">0dp</item>
     </style>
 </resources>

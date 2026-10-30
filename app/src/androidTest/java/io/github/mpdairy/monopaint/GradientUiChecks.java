@@ -15,7 +15,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Real pen and palette gestures on a temporary book, with session restoration. */
 final class GradientUiChecks {
@@ -237,7 +236,7 @@ final class GradientUiChecks {
                 prefs.edit().putBoolean("toolbox_right",right).apply();
                 call(activity,"replaceBook",new Class<?>[]{DrawingBook.class},original);
                 call(activity,"requestQuarter",new Class<?>[]{int.class},quarter);call(activity,"applyToolboxSide");
-                call(activity,"saveToolState");call(activity,"recovery");
+                call(activity,"saveToolState");call(activity,"recoveryNow");
             });
             CountDownLatch saved=new CountDownLatch(1);
             ((DocumentStore)get(activity,"store")).recover((value,error) -> saved.countDown());

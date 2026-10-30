@@ -85,7 +85,7 @@ public final class BookChecks {
     private static void packedPageReuse() throws Exception {
         DrawingBook book=new DrawingBook(new ToneDocument(37,29));
         mark(book.current(),4,5,60);book.addPage();book.select(0);
-        byte[] packed=book.snapshot().packedActivePage;
+        PackedPage packed=book.snapshot().packedActivePage;
         check(packed!=null,"Saved page has reusable compressed data");
         book.select(1);book.select(0);
         check(book.snapshot().packedActivePage==packed,"Unchanged browsing reuses the exact compressed page");
@@ -102,9 +102,11 @@ public final class BookChecks {
             edit.run();
             check(book.snapshot().packedActivePage==null,"Pixel, metadata and history changes invalidate packed data");
             byte[] expected=DrawingBook.encode(doc);
+            // Inkwash: a page left is packed quickly; a book's file still gets the default level (SaveLessChecks).
+            byte[] quick=DrawingBook.encode(doc,DocumentCodec.QUICK);
             DrawingBook.Snapshot snapshot=book.snapshot();
             book.select(1);book.select(0);
-            check(Arrays.equals(expected,book.snapshot().packedActivePage),"Navigation stores the latest page state");
+            check(Arrays.equals(quick,book.snapshot().packedActivePage.bytes()),"Navigation stores the latest page state");
             ByteArrayOutputStream saved=new ByteArrayOutputStream();BookCodec.write(saved,snapshot);
             DrawingBook restored=BookCodec.read(new ByteArrayInputStream(saved.toByteArray()));
             check(Arrays.equals(expected,DrawingBook.encode(restored.current())),"Autosave preserves modified page state");

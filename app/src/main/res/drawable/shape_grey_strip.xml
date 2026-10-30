@@ -1,0 +1,4 @@
+<!-- Drawn by hand by the owner (2026-10-26), traced with potrace: the grey strip's outline; its px size is the drawing's, scaled where it is drawn. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="137px" android:height="574px" android:viewportWidth="1370" android:viewportHeight="5740">
+    <path android:fillColor="#000000" android:pathData="M1020 5728 c-34 -6 -219 -10 -477 -10 l-423 1 -26 -22 c-41 -36 -47 -98 -50 -492 -1 -198 -5 -670 -9 -1050 -3 -390 -2 -777 4 -890 7 -152 6 -227 -4 -315 -8 -68 -12 -175 -9 -260 2 -80 -1 -431 -7 -780 -5 -349 -11 -696 -11 -770 -1 -274 13 -738 27 -855 23 -191 24 -205 13 -205 -5 0 -8 -15 -6 -32 l3 -33 85 -2 c278 -7 661 -6 756 3 69 7 139 7 185 2 144 -18 181 -11 207 35 15 28 17 67 18 327 1 299 5 382 24 523 5 44 9 176 9 295 -2 289 -2 290 5 495 3 99 8 182 10 186 11 18 16 1675 5 1869 -10 186 -13 538 -9 1147 0 116 9 334 18 486 18 311 17 317 -44 338 -52 17 -225 22 -294 9z"/>
+</vector>

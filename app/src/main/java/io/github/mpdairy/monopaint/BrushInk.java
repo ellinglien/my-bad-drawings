@@ -19,6 +19,8 @@ final class BrushInk {
     private float ink;
     /** The tint, as ink in the water, 0 (clear) to 1 (black). */
     private float floor;
+    /** Inkwash: how much ink this brush holds when full, {@link #CAPACITY} upstream (a broad brush holds more). */
+    private final float capacity;
     /**
      * On a dry canvas, the dry paint this brush's water lands on stays stuck to the paper and
      * only slowly soaks loose, as in a watercolor wash; the wet brush pen lifts it at once.
@@ -27,21 +29,23 @@ final class BrushInk {
 
     /** The wet brush pen's ink, which lifts dry paint at once. */
     BrushInk() { this(false); }
-    BrushInk(boolean dryPaintSticks) { this.dryPaintSticks = dryPaintSticks; }
+    BrushInk(boolean dryPaintSticks) { this(dryPaintSticks, CAPACITY); }
+    /** Inkwash: a brush holding {@code capacity} pixels of full black when full. */
+    BrushInk(boolean dryPaintSticks, float capacity) { this.dryPaintSticks = dryPaintSticks; this.capacity = capacity; }
 
     /** How inky the brush is, 0 (clear water) to 1 (black). */
-    float fullness() { return ink / CAPACITY; }
+    float fullness() { return ink / capacity; }
     /** The lightest shade the brush lays, as ink in the water from 0 to 1. */
     float tint() { return floor; }
     /** Restores a saved brush. */
     void restore(float fullness, float tint) {
-        floor = finite(tint); ink = Math.max(floor, finite(fullness)) * CAPACITY;
+        floor = finite(tint); ink = Math.max(floor, finite(fullness)) * capacity;
     }
     private static float finite(float value) { return Float.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0; }
     /** Fills the brush with ink of {@code gray}, as if dipped in it, or with only its tint if that is darker. */
-    void load(int gray) { ink = Math.max(floor, (255 - Math.max(0, Math.min(255, gray))) / 255f) * CAPACITY; }
+    void load(int gray) { ink = Math.max(floor, (255 - Math.max(0, Math.min(255, gray))) / 255f) * capacity; }
     /** Leaves only the tint's ink in the brush. */
-    void clean() { ink = floor * CAPACITY; }
+    void clean() { ink = floor * capacity; }
     /** Sets the brush's ink to {@code gray}, which then is the lightest it lays. */
     void tint(int gray) { floor = (255 - Math.max(0, Math.min(255, gray))) / 255f; clean(); }
     /**
@@ -51,7 +55,7 @@ final class BrushInk {
      */
     float trade(float pigment, float share) {
         float moved = (pigment - 255 * fullness()) * RATE * share;
-        moved = Math.max(-(ink - floor * CAPACITY) * 255, Math.min((CAPACITY - ink) * 255, moved));
+        moved = Math.max(-(ink - floor * capacity) * 255, Math.min((capacity - ink) * 255, moved));
         ink += moved / 255;
         return moved;
     }

@@ -1,7 +1,7 @@
 # Direct gray display experiment (0.12)
 
 The current dot brush uses the measured coverage calibration documented in
-[GRAY_DENSITY.md](GRAY_DENSITY.md). Its display requests are unchanged.
+[GRAY_DENSITY.md](upstream/GRAY_DENSITY.md). Its display requests are unchanged.
 
 ## Nomad canvas previews (2026-10-06)
 
@@ -108,7 +108,7 @@ both regular apps were reopened and their canvases checked.
 
 ## Earlier experiments
 
-Current comparison: [PIXEL_BLOCK.md](PIXEL_BLOCK.md) records the binary-dot
+Current comparison: [PIXEL_BLOCK.md](upstream/PIXEL_BLOCK.md) records the binary-dot
 evidence from Atelier and the new **Shade: dots** option. Driver mode 7 /
 flags 0 remains the baseline; 0.11 removes the failed GL/mode-4 experiment.
 The sections below retain the history of earlier display comparisons.
@@ -238,11 +238,11 @@ mapping, not base plus one plane, in the field `postEinkPWRectFast` reads, so
 the firmware's own mode 9/flags 1 requests write and submit offset 0, the main
 plane. Mode 9 is otherwise unchanged.
 
-The plane is therefore chosen by build: from stamp 2610091001 on, both models
-use plane 0; before it, the Nomad keeps plane 1 and the Manta keeps gray
-controls. This was `Device.fastBinaryPlane()`; it is now part of the layout
-table in the fasteink library, which accepts only plane 0 or 1 for mode 9 and
-plane 0 for mode 7. The user confirmed on the physical Manta that the marker now follows
+`Device.fastBinaryPlane()` therefore chooses the plane by build: from stamp
+2610091001 on, both models use plane 0; before it, the Nomad keeps plane 1
+and the Manta keeps gray controls. `DirectEink.useFastBinaryPlane` receives
+the choice, and JNI accepts only plane 0 or 1 for mode 9 and plane 0 for
+mode 7. The user confirmed on the physical Manta that the marker now follows
 the pen.
 
 On the Nomad, plane 1 on 3.30.45 left black boxes where the Layers panel and

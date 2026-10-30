@@ -1,0 +1,5 @@
+<!-- Drawn for My Bad Drawings in Iconoir's style: a wavy arrow: paint smeared along (Smudge). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M2.75 15C5 10.5 8 10.5 10.5 13.5C13 16.5 16 16.5 19.5 11" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M19.972 14.569L19.5 11M16.067 12.084L19.5 11" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

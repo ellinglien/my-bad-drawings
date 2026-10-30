@@ -105,13 +105,9 @@ final class FullscreenController {
         try {
             page.expand(left,top,right,bottom);
             if(left+top+right+bottom>0) {
-                // New page origin includes the added margins; keep every old mark stationary.
-                // Rotation translations also change when page dimensions grow.
+                // New page origin includes the added margins; keep every old mark stationary (the page is upright in any turn).
                 float oldX=app.pad.viewport.x,oldY=app.pad.viewport.y,scale=app.pad.viewport.scale();
-                int turn=app.appRotation;
-                float dx=turn==1?top:turn==2?right:turn==3?bottom:left;
-                float dy=turn==1?right:turn==2?bottom:turn==3?left:top;
-                app.pad.viewport.hold(scale,oldX-dx*scale,oldY-dy*scale);
+                app.pad.viewport.hold(scale,oldX-left*scale,oldY-top*scale);
                 app.pad.canvasResized(); app.recovery();
             } else if(explain)app.message("This page already fills the available space.");
             return true;
@@ -137,7 +133,7 @@ final class FullscreenController {
         row.addView(new ChoicePicture(picture),new LinearLayout.LayoutParams(app.dp(112),app.dp(104)));
         LinearLayout words=new LinearLayout(app); words.setOrientation(LinearLayout.VERTICAL);
         TextView heading=new TextView(app);heading.setText(title);heading.setTextSize(19);heading.setTextColor(Color.BLACK);
-        heading.setTypeface(null,android.graphics.Typeface.BOLD);words.addView(heading);
+        heading.setTypeface(Theme.face(700));words.addView(heading);
         TextView caption=new TextView(app);caption.setText(detail);caption.setTextSize(15);caption.setTextColor(Color.BLACK);words.addView(caption);
         row.addView(words,new LinearLayout.LayoutParams(0,-2,1));
         row.setFocusable(true);row.setContentDescription(title+". "+detail);

@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marble and Bristle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap">
+<style>
+/* Brutalist, as Brush Lab Web: hard black rules, square corners, one monospace face, inverted fills for what's on.
+   Deliberately one theme: it imitates the Manta's black-on-white screen. */
+:root {
+  --desk: #dcdcd6; --screen: #ffffff; --ink: #000000; --grey: #5c5c56; --rule: #b4b4ad;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --desk: #dcdcd6; --screen: #ffffff; --ink: #000000; } }
+:root[data-theme="dark"] { --desk: #dcdcd6; --screen: #ffffff; --ink: #000000; }
+* { box-sizing: border-box; }
+html, body { background: var(--desk); color: var(--ink); margin: 0; }
+body { font-family: var(--mono); font-size: 15px; line-height: 1.4; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 18px 16px 32px; display: grid; gap: 14px; }
+h1 { font-size: 1.6rem; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: .02em; }
+h2 { font-size: .8rem; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: .08em; }
+p { margin: 0; max-width: 72ch; }
+.muted { color: var(--grey); }
+.device { background: var(--screen); border: 3px solid var(--ink); display: grid; min-width: 0; }
+.bar { display: flex; flex-wrap: wrap; align-items: stretch; border-bottom: 3px solid var(--ink); }
+.bar > * { border-right: 2px solid var(--ink); }
+.bar > *:last-child { border-right: 0; }
+.bar .title { font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 0 14px; display: grid; align-items: center; min-height: 44px; }
+.spring { flex: 1; }
+.btn { min-width: 44px; height: 44px; display: inline-grid; grid-auto-flow: column; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; background: var(--screen); color: var(--ink); border: 0; border-radius: 0; cursor: pointer; font: inherit; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.btn:hover:not(:disabled), .btn[aria-pressed="true"] { background: var(--ink); color: var(--screen); }
+.btn:focus-visible, .chip:focus-visible, .spec:focus-visible, input:focus-visible, .switch:focus-visible, .size:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.work { display: grid; grid-template-columns: minmax(0, 1fr) 360px; min-width: 0; }
+.main { display: flex; flex-direction: column; min-width: 0; }
+.test { flex: 1; display: flex; flex-direction: column; padding: 12px; border-bottom: 2px solid var(--ink); }
+.head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.head h2 { margin-right: auto; }
+.canvasbox { flex: 1; position: relative; min-height: 460px; border: 2px solid var(--ink); margin-top: 8px; background: #fbfbfb; }
+.canvasbox canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; display: block; }
+.wetbar { height: 8px; border: 2px solid var(--ink); border-top: 0; position: relative; }
+.wetbar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); width: 0; }
+.sizes { display: flex; }
+.size { min-width: 44px; height: 44px; border: 2px solid var(--ink); background: var(--screen); color: var(--ink); margin-left: -2px; padding: 0 10px; cursor: pointer; display: grid; place-items: center; border-radius: 0; font: inherit; font-size: .8rem; font-weight: 700; }
+.size:first-child { margin-left: 0; }
+.size[aria-pressed="true"] { background: var(--ink); color: var(--screen); }
+.specs { padding: 8px 12px 12px; }
+.specs .head { margin-bottom: 8px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-left: 2px solid var(--ink); border-top: 2px solid var(--ink); }
+.spec { padding: 0; border: 0; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); border-radius: 0; background: var(--screen); cursor: pointer; font: inherit; color: var(--ink); text-align: left; min-width: 0; }
+.spec canvas { width: 100%; display: block; aspect-ratio: 300 / 170; }
+.spec span { border-top: 2px solid var(--ink); padding: 4px 6px; display: block; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spec[aria-pressed="true"] span, .spec:hover span { background: var(--ink); color: var(--screen); }
+.settings { border-left: 3px solid var(--ink); display: grid; align-content: start; min-width: 0; }
+.pane { padding: 10px 12px; display: grid; gap: 8px; border-bottom: 2px solid var(--ink); }
+.lab { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font: inherit; font-size: .78rem; min-height: 44px; padding: 4px 12px; border: 2px solid var(--ink); border-radius: 0; background: var(--screen); color: var(--ink); cursor: pointer; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--screen); }
+.chip.solid { background: var(--ink); color: var(--screen); }
+.blurb { font-size: .8rem; min-height: 3.6em; }
+.gene { display: grid; grid-template-columns: 104px minmax(0, 1fr) 58px; align-items: center; min-height: 44px; border-bottom: 1px solid var(--rule); padding: 0 12px; gap: 6px; }
+.gene .val { color: var(--grey); font-size: .74rem; text-align: right; font-variant-numeric: tabular-nums; }
+input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 36px; margin: 0; background: transparent; cursor: pointer; }
+input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--ink); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 26px; margin-top: -12px; background: var(--ink); border: 0; border-radius: 0; }
+input[type="range"]::-moz-range-track { height: 2px; background: var(--ink); }
+input[type="range"]::-moz-range-thumb { width: 14px; height: 26px; background: var(--ink); border: 0; border-radius: 0; }
+.switchrow { display: flex; align-items: center; gap: 10px; font-size: .78rem; min-height: 36px; }
+.switch { position: relative; width: 52px; height: 28px; padding: 0; border: 2px solid var(--ink); border-radius: 0; background: var(--screen); cursor: pointer; flex: none; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; background: var(--ink); }
+.switch[aria-checked="true"] { background: var(--ink); }
+.switch[aria-checked="true"]::after { left: 27px; background: var(--screen); }
+.code { font-size: .78rem; word-break: break-all; }
+.code b { font-weight: 700; }
+.status { border-top: 3px solid var(--ink); padding: 8px 12px; min-height: 2.4em; font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+summary { cursor: pointer; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; list-style: none; min-height: 28px; display: flex; align-items: center; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "+ "; white-space: pre; }
+details[open] summary::before { content: "− "; }
+table { border-collapse: collapse; font-size: .7rem; width: 100%; }
+td, th { border: 1px solid var(--ink); padding: 2px 4px; text-align: right; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+.notes { font-size: .78rem; display: grid; gap: 6px; }
+.notes ul { margin: 0; padding-left: 1.1em; display: grid; gap: 3px; }
+[hidden] { display: none !important; }
+@media (max-width: 860px) {
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .settings { border-left: 0; border-top: 3px solid var(--ink); }
+  .canvasbox { min-height: 0; height: 56vh; max-height: 520px; flex: none; }
+  .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  h1 { font-size: 1.3rem; }
+  .wrap { padding: 12px 10px 24px; gap: 10px; }
+  .bar .title, .bar .spring { display: none; }
+  .btn { padding: 0 10px; flex: 1; }
+  .test { padding: 10px; }
+  .chip { padding: 4px 9px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Marble and Bristle</h1>
+    <p class="muted">Two kinds of living ink. Marble: drop ink and clear water on a bath, comb and swirl, then print. Bristle: a brush whose hairs are little agents, alive only while the pen is down.</p>
+  </header>
+  <div class="device">
+    <div class="bar">
+      <span class="title">Inkwash · lab</span>
+      <button class="btn" id="t-marble" type="button" aria-pressed="true">Marble</button>
+      <button class="btn" id="t-bristle" type="button" aria-pressed="false">Bristle</button>
+      <span class="spring"></span>
+      <button class="btn" id="demo" type="button">Demo</button>
+      <button class="btn" id="clear" type="button">Clear</button>
+    </div>
+    <div class="work">
+      <div class="main">
+        <div class="test">
+          <div class="head" id="head-marble">
+            <h2>Bath</h2>
+            <div class="chips" id="mchips" role="group" aria-label="Marbling tool"></div>
+            <button class="chip solid" id="set" type="button">Set</button>
+          </div>
+          <div class="head" id="head-bristle" hidden>
+            <h2>Test pad</h2>
+            <div class="sizes" role="group" aria-label="Brush size">
+              <button class="size" id="sz0" type="button" aria-pressed="false" aria-label="Small">S</button>
+              <button class="size" id="sz1" type="button" aria-pressed="true" aria-label="Medium">M</button>
+              <button class="size" id="sz2" type="button" aria-pressed="false" aria-label="Large">L</button>
+            </div>
+          </div>
+          <div class="canvasbox"><canvas id="pad" width="600" height="400" aria-label="Pad: draw here"></canvas></div>
+          <div class="wetbar" title="Time until the bath prints"><i id="wet"></i></div>
+        </div>
+        <div class="specs" id="specbox" hidden>
+          <div class="head"><h2>Bristle brushes</h2><span class="muted" style="font-size:.72rem">tap to load</span></div>
+          <div class="grid4" id="specs"></div>
+        </div>
+      </div>
+      <div class="settings">
+        <div class="pane">
+          <span class="lab" id="toolname">Marble</span>
+          <p class="blurb" id="blurb"></p>
+        </div>
+        <div id="dials"></div>
+        <div class="pane">
+          <div class="switchrow"><button class="switch" id="manta" type="button" role="switch" aria-checked="false" aria-label="Manta cadence"></button><span><b>Manta cadence</b> · 3 redraws/s, slight ghost</span></div>
+          <div class="switchrow"><span class="lab">Name</span><span id="name" class="code"></span><span class="spring"></span><button class="chip" id="reroll" type="button">Reroll</button></div>
+          <div class="code" id="code"></div>
+        </div>
+        <div class="pane">
+          <details id="benchbox"><summary>Cost bench</summary>
+            <div class="notes"><p class="muted">Marble: a scripted bath (32 drops in three sites, a swirl, a comb pass), then a print. Bristle: one 900 px stroke at 16, 32 and 64 bristles. Each runs twice to check it reproduces.</p>
+              <button class="chip" id="bench" type="button">Run bench</button><div id="benchout"></div></div>
+          </details>
+          <details><summary>How it works</summary>
+            <div class="notes"><ul>
+              <li>Marble: rings are vector outlines. A drop pushes every point out by √(r² + R²) (Jaffer and Lu), so area is kept exactly.</li>
+              <li>Comb and swirl: each tine is a moving stylus with a divergence-free (stream function) flow, so the rings deform smoothly and keep their area.</li>
+              <li>Ink and Clear alternate after each drop, as in suminagashi. Hold the pen down to let a drop keep spreading.</li>
+              <li>While you swirl, only ring outlines are drawn. When you lift, you see the fill. Set prints it (or it prints 8 s after your last touch).</li>
+              <li>Bristle: each hair has a home in the brush head. A spring pulls it home (Cohesion) and paired sensors ahead read the others' fading trails (Fluoddity). The hairs move toward trails or away from them, so strands split and rejoin.</li>
+              <li>Dryness 0 never runs out; the load curve goes with Dryness cubed, so only high Dryness runs dry quickly. Fast strokes skip a little more. Each stroke starts with a full brush.</li>
+              <li>Bristle steps come from pen travel only, 1 per px, so a stroke is final at lift and repeats exactly from seed plus samples.</li>
+            </ul></div>
+          </details>
+        </div>
+      </div>
+    </div>
+    <div class="status" id="status">Tap to drop ink. Tap again to drop clear water.</div>
+  </div>
+</div>
+
+<script id="engine">
+"use strict";
+// ---------- copied from weblab/src/engine.js (via living/): rng, clamp, lerp, smooth, addPoint ----------
+function rng(seed) {
+  let s = seed >>> 0;
+  return function () {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const clamp = (v, a = 0, b = 1) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = t => { t = clamp(t); return t * t * (3 - 2 * t); };
+function addPoint(pts, x, y, p, t) {
+  const q = pts[pts.length - 1];
+  if (!q) { pts.push({ x, y, p, t, d: 0, v: 0 }); return true; }
+  const seg = Math.hypot(x - q.x, y - q.y);
+  if (seg < 0.6) return false;
+  const v = q.v * 0.75 + (seg / Math.max(1, t - q.t)) * 0.25;
+  pts.push({ x, y, p, t, d: q.d + seg, v });
+  return true;
+}
+const PAPER = 251;
+const toneOf = id => Math.round(PAPER * (1 - id) / 17) * 17;   // 16 greys, as the Manta
+function surface(w, h) { return { w, h, ink: new Float32Array(w * h), scratch: new Float32Array(w * h) }; }
+
+// ---------- names: adjective-produce, as the app's assets/names lists (copied) ----------
+const ADJ = "bold brave brisk bashful chipper cosmic dapper dramatic feral fierce frantic gallant humble jumbo mellow nimble peculiar plump pompous regal rogue rustic sleek smug snug stout stubborn suave swift upbeat vivid wild zealous".split(" ");
+const PRODUCE = "plum pear fig lime leek kale yam bean pea beet corn date grape peach quince chard squash gourd cress radish turnip parsnip carrot lemon melon mango apple cherry olive onion garlic pepper okra fennel lychee guava shallot caper currant".split(" ");
+function nameOf(seed) { const r = rng(seed ^ 0x4e414d45); return ADJ[(r() * ADJ.length) | 0] + "-" + PRODUCE[(r() * PRODUCE.length) | 0]; }
+
+// ---------- paper tooth: a 256 px tile fixed to the page, as the app's PaperGrain ----------
+const FT = 256;
+const TOOTH = (() => {
+  const r = rng(0x5eedf1b7);
+  const tile = cell => {
+    const g = FT / cell, lat = new Float32Array(g * g), out = new Float32Array(FT * FT);
+    for (let i = 0; i < lat.length; i++) lat[i] = r();
+    for (let y = 0; y < FT; y++) {
+      const fy = y / cell, iy = fy | 0, sy = smooth(fy - iy);
+      for (let x = 0; x < FT; x++) {
+        const fx = x / cell, ix = fx | 0, sx = smooth(fx - ix);
+        const a = lat[iy % g * g + ix % g], b = lat[iy % g * g + (ix + 1) % g], c = lat[(iy + 1) % g * g + ix % g], d = lat[(iy + 1) % g * g + (ix + 1) % g];
+        out[y * FT + x] = lerp(lerp(a, b, sx), lerp(c, d, sx), sy);
+      }
+    }
+    return out;
+  };
+  const a = tile(2), b = tile(8), out = new Float32Array(FT * FT);
+  for (let i = 0; i < out.length; i++) out[i] = a[i] * .62 + b[i] * .38;
+  return out;
+})();
+const tooth = (x, y) => TOOTH[((y & 255) << 8) | (x & 255)];
+function hashInts(h, ...v) { for (const x of v) h = Math.imul(h ^ (x | 0), 16777619); return h >>> 0; }
+
+// =====================================================================================================
+// MARBLING. Rings are closed vector outlines in page pixels, oldest first. Two area-keeping maps act on them:
+//   drop  (Jaffer and Lu): P' = C + (P - C) * sqrt(1 + R^2 / |P - C|^2)
+//   stylus (a tine moving by U): a stream function psi = (U x r) * exp(-|r|^2 / 2 s^2), so the flow is
+//          divergence-free; it carries the point under the tine along at U and returns fluid round the sides.
+// Every new ring sits inside the hole the drop made, so painting oldest to newest is exact.
+// =====================================================================================================
+const MAXSEG = 1.6, MINSEG = .45, VCAP = 240000;
+function bath(seed) { return { rings: [], log: [], seed, verts: 0, drops: 0, maxSeg: MAXSEG, ms: { drop: 0, rake: 0, refine: 0, nDrop: 0, nRake: 0, rakePx: 0 } }; }
+function ringArea(g) { let a = 0; for (let i = 0, j = g.n - 1; i < g.n; j = i++) a += g.x[j] * g.y[i] - g.x[i] * g.y[j]; return a / 2; }
+function circle(cx, cy, R, level) {
+  const n = Math.max(32, Math.ceil(2 * Math.PI * R / 1.2)), x = new Float64Array(n), y = new Float64Array(n);
+  for (let i = 0; i < n; i++) { const a = i / n * 2 * Math.PI; x[i] = cx + R * Math.cos(a); y[i] = cy + R * Math.sin(a); }
+  return { x, y, n, level };
+}
+// Push every point out from (cx, cy) by area R2 (= R^2). Applied to the newest ring too, which is how a held drop grows.
+function opDrop(B, cx, cy, R2) {
+  for (const g of B.rings) {
+    const X = g.x, Y = g.y;
+    for (let i = 0; i < g.n; i++) {
+      let dx = X[i] - cx, dy = Y[i] - cy, d2 = dx * dx + dy * dy;
+      if (d2 < 1e-12) { dx = 1e-6; dy = 0; d2 = 1e-12; }
+      const s = Math.sqrt(1 + R2 / d2);
+      X[i] = cx + dx * s; Y[i] = cy + dy * s;
+    }
+  }
+}
+// The pen moved a -> b. Swirl: one stylus, sigma = W / 2. Comb: a rake of tines W apart along N (fixed at the drag's start),
+// sigma = W / 4.5; each point feels its two nearest tines (a third is e^-10 away). Substeps keep |U| <= .3 sigma.
+function opRake(B, ax, ay, bx, by, W, comb, nx, ny) {
+  const sig = comb ? W / 4.5 : W / 2, len = Math.hypot(bx - ax, by - ay);
+  if (len < 1e-9) return;
+  const n = Math.min(400, Math.max(1, Math.ceil(len / (sig * .3)))), Ux = (bx - ax) / n, Uy = (by - ay) / n;
+  const is2 = 1 / (sig * sig), cut = 16 * sig * sig, ml = Math.hypot(Ux, Uy), mx = Ux / ml, my = Uy / ml;
+  // Points this pass can touch: the segment's box grown by 4 sigma (swirl), or the band along the motion (comb).
+  const lo = [Math.min(ax, bx) - 4 * sig, Math.min(ay, by) - 4 * sig], hi = [Math.max(ax, bx) + 4 * sig, Math.max(ay, by) + 4 * sig];
+  // Slip: fluid under a tine moves at only part of its speed, so the tine passes through and a point's total shift is
+  // bounded (about 2 sigma at .7, 4 sigma at .8), the finite shift of Jaffer and Lu's tine lines. Still divergence-free.
+  const K = 400, slip = comb ? .8 : .72;
+  for (let s = 0; s < n; s++) {
+    const cx = ax + Ux * (s + .5), cy = ay + Uy * (s + .5);
+    for (const g of B.rings) {
+      const X = g.x, Y = g.y;
+      for (let i = 0; i < g.n; i++) {
+        const px = X[i], py = Y[i];
+        let rx = px - cx, ry = py - cy, vx = 0, vy = 0;
+        if (!comb) {
+          if (px < lo[0] || py < lo[1] || px > hi[0] || py > hi[1]) continue;
+          const r2 = rx * rx + ry * ry; if (r2 > cut) continue;
+          const G = Math.exp(-.5 * r2 * is2), cr = Ux * ry - Uy * rx;
+          vx = G * (Ux - cr * ry * is2); vy = G * (Uy + cr * rx * is2);
+        } else {
+          const t = rx * mx + ry * my; if (t * t > cut) continue;
+          const k0 = Math.floor((rx * nx + ry * ny) / W);
+          for (let k = k0; k <= k0 + 1; k++) {
+            if (k < -K || k > K) continue;
+            const qx = rx - k * W * nx, qy = ry - k * W * ny, r2 = qx * qx + qy * qy;
+            if (r2 > cut) continue;
+            const G = Math.exp(-.5 * r2 * is2), cr = Ux * qy - Uy * qx;
+            vx += G * (Ux - cr * qy * is2); vy += G * (Uy + cr * qx * is2);
+          }
+        }
+        X[i] = px + vx * slip; Y[i] = py + vy * slip;
+      }
+    }
+  }
+}
+// Keep outlines crisp: split long edges, merge points closer than MINSEG. Linear splitting after small moves.
+function refine(B) {
+  let total = 0;
+  const maxSeg = B.maxSeg;
+  for (const g of B.rings) {
+    const X = g.x, Y = g.y, n = g.n, ox = [], oy = [];
+    let lx = X[0], ly = Y[0]; ox.push(lx); oy.push(ly);
+    for (let i = 1; i <= n; i++) {
+      const j = i % n, x = X[j], y = Y[j], d = Math.hypot(x - lx, y - ly);
+      if (d < MINSEG && i < n) continue;
+      if (d > maxSeg) { const m = Math.ceil(d / maxSeg); for (let k = 1; k < m; k++) { ox.push(lx + (x - lx) * k / m); oy.push(ly + (y - ly) * k / m); } }
+      if (i < n) { ox.push(x); oy.push(y); }
+      lx = x; ly = y;
+    }
+    g.x = Float64Array.from(ox); g.y = Float64Array.from(oy); g.n = ox.length; total += g.n;
+  }
+  B.verts = total;
+  if (total > VCAP && B.maxSeg < 8) B.maxSeg *= 1.5;   // a cap, so a long stir can't run away
+}
+// The log is the session: replaying it on a fresh bath gives the same rings, bit for bit.
+function apply(B, op) {
+  const t0 = performance.now();
+  if (op.k === "drop") {
+    opDrop(B, op.x, op.y, op.r2);
+    B.rings.push(circle(op.x, op.y, Math.sqrt(op.r2), op.level)); B.drops++;
+    B.ms.drop += performance.now() - t0; B.ms.nDrop++;
+  } else if (op.k === "grow") {
+    opDrop(B, op.x, op.y, op.r2);
+    B.ms.drop += performance.now() - t0;
+  } else if (op.k === "rake") {
+    opRake(B, op.ax, op.ay, op.bx, op.by, op.W, op.comb, op.nx, op.ny);
+    B.ms.rake += performance.now() - t0; B.ms.nRake++; B.ms.rakePx += Math.hypot(op.bx - op.ax, op.by - op.ay);
+  }
+  const t1 = performance.now(); refine(B); B.ms.refine += performance.now() - t1;
+  B.log.push(op);
+}
+// A drop's ink: darker with pressure, a little seeded variation so rings are not all one grey. Clear water is level 0.
+function dropLevel(B, ink, p) {
+  if (!ink) return 0;
+  const r = rng(hashInts(B.seed, B.drops, 0x51));
+  return clamp(lerp(.5, .95, p) + (r() - .5) * .1, .3, 1);
+}
+const ringR = v => 6 + 74 * v * v;            // ring size dial -> drop radius, page px (6..80)
+const combW = v => Math.round(10 + 70 * v);    // comb width dial -> tine spacing, page px (10..80)
+// Rasterise: oldest to newest, each ring filled with its own grey (clear rings with paper), antialiased by the canvas.
+function rasterBath(B, ctx, w, h) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, w, h);
+  for (const g of B.rings) {
+    const v = Math.round(255 * (1 - g.level));
+    ctx.fillStyle = `rgb(${v},${v},${v})`;
+    ctx.beginPath(); ctx.moveTo(g.x[0], g.y[0]);
+    for (let i = 1; i < g.n; i++) ctx.lineTo(g.x[i], g.y[i]);
+    ctx.closePath(); ctx.fill();
+  }
+}
+// Print onto the page: ink only darkens; the paper's tooth takes a touch less ink in its valleys.
+function printBath(B, surf, ctx) {
+  rasterBath(B, ctx, surf.w, surf.h);
+  const d = ctx.getImageData(0, 0, surf.w, surf.h).data, ink = surf.ink;
+  for (let y = 0, i = 0; y < surf.h; y++) for (let x = 0; x < surf.w; x++, i++) {
+    const lv = (1 - d[i * 4] / 255) * (.93 + .07 * tooth(x, y));
+    if (lv > ink[i]) ink[i] = lv;
+  }
+}
+
+// =====================================================================================================
+// BRISTLE SWARM. N hairs trail the pen while it is down. A hair's state is one number across the stroke (its lateral
+// offset u, with velocity w); its lag behind the pen is fixed. Per step (1 px of pen travel, from the samples alone):
+//   - Fluoddity-style paired sensors ahead-left and ahead-right read a fading trail field all hairs lay. The response
+//     f(s) = s / (1 + (s/sat)^2) draws a hair toward moderate trail and away from crowding, so hairs gather into tufts
+//     that split when crowded and rejoin when thin. Cohesion sets the pull (negative at low Cohesion: hairs repel,
+//     giving even streaks) and how crowded a tuft may get.
+//   - a soft wall at the head's half-width Rs, which Spread opens with speed and pressure;
+//   - a seeded wander along the stroke (Spread).
+// A hair's grey is how many others share its spot: a lone hair is grey, a tuft black. Load runs out with travel and
+// speed (Dryness); a dry hair inks only where the paper's tooth is low, so it skips.
+// =====================================================================================================
+const BR_SIZE = [4, 8, 15];                           // S, M, L brush radius, page px
+const bristleCount = v => Math.round(6 + 58 * v);    // 6..64
+const FCELL = 2, PERSIST = .93, PT = new Float32Array(400);
+for (let k = 0; k < PT.length; k++) PT[k] = Math.pow(PERSIST, k);
+function hash1(i, s) { let h = Math.imul(i, 0x1f123bb5) ^ s; h ^= h >>> 16; h = Math.imul(h, 0x45d9f3b); h ^= h >>> 16; return (h & 65535) / 65536; }
+function noise1(x, s) { const i = Math.floor(x), t = smooth(x - i); return lerp(hash1(i, s), hash1(i + 1, s), t); }
+function swarmStart(surf, brush, sizeIx, p0) {
+  const R = BR_SIZE[sizeIx], N = bristleCount(brush.count);
+  const seed = hashInts(brush.seed, Math.round(p0.x * 4), Math.round(p0.y * 4));
+  const r = rng(seed), hairs = [];
+  for (let i = 0; i < N; i++) {
+    const u0 = ((i + .5) / N * 2 - 1) + (r() - .5) * (2 / N);
+    hairs.push({ u0, u: u0 * R * .35, w: 0, a: (.25 - Math.pow(r(), 1.3)) * R, load: 1, thirst: .6 + .8 * r(),
+      rb: Math.max(.55, R * .1) * (.75 + .5 * r()), ns: (r() * 4294967296) >>> 0, x: p0.x, y: p0.y, F: 0, n: 0 });
+  }
+  const gw = Math.ceil(surf.w / FCELL), gh = Math.ceil(surf.h / FCELL), coh = brush.cohesion, spr = brush.spread;
+  const th = lerp(.55, 1.15, spr);
+  return { surf, b: brush, R, N, hairs, seed, gw, gh, field: new Float32Array(gw * gh), last: new Int32Array(gw * gh), step: 0, dirx: 0, diry: 0, done: 1,
+    rect: [surf.w, surf.h, -1, -1], ms: 0, steps: 0,
+    // Per brush, so a step does no trig: sensor angle and reach (Spread), pull and comfort (Cohesion).
+    cs: Math.cos(th), sn: Math.sin(th), sd: R * .5 + 2.5, gain: lerp(-.9, 1.0, coh) * .6 * Math.sqrt(R / 8), sat: lerp(1.2, 4.2, coh),
+    drain: .0009 * brush.dryness ** 3 };
+}
+function fieldAt(S, x, y) {
+  const gx = (x / FCELL) | 0, gy = (y / FCELL) | 0;
+  if (gx < 0 || gy < 0 || gx >= S.gw || gy >= S.gh) return 0;
+  const c = gy * S.gw + gx, age = S.step - S.last[c];
+  return age >= PT.length ? 0 : S.field[c] * PT[age];
+}
+function deposit(S, x, y, amt) {
+  const gx0 = (x / FCELL) | 0, gy0 = (y / FCELL) | 0;
+  for (let gy = gy0 - 1; gy <= gy0 + 1; gy++) for (let gx = gx0 - 1; gx <= gx0 + 1; gx++) {
+    if (gx < 0 || gy < 0 || gx >= S.gw || gy >= S.gh) continue;
+    const c = gy * S.gw + gx, age = S.step - S.last[c], k = (gx === gx0 && gy === gy0) ? amt : amt * .4;
+    S.field[c] = (age >= PT.length ? 0 : S.field[c] * PT[age]) + k; S.last[c] = S.step;
+  }
+}
+function stampHair(S, x, y, rb, dark, thr) {
+  const { w, h, scratch } = S.surf, R = Math.ceil(rb + 1);
+  const x0 = Math.max(0, Math.floor(x - R)), x1 = Math.min(w - 1, Math.ceil(x + R)), y0 = Math.max(0, Math.floor(y - R)), y1 = Math.min(h - 1, Math.ceil(y + R));
+  for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
+    const ex = px + .5 - x, ey = py + .5 - y;
+    let cov = rb + .5 - Math.sqrt(ex * ex + ey * ey);
+    if (cov <= 0) continue;
+    if (cov > 1) cov = 1;
+    // A dry hair skips the tooth's high points: it inks only where the tooth is below what it still holds.
+    if (thr < 1.2) { const s = (thr - TOOTH[((py & 255) << 8) | (px & 255)]) * 8 + .5; if (s <= 0) continue; if (s < 1) cov *= s * s * (3 - 2 * s); }
+    const v = cov * dark, i = py * w + px;
+    if (v > scratch[i]) scratch[i] = v;
+  }
+  const rc = S.rect; if (x0 < rc[0]) rc[0] = x0; if (y0 < rc[1]) rc[1] = y0; if (x1 > rc[2]) rc[2] = x1; if (y1 > rc[3]) rc[3] = y1;
+}
+// One step: the pen at (px, py), speed v (px/ms), pressure p, d along the stroke; heading S.dir.
+function swarmStep(S, px, py, v, p, d) {
+  const b = S.b, R = S.R, hairs = S.hairs, N = S.N, spr = b.spread, dry = b.dryness;
+  const dx = S.dirx, dy = S.diry, nx = -dy, ny = dx, cs = S.cs, sn = S.sn, sd = S.sd, gain = S.gain, sat = S.sat;
+  const sv = clamp(v / 2.2), pp = clamp((p - .3) / .7), ramp = smooth(d / (R * 1.5));
+  const Rs = R * (.4 + .4 * ramp + spr * (.9 * pp + 1.2 * sv));
+  const wander = .025 * R * spr * (.4 + sv), wl = R * 2.5;
+  const f = s => { const q = s / sat; return s / (1 + q * q); };
+  // Sense, all hairs first, so the order they are kept in doesn't matter.
+  for (const hr of hairs) {
+    const x = px + nx * hr.u + dx * hr.a, y = py + ny * hr.u + dy * hr.a;
+    const sL = fieldAt(S, x + (dx * cs - nx * sn) * sd, y + (dy * cs - ny * sn) * sd);   // +n is right of travel
+    const sR = fieldAt(S, x + (dx * cs + nx * sn) * sd, y + (dy * cs + ny * sn) * sd);
+    const sC = fieldAt(S, x + dx * sd, y + dy * sd);
+    let F = gain * (f(sR) - f(sL)) / Math.sqrt(sat);
+    if (sC > sat * 1.8) F += (sR >= sL ? -1 : 1) * Math.abs(gain) * .4;
+    F += (noise1(d / wl, hr.ns) - .5) * 2 * wander;
+    F -= .009 * (hr.u - hr.u0 * Rs);
+    const over = Math.abs(hr.u) - Rs; if (over > 0) F -= .3 * over * Math.sign(hr.u);
+    hr.F = F;
+  }
+  for (const hr of hairs) {
+    hr.w = hr.w * .8 + hr.F; hr.u += hr.w;
+    hr.x = px + nx * hr.u + dx * hr.a; hr.y = py + ny * hr.u + dy * hr.a;
+  }
+  // Company: how many hairs share this one's line across the head.
+  for (let i = 0; i < N; i++) { const hi = hairs[i]; let n = 0; for (let j = 0; j < N; j++) { const hj = hairs[j]; if (Math.abs(hj.u - hi.u) < (hi.rb + hj.rb) * .8) n++; } hi.n = n - 1; }
+  for (const hr of hairs) {
+    // Ink: runs out with travel and speed; pressing pushes a little more out.
+    // Dryness acts cubed: at .5 a 2000 px stroke stays mostly inked; only near 1 does it run out within a few hundred px.
+    // At 0 the load never drops and the tooth test is skipped, so the brush never runs out. Each stroke starts full.
+    hr.load = Math.max(0, hr.load - S.drain * hr.thirst * (1 + .6 * sv));
+    const held = hr.load + dry * .3 * (pp - .4) - dry * dry * .2 * sv;
+    const thr = dry <= 0 ? 9 : held + .1;
+    if (thr <= -.05) continue;
+    const dark = lerp(.42, 1, clamp(hr.n / 3)) * lerp(.72, 1, clamp(hr.load * 1.4));
+    stampHair(S, hr.x, hr.y, hr.rb * (.7 + .7 * pp), dark, thr);
+  }
+  for (const hr of hairs) deposit(S, hr.x, hr.y, 1);
+  S.step++; S.steps++;
+}
+// Feed the samples not yet walked. Depends only on the samples: each segment is cut into 1 px steps.
+function swarmFeed(S, pts) {
+  const t0 = performance.now();
+  for (let k = Math.max(1, S.done); k < pts.length; k++) {
+    const p0 = pts[k - 1], p1 = pts[k], seg = p1.d - p0.d;
+    if (seg <= 0) continue;
+    const ux = (p1.x - p0.x) / seg, uy = (p1.y - p0.y) / seg;
+    if (S.dirx === 0 && S.diry === 0) { S.dirx = ux; S.diry = uy; }
+    const n = Math.max(1, Math.ceil(seg));
+    for (let s = 1; s <= n; s++) {
+      const t = s / n;
+      // Heading eases toward the pen's way, so a hairpin turn swings the head instead of snapping it.
+      const hx = S.dirx + (ux - S.dirx) * .2, hy = S.diry + (uy - S.diry) * .2, m = Math.hypot(hx, hy) || 1;
+      S.dirx = hx / m; S.diry = hy / m;
+      swarmStep(S, lerp(p0.x, p1.x, t), lerp(p0.y, p1.y, t), lerp(p0.v, p1.v, t), lerp(p0.p, p1.p, t), lerp(p0.d, p1.d, t));
+    }
+  }
+  S.done = Math.max(S.done, pts.length);
+  S.ms += performance.now() - t0;
+  return S.rect;
+}
+// Lift: what the pen laid is final; move it from scratch onto the page.
+function swarmFinish(S) {
+  const { w, ink, scratch } = S.surf, r = S.rect;
+  for (let y = Math.max(0, r[1]); y <= r[3]; y++) for (let x = Math.max(0, r[0]); x <= r[2]; x++) {
+    const i = y * w + x; if (scratch[i] > ink[i]) ink[i] = scratch[i]; scratch[i] = 0;
+  }
+  return r;
+}
+
+// ---------- synthetic strokes for demos, specimens and the bench ----------
+function synthStroke(path, step = 2.2, speed = 1) {
+  const pts = []; let t = 0;
+  for (let k = 1; k < path.length; k++) {
+    const [ax, ay] = path[k - 1], [bx, by] = path[k], n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / step));
+    for (let s = 0; s < n; s++) {
+      const u = s / n, f = k / path.length;
+      t += 7 / (speed * (.6 + 1.1 * Math.sin(Math.PI * f)));          // slow in, fast through the middle, slow out
+      addPoint(pts, lerp(ax, bx, u), lerp(ay, by, u), clamp(.35 + .5 * Math.sin(Math.PI * f) + .12 * Math.sin(t / 60)), t);
+    }
+  }
+  const [lx, ly] = path[path.length - 1]; addPoint(pts, lx, ly, .4, t + 7);
+  return pts;
+}
+// Catmull-Rom through the knots, k points a span.
+function spline(K, k) {
+  const out = [];
+  for (let i = 0; i < K.length - 1; i++) {
+    const p0 = K[Math.max(0, i - 1)], p1 = K[i], p2 = K[i + 1], p3 = K[Math.min(K.length - 1, i + 2)];
+    for (let j = 0; j < k; j++) {
+      const t = j / k, t2 = t * t, t3 = t2 * t, c = (a, b, c2, d) => .5 * (2 * b + (c2 - a) * t + (2 * a - 5 * b + 4 * c2 - d) * t2 + (3 * b - a - 3 * c2 + d) * t3);
+      out.push([c(p0[0], p1[0], p2[0], p3[0]), c(p0[1], p1[1], p2[1], p3[1])]);
+    }
+  }
+  out.push(K[K.length - 1]);
+  return out;
+}
+function curve(fn, n) { const out = []; for (let i = 0; i <= n; i++) out.push(fn(i / n)); return out; }
+function drawSwarmStroke(surf, brush, sizeIx, pts, chunk) {
+  surf.scratch.fill(0);
+  const S = swarmStart(surf, brush, sizeIx, pts[0]);
+  if (!chunk) swarmFeed(S, pts);
+  else for (let i = 2; i <= pts.length; i += chunk) swarmFeed(S, pts.slice(0, Math.min(pts.length, i)));
+  swarmFeed(S, pts);
+  swarmFinish(S);
+  return S;
+}
+function sumOf(a) { let h = 0x811c9dc5; for (let i = 0; i < a.length; i++) h = Math.imul(h ^ Math.round(a[i] * 4096), 16777619); return h >>> 0; }
+
+// A suminagashi session in page px for a w x h bath: three sites of alternating ink and clear drops, a long gentle
+// swirl through them, and a short comb pass across the lowest site.
+function scriptBath(w, h, size, combWidth) {
+  const ops = [], R2 = ringR(size) ** 2, W = combW(combWidth);
+  const sites = [[w * .3, h * .45, 14], [w * .68, h * .3, 10], [w * .7, h * .74, 8]];
+  for (const [cx, cy, n] of sites) for (let i = 0; i < n; i++) {
+    const ink = i % 2 === 0, j = (i * 7919 + cx | 0) % 13;
+    ops.push({ k: "drop", x: cx + (j - 6) * .5, y: cy + ((j * 5) % 13 - 6) * .5, r2: R2 * (ink ? 1 : .7), ink, p: .45 + .3 * Math.sin(i * 1.7) });
+  }
+  const path = spline([[.03, .62], [.2, .52], [.3, .45], [.42, .44], [.55, .4], [.68, .3], [.8, .26], [.97, .34]].map(([x, y]) => [x * w, y * h]), 10);
+  for (let i = 1; i < path.length; i++) ops.push({ k: "rake", ax: path[i - 1][0], ay: path[i - 1][1], bx: path[i][0], by: path[i][1], W: W * 1.1, comb: false, nx: 0, ny: 0 });
+  for (let i = 0; i < 20; i++) ops.push({ k: "rake", ax: w * (.52 + .4 * i / 20), ay: h * .74, bx: w * (.52 + .4 * (i + 1) / 20), by: h * .74, W, comb: true, nx: 0, ny: 1 });
+  return ops;
+}
+function runScript(B, ops) {
+  for (const o of ops) {
+    if (o.k === "drop") apply(B, { k: "drop", x: o.x, y: o.y, r2: o.r2, level: dropLevel(B, o.ink, o.p) });
+    else apply(B, o);
+  }
+}
+function totalArea(B) { let a = 0; for (const g of B.rings) a += Math.abs(ringArea(g)); return a; }
+function bench(dials, seed) {
+  const out = { marble: [], bristle: [] };
+  const w = 900, h = 640, cvs = document.createElement("canvas"); cvs.width = w; cvs.height = h;
+  const ctx = cvs.getContext("2d", { willReadFrequently: true });
+  for (let run = 0; run < 2; run++) {
+    const B = bath(seed), ops = scriptBath(w, h, dials.marble.size, dials.marble.comb);
+    const drops = ops.filter(o => o.k === "drop"), rakes = ops.filter(o => o.k !== "drop");
+    runScript(B, drops);
+    const a0 = totalArea(B);
+    const t0 = performance.now(); runScript(B, rakes); const tr = performance.now() - t0;
+    const a1 = totalArea(B);
+    const surf = surface(w, h), t1 = performance.now(); printBath(B, surf, ctx); const tp = performance.now() - t1;
+    out.marble.push({ dropMs: B.ms.drop / B.ms.nDrop, rakeMsPer10px: (tr) / B.ms.rakePx * 10, rakeTotal: tr, refineMs: B.ms.refine, printMs: tp, verts: B.verts, rings: B.rings.length, areaDrift: (a1 - a0) / a0, sum: sumOf(surf.ink) });
+  }
+  out.marble[0].same = out.marble[0].sum === out.marble[1].sum;
+  const path = curve(t => [w * (.08 + .82 * t), h * (.5 + .28 * Math.sin(t * 6.283 * 1.3))], 80);
+  for (const c of [16, 32, 64]) {
+    const brush = { ...dials.bristle, count: (c - 6) / 58, seed };
+    const sums = [];
+    let S, penMs = 0, len = 0, ms = 0, steps = 0;
+    for (let run = 0; run < 2; run++) {
+      const surf = surface(w, h), pts = synthStroke(path);
+      S = drawSwarmStroke(surf, brush, 1, pts, run ? 3 : 0);   // second run fed in small chunks, as live drawing
+      sums.push(sumOf(surf.ink));
+      if (!run) { penMs = pts[pts.length - 1].t - pts[0].t; len = pts[pts.length - 1].d; ms = S.ms; steps = S.steps; }
+    }
+    out.bristle.push({ n: c, ms, len: Math.round(len), steps, penMs: Math.round(penMs), usPerHairStep: ms * 1000 / (steps * c), msPerPenSec: ms / (penMs / 1000), same: sums[0] === sums[1] });
+  }
+  return out;
+}
+</script>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const S = {
+  tool: params.get("t") === "bristle" ? "bristle" : "marble",
+  mtool: "ink",                       // ink | clear | swirl | comb
+  size: 1, manta: false,
+  seed: { marble: 0x6b1d2e5, bristle: 0x2c6f9a1 },
+  dials: { marble: { size: .62, comb: .3 }, bristle: { count: .45, cohesion: .55, spread: .45, dryness: .15 } },
+};
+const SET_MS = 8000;
+const MTOOLS = [["ink", "Ink"], ["clear", "Clear"], ["swirl", "Swirl"], ["comb", "Comb"]];
+const BLURB = {
+  marble: "Suminagashi. Tap to drop ink, then clear water. They alternate, and each drop pushes the older rings out. Swirl or Comb drags them. Set prints the bath onto the page; it also prints 8 s after your last touch.",
+  bristle: "A dry brush whose hairs are agents. They follow the pen, read each other's trails and split or rejoin. Speed and pressure splay them. It is alive only while the pen is down, and final at lift.",
+};
+const DIALS = {
+  marble: [["size", "Ring size", v => Math.round(ringR(v)) + " px"], ["comb", "Comb width", v => combW(v) + " px"]],
+  bristle: [["count", "Bristles", v => String(bristleCount(v))], ["cohesion", "Cohesion", v => v.toFixed(2)], ["spread", "Spread", v => v.toFixed(2)], ["dryness", "Dryness", v => v.toFixed(2)]],
+};
+
+// ---------- the page ----------
+const pad = $("pad"), pctx = pad.getContext("2d");
+const comp = document.createElement("canvas"), cctx = comp.getContext("2d", { willReadFrequently: true });
+const mc = document.createElement("canvas"), mctx = mc.getContext("2d", { willReadFrequently: true });
+const DENSITY = 1.5;
+let surf = surface(pad.width, pad.height), base = null, shownT = null;
+let B = bath(S.seed.marble), wet = false, lastTouch = 0, down = null, swarm = null;
+let pending = null, ghostRect = null, lastRefresh = 0;
+const union = (a, b) => !a ? b : !b ? a : [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
+const full = () => [0, 0, surf.w - 1, surf.h - 1];
+function fit() {
+  const box = pad.parentElement;
+  const w = Math.max(200, Math.min(1800, Math.round(box.clientWidth * DENSITY))), h = Math.max(200, Math.min(1400, Math.round(box.clientHeight * DENSITY)));
+  if (w === surf.w && h === surf.h && base) return;
+  const old = surf, next = surface(w, h), cw = Math.min(w, old.w);
+  for (let y = 0; y < Math.min(h, old.h); y++) next.ink.set(old.ink.subarray(y * old.w, y * old.w + cw), y * w);
+  surf = next; pad.width = comp.width = mc.width = w; pad.height = comp.height = mc.height = h;
+  base = pctx.createImageData(w, h); shownT = new Float32Array(w * h).fill(255);
+  paintBase(full()); present(full(), false);
+}
+// base: the page's tones (printed ink, plus the live bristle stroke), 16 greys.
+function paintBase(r) {
+  const x0 = Math.max(0, r[0]), y0 = Math.max(0, r[1]), x1 = Math.min(surf.w - 1, r[2]), y1 = Math.min(surf.h - 1, r[3]);
+  const d = base.data, { w, ink, scratch } = surf, live = !!swarm;
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    const i = y * w + x; let id = ink[i]; if (live && scratch[i] > id) id = scratch[i];
+    const t = toneOf(id), o = i * 4; d[o] = d[o + 1] = d[o + 2] = t; d[o + 3] = 255;
+  }
+}
+// The wet bath over the page: outlines while a stylus is moving (cheap, readable at 3 redraws/s), else the fill as it will print.
+function drawWet(ctx) {
+  if (!wet || !B.rings.length) return;
+  const outlines = down && down.kind === "rake";
+  if (!outlines) {
+    rasterBath(B, mctx, surf.w, surf.h);
+    ctx.globalCompositeOperation = "darken"; ctx.drawImage(mc, 0, 0); ctx.globalCompositeOperation = "source-over";
+    return;
+  }
+  ctx.lineWidth = 1.2;
+  for (const clear of [true, false]) {
+    ctx.beginPath();
+    for (const g of B.rings) {
+      if ((g.level === 0) !== clear) continue;
+      ctx.moveTo(g.x[0], g.y[0]); for (let i = 1; i < g.n; i++) ctx.lineTo(g.x[i], g.y[i]); ctx.closePath();
+    }
+    ctx.strokeStyle = clear ? "#888" : "#000"; ctx.stroke();
+  }
+}
+// What the screen shows: quantised to 16 greys. On Manta cadence each refresh keeps a little of what was there (ghost).
+const GHOST = .18, MANTA_MS = 333;
+let presents = 0;
+function present(rect, ghost) {
+  let x0 = Math.max(0, rect[0]), y0 = Math.max(0, rect[1]), x1 = Math.min(surf.w - 1, rect[2]), y1 = Math.min(surf.h - 1, rect[3]);
+  if (x1 < x0 || y1 < y0) return;
+  let src, sw;
+  if (wet && B.rings.length) {
+    x0 = 0; y0 = 0; x1 = surf.w - 1; y1 = surf.h - 1;
+    cctx.putImageData(base, 0, 0); drawWet(cctx);
+    src = cctx.getImageData(0, 0, surf.w, surf.h).data; sw = surf.w;
+  } else { src = base.data; sw = surf.w; }
+  const rw = x1 - x0 + 1, rh = y1 - y0 + 1, img = pctx.createImageData(rw, rh), out = img.data;
+  for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
+    const i = (y + y0) * surf.w + x + x0, t = Math.round(src[((y + y0) * sw + x + x0) * 4] / 17) * 17;
+    let s = ghost ? t + (shownT[i] - t) * GHOST : t;
+    if (Math.abs(s - t) < 1.5) s = t;
+    shownT[i] = s;
+    const o = (y * rw + x) * 4; out[o] = out[o + 1] = out[o + 2] = s; out[o + 3] = 255;
+  }
+  pctx.putImageData(img, x0, y0);
+  presents++;
+}
+const invalidate = r => { pending = union(pending, r); };
+
+// ---------- input ----------
+function pagePoint(e) {
+  const r = pad.getBoundingClientRect(), sx = pad.width / r.width, sy = pad.height / r.height;
+  const pen = e.pointerType === "pen" && e.pressure > 0;
+  return [(e.clientX - r.left) * sx, (e.clientY - r.top) * sy, pen ? e.pressure : .5, e.timeStamp];
+}
+const HOLD_TICK = 100, HOLD_MAX = 30, HOLD_GROW = .1;   // a held drop adds 10 % of its area each 100 ms, up to 4x
+pad.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  try { pad.setPointerCapture(e.pointerId); } catch (err) { }
+  const [x, y, p, t] = pagePoint(e);
+  if (S.tool === "marble") {
+    if (!wet) { B = bath(S.seed.marble); wet = true; }
+    if (S.mtool === "ink" || S.mtool === "clear") {
+      const r2 = ringR(S.dials.marble.size) ** 2;
+      apply(B, { k: "drop", x, y, r2, level: dropLevel(B, S.mtool === "ink", p) });
+      down = { kind: "drop", x, y, r2, t0: t, ticks: 0, ink: S.mtool === "ink" };
+      status(`${down.ink ? "Ink" : "Clear"} drop · ${B.rings.length} rings · ${B.verts} points · hold to let it spread`);
+    } else {
+      down = { kind: "rake", x, y, comb: S.mtool === "comb", W: combW(S.dials.marble.comb), nx: 0, ny: 0, ox: x, oy: y, px: 0, ms: 0 };
+    }
+    invalidate(full());
+  } else {
+    down = { kind: "brush", pts: [] };
+    addPoint(down.pts, x, y, p, t);
+    surf.scratch.fill(0);
+    swarm = swarmStart(surf, { ...S.dials.bristle, seed: S.seed.bristle }, S.size, down.pts[0]);
+  }
+});
+pad.addEventListener("pointermove", e => {
+  if (!down) return;
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  if (down.kind === "rake") {
+    for (const ev of evs) {
+      const [x, y] = pagePoint(ev);
+      if (Math.hypot(x - down.x, y - down.y) < .8) continue;
+      if (down.comb && down.nx === 0 && down.ny === 0) {
+        // The rake's line: across the first 4 px of travel, then held, as a real comb.
+        const dx = x - down.ox, dy = y - down.oy, m = Math.hypot(dx, dy);
+        if (m < 4) continue;
+        down.nx = -dy / m; down.ny = dx / m; down.x = down.ox; down.y = down.oy;
+      }
+      const t0 = performance.now();
+      apply(B, { k: "rake", ax: down.x, ay: down.y, bx: x, by: y, W: down.W, comb: down.comb, nx: down.nx, ny: down.ny });
+      down.ms += performance.now() - t0; down.px += Math.hypot(x - down.x, y - down.y);
+      down.x = x; down.y = y;
+    }
+    invalidate(full());
+  } else if (down.kind === "brush") {
+    let added = false;
+    for (const ev of evs) added = addPoint(down.pts, ...pagePoint(ev)) || added;
+    if (!added) return;
+    const r = swarmFeed(swarm, down.pts);
+    if (r[2] >= 0) { paintBase(r); invalidate(r.slice()); }
+  }
+});
+function endTouch(e) {
+  if (!down) return;
+  const d = down;
+  if (d.kind === "drop") {
+    // The hold's length comes from the samples' own clock: the drop's final size doesn't depend on frame timing.
+    const due = Math.min(HOLD_MAX, Math.floor(((e ? e.timeStamp : performance.now()) - d.t0) / HOLD_TICK));
+    while (d.ticks < due) { apply(B, { k: "grow", x: d.x, y: d.y, r2: d.r2 * HOLD_GROW }); d.ticks++; }
+    S.mtool = d.ink ? "clear" : "ink"; renderMChips();     // suminagashi: ink, then clear, then ink...
+    status(`${B.rings.length} rings · ${B.verts} points · next: ${S.mtool} drop · Set prints, or wait 8 s`);
+  } else if (d.kind === "rake") {
+    status(`${d.comb ? "Combed" : "Swirled"} ${Math.round(d.px)} px in ${d.ms.toFixed(1)} ms (${(d.ms / Math.max(1, d.px) * 10).toFixed(2)} ms per 10 px) · ${B.verts} points`);
+  } else if (d.kind === "brush") {
+    if (d.pts.length < 2) { const p = d.pts[0]; addPoint(d.pts, p.x + .8, p.y, p.p, p.t + 16); }
+    swarmFeed(swarm, d.pts);
+    const S0 = swarm, r = swarmFinish(swarm); swarm = null;
+    if (r[2] >= 0) { paintBase(r); invalidate(r.slice()); }
+    const sec = Math.max(.001, (d.pts[d.pts.length - 1].t - d.pts[0].t) / 1000);
+    status(`${S0.N} bristles · ${S0.steps} steps · ${S0.ms.toFixed(1)} ms in all · ${(S0.ms / sec).toFixed(0)} ms per pen-second · ${(S0.ms * 1000 / Math.max(1, S0.steps * S0.N)).toFixed(2)} µs per hair-step`);
+  }
+  down = null; lastTouch = performance.now();
+  invalidate(full());
+}
+pad.addEventListener("pointerup", endTouch);
+pad.addEventListener("pointercancel", endTouch);
+new ResizeObserver(() => fit()).observe(pad.parentElement);
+
+function setBath() {
+  if (!wet) return;
+  const t0 = performance.now();
+  printBath(B, surf, mctx);
+  const ms = performance.now() - t0;
+  wet = false;
+  paintBase(full()); invalidate(full());
+  status(`Printed ${B.rings.length} rings (${B.verts} points) in ${ms.toFixed(0)} ms. Fixed for good.`);
+  B = bath(S.seed.marble);
+}
+
+// ---------- the clock: held drops grow, the bath prints when left alone, the screen follows the cadence ----------
+function pump() {
+  const now = performance.now();
+  if (down && down.kind === "drop") {
+    // Live growth lags the clock by half a tick so lift (from the event's timestamp) normally applies the last ones.
+    const due = Math.min(HOLD_MAX, Math.floor((now - down.t0 - HOLD_TICK / 2) / HOLD_TICK));
+    let grew = false;
+    while (down.ticks < due) { apply(B, { k: "grow", x: down.x, y: down.y, r2: down.r2 * HOLD_GROW }); down.ticks++; grew = true; }
+    if (grew) invalidate(full());
+  }
+  if (wet && !down && S.tool === "marble") {
+    const left = SET_MS - (now - lastTouch);
+    $("wet").style.width = (100 * clamp(left / SET_MS)).toFixed(1) + "%";
+    if (left <= 0) setBath();
+  } else if (!wet) $("wet").style.width = "0";
+  if (S.manta) {
+    if (now - lastRefresh >= MANTA_MS && (pending || ghostRect)) { const r = union(pending, ghostRect); present(r, true); ghostRect = pending; pending = null; lastRefresh = now; }
+  } else if (pending) { present(pending, false); pending = null; }
+  requestAnimationFrame(pump);
+}
+
+// ---------- panels ----------
+function renderMChips() {
+  $("mchips").innerHTML = MTOOLS.map(([k, l]) => `<button class="chip" type="button" data-k="${k}" aria-pressed="${k === S.mtool}">${l}</button>`).join("");
+  $("mchips").querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => { S.mtool = b.dataset.k; renderMChips(); }));
+}
+function renderDials() {
+  const d = S.dials[S.tool];
+  $("dials").innerHTML = DIALS[S.tool].map(([k, lab, fmt]) => `<div class="gene"><label class="lab" for="d-${k}">${lab}</label>` +
+    `<input type="range" id="d-${k}" min="0" max="1" step="0.001" value="${d[k]}"><span class="val" id="v-${k}">${fmt(d[k])}</span></div>`).join("");
+  for (const [k, , fmt] of DIALS[S.tool]) {
+    const input = $("d-" + k);
+    input.addEventListener("input", () => { d[k] = +input.value; $("v-" + k).textContent = fmt(d[k]); renderCode(); });
+    if (S.tool === "bristle") input.addEventListener("change", () => markSpecs());
+  }
+}
+const step36 = v => { const s = Math.round(clamp(v) * 1295).toString(36); return s.length < 2 ? "0" + s : s; };
+function renderCode() {
+  const seed = S.seed[S.tool];
+  $("name").textContent = nameOf(seed);
+  if (S.tool === "bristle") {
+    const d = S.dials.bristle;
+    $("code").innerHTML = `<span class="lab">Code tail</span> …<b>1${step36(d.count)}${step36(d.cohesion)}${step36(d.spread)}</b>.${(seed >>> 0).toString(36)}` +
+      `<br><span class="muted">swarm on · bristles · cohesion · spread · seed. Dryness is the existing Dry brush dial (${step36(d.dryness)}).</span>`;
+  } else {
+    const d = S.dials.marble;
+    $("code").innerHTML = `<span class="lab">Tool</span> marble · ring ${Math.round(ringR(d.size))} px · comb ${combW(d.comb)} px · seed ${(seed >>> 0).toString(36)}` +
+      `<br><span class="muted">${wet ? B.rings.length + " rings wet · " + B.verts + " points" : "bath dry"}</span>`;
+  }
+}
+function chooseTool(t) {
+  if (wet && t !== "marble") setBath();
+  S.tool = t;
+  $("t-marble").setAttribute("aria-pressed", t === "marble"); $("t-bristle").setAttribute("aria-pressed", t === "bristle");
+  $("head-marble").hidden = t !== "marble"; $("head-bristle").hidden = t !== "bristle"; $("specbox").hidden = t !== "bristle";
+  $("toolname").textContent = t === "marble" ? "Marble · own tool" : "Bristle swarm · Wild pen";
+  $("blurb").textContent = BLURB[t];
+  renderDials(); renderCode();
+  status(t === "marble" ? "Tap to drop ink. Tap again to drop clear water." : "Draw. Go fast or press hard to splay the bristles.");
+  if (t === "bristle") drainSpecs();
+}
+$("t-marble").addEventListener("click", () => chooseTool("marble"));
+$("t-bristle").addEventListener("click", () => chooseTool("bristle"));
+$("set").addEventListener("click", () => { if (wet) setBath(); else status("Nothing on the bath to print."); });
+$("clear").addEventListener("click", () => {
+  wet = false; B = bath(S.seed.marble); surf.ink.fill(0); surf.scratch.fill(0); swarm = null; down = null;
+  paintBase(full()); invalidate(full()); status("Clear.");
+});
+[0, 1, 2].forEach(i => $("sz" + i).addEventListener("click", () => { S.size = i; [0, 1, 2].forEach(j => $("sz" + j).setAttribute("aria-pressed", i === j)); }));
+$("manta").addEventListener("click", () => {
+  S.manta = !S.manta; $("manta").setAttribute("aria-checked", S.manta);
+  status(S.manta ? "Manta cadence: 3 redraws a second, each leaving a faint ghost." : "Full frame rate.");
+});
+$("reroll").addEventListener("click", () => { S.seed[S.tool] = (Math.random() * 4294967296) >>> 0; renderCode(); status("New seed: " + nameOf(S.seed[S.tool]) + "."); });
+function status(t) { $("status").textContent = t; $("status").title = t; }
+setInterval(() => { if (S.tool === "marble") renderCode(); }, 500);
+
+// ---------- demo ----------
+function demo() {
+  const w = surf.w, h = surf.h;
+  if (S.tool === "marble") {
+    if (!wet) { B = bath(S.seed.marble); wet = true; }
+    runScript(B, scriptBath(w, h, S.dials.marble.size, S.dials.marble.comb));
+    lastTouch = performance.now();
+    status(`Demo bath: ${B.rings.length} rings, ${B.verts} points. Set prints it.`);
+  } else {
+    const b = { ...S.dials.bristle, seed: S.seed.bristle };
+    const paths = [
+      curve(t => [w * (.06 + .6 * t), h * (.3 + .14 * Math.sin(t * 7))], 70),
+      curve(t => [w * (.1 + .8 * t), h * (.62 - .1 * t + .05 * Math.sin(t * 11))], 50),
+      curve(t => [w * (.74 + .14 * Math.cos(t * 6.283 * 1.6)), h * (.3 + .18 * Math.sin(t * 6.283 * 1.6))], 60)];
+    paths.forEach((p, i) => { surf.scratch.fill(0); const sz = [1, 2, 0][i]; const S0 = swarmStart(surf, b, sz, synthStroke(p)[0]); const pts = synthStroke(p, 2.2, i === 1 ? 1.8 : 1); swarmFeed(S0, pts); swarmFinish(S0); });
+    paintBase(full());
+    status("Demo strokes: medium, large (fast), small loop.");
+  }
+  invalidate(full());
+}
+$("demo").addEventListener("click", demo);
+
+// ---------- bristle specimens ----------
+const SPECS = [
+  { seed: 0x1b873593, d: { count: .45, cohesion: .85, spread: .3, dryness: .2 } },
+  { seed: 0x7feb352d, d: { count: .5, cohesion: .12, spread: .8, dryness: .35 } },
+  { seed: 0x2545f491, d: { count: .35, cohesion: .55, spread: .5, dryness: .8 } },
+  { seed: 0x68e31da4, d: { count: .95, cohesion: .6, spread: .2, dryness: .05 } },
+];
+const SPW = 300, SPH = 170;
+$("specs").innerHTML = SPECS.map((s, i) => `<button class="spec" type="button" data-i="${i}" aria-pressed="false"><canvas width="${SPW}" height="${SPH}"></canvas><span>${nameOf(s.seed)}</span></button>`).join("");
+document.querySelectorAll(".spec").forEach(b => b.addEventListener("click", () => {
+  const s = SPECS[+b.dataset.i]; S.dials.bristle = { ...s.d }; S.seed.bristle = s.seed; renderDials(); renderCode(); markSpecs();
+  status(`Loaded ${nameOf(s.seed)}.`);
+}));
+function markSpecs() { document.querySelectorAll(".spec").forEach(b => { const s = SPECS[+b.dataset.i]; b.setAttribute("aria-pressed", s.seed === S.seed.bristle && JSON.stringify(s.d) === JSON.stringify(S.dials.bristle)); }); }
+let specsDone = false;
+function drainSpecs() {
+  if (specsDone) return; specsDone = true;
+  SPECS.forEach((s, i) => setTimeout(() => {
+    const sf = surface(SPW, SPH);
+    drawSwarmStroke(sf, { ...s.d, seed: s.seed }, 1, synthStroke(curve(t => [SPW * (.07 + .86 * t), SPH * (.5 + .26 * Math.sin(t * 6.283 * 1.1))], 50)));
+    const cv = document.querySelectorAll(".spec canvas")[i], cx = cv.getContext("2d"), img = cx.createImageData(SPW, SPH);
+    for (let k = 0; k < sf.ink.length; k++) { const t = toneOf(sf.ink[k]); img.data[k * 4] = img.data[k * 4 + 1] = img.data[k * 4 + 2] = t; img.data[k * 4 + 3] = 255; }
+    cx.putImageData(img, 0, 0);
+  }, 20 * i));
+  markSpecs();
+}
+
+// ---------- bench ----------
+function runBench() {
+  status("Benching…");
+  setTimeout(() => {
+    const r = bench(S.dials, S.seed.bristle), m = r.marble[0];
+    $("benchout").innerHTML =
+      `<table><tr><th>marble</th><th>value</th></tr>` +
+      `<tr><td>drop, ms</td><td>${m.dropMs.toFixed(2)}</td></tr><tr><td>comb/swirl, ms per 10 px</td><td>${m.rakeMsPer10px.toFixed(2)}</td></tr>` +
+      `<tr><td>refine, ms total</td><td>${m.refineMs.toFixed(1)}</td></tr><tr><td>print, ms</td><td>${m.printMs.toFixed(1)}</td></tr>` +
+      `<tr><td>rings · points</td><td>${m.rings} · ${m.verts}</td></tr><tr><td>area drift while stirring</td><td>${(m.areaDrift * 100).toFixed(3)} %</td></tr>` +
+      `<tr><td>same twice</td><td>${m.same ? "yes" : "NO"}</td></tr></table>` +
+      `<table style="margin-top:6px"><tr><th>bristles</th><th>ms/stroke</th><th>ms per pen-s</th><th>µs/hair-step</th><th>same</th></tr>` +
+      r.bristle.map(b => `<tr><td>${b.n}</td><td>${b.ms.toFixed(1)}</td><td>${b.msPerPenSec.toFixed(1)}</td><td>${b.usPerHairStep.toFixed(2)}</td><td>${b.same ? "yes" : "NO"}</td></tr>`).join("") + `</table>`;
+    window.BENCH = r;
+    status(`Bench: comb ${m.rakeMsPer10px.toFixed(2)} ms/10 px, print ${m.printMs.toFixed(0)} ms, area drift ${(m.areaDrift * 100).toFixed(3)} % · bristles ` + r.bristle.map(b => `${b.n}: ${b.msPerPenSec.toFixed(0)} ms/pen-s`).join(", "));
+  }, 30);
+}
+$("bench").addEventListener("click", runBench);
+
+// ---------- start ----------
+renderMChips();
+chooseTool(S.tool);
+fit();
+requestAnimationFrame(pump);
+setTimeout(() => {
+  if (params.has("demo")) demo();
+  if (params.has("set")) setBath();
+  if (params.has("manta")) $("manta").click();
+  if (params.has("bench")) { $("benchbox").open = true; runBench(); }
+}, 60);
+</script>
+</body>
+</html>

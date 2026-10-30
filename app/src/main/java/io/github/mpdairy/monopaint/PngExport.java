@@ -41,7 +41,6 @@ final class PngExport {
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor();
     private final PaintActivity app;
     private final DrawingBook.Snapshot book;
-    private final int rotation;
     /**
      * The chosen folder, else a folder written as plain files ({@link #SUPERNOTE_FOLDER}), else
      * null for {@link #FOLDER} through MediaStore; {@link #folder} is its name for messages.
@@ -52,15 +51,15 @@ final class PngExport {
     /** The size of dithered pages, or null for smooth grays at each page's size. */
     private ExportSize dotSize;
 
-    private PngExport(PaintActivity app, DrawingBook.Snapshot book, int rotation) {
-        this.app = app; this.book = book; this.rotation = rotation;
+    private PngExport(PaintActivity app, DrawingBook.Snapshot book) {
+        this.app = app; this.book = book;
         String saved = app.prefs.exportFolder();
         useFolder(saved.isEmpty() ? null : Uri.parse(saved));
     }
 
     /** Asks which pages and what name, then exports the book as it is now. */
     static void show(PaintActivity app, DrawingBook.Snapshot book, String drawingName) {
-        new PngExport(app, book, app.appRotation).ask(drawingName.isEmpty() ? "painting" : DrawingFiles.name(drawingName));
+        new PngExport(app, book).ask(drawingName.isEmpty() ? "painting" : DrawingFiles.name(drawingName));
     }
 
     private void ask(String defaultName) {
@@ -81,7 +80,7 @@ final class PngExport {
         CheckBox dots = new CheckBox(app); dots.setText("Dithered, as on screen");
         dots.setChecked(app.prefs.exportDithered()); content.addView(dots);
         // Dots look right only shown one to one, so dithered pages are sized for a screen.
-        int[] page = upright(book.activePage.width, book.activePage.height);
+        int[] page = {book.activePage.width, book.activePage.height};
         RadioGroup sizes = new RadioGroup(app);
         RadioButton pageSize = sizeChoice(sizes, "page", "Page size", page);
         for (Device device : Device.SUPERNOTES)
@@ -202,8 +201,6 @@ final class PngExport {
     private static int number(EditText field) {
         try { return Integer.parseInt(field.getText().toString().trim()); } catch (NumberFormatException none) { return 0; }
     }
-    /** A page's size as exported, turned like the app. */
-    private int[] upright(int width, int height) { return rotation % 2 == 0 ? new int[]{width, height} : new int[]{height, width}; }
 
     static String base(String name) {
         String value = name.trim();
@@ -240,10 +237,10 @@ final class PngExport {
         app.message(files.length == 1 ? "Exporting " + files[0] + "…" : "Exporting " + files.length + " pages…");
         WORKER.execute(() -> {
             try {
-                for (int i = 0; i < files.length; i++) write(files[i], first + i);
+                for (int i = 0; i < files.length; i++) synchronized (DocumentCodec.ONE_PAGE) { write(files[i], first + i); }
                 finish(files.length == 1 ? "Exported " + folder + "/" + files[0]
                         : "Exported " + files.length + " pages to " + folder);
-            } catch (RuntimeException | IOException error) {
+            } catch (RuntimeException | IOException | OutOfMemoryError error) {
                 android.util.Log.e(ProbeActivity.TAG, "PNG export failed", error);
                 finish("Export failed: " + error.getMessage());
             }
@@ -253,22 +250,24 @@ final class PngExport {
     private void finish(String text) { app.runOnUiThread(() -> { if (!app.isDestroyed()) app.message(text); }); }
 
     private void write(String file, int index) throws IOException {
-        ToneDocument page = book.page(index);
+        ToneDocument page = book.printed(index);
         Bitmap image;
         if (dotSize != null) {
-            int[] upright = upright(page.width, page.height), turned = dotSize.of(upright[0], upright[1]);
-            int[] size = upright(turned[0], turned[1]); // back to the page's own orientation
+            int[] size = dotSize.of(page.width, page.height);
             if (!ToneDocument.validSize(size[0], size[1])) throw new IOException("Page " + (index + 1) + " is too large at that size");
             image = ViewportBitmap.dithered(page, size[0], size[1]);
-        } else image = Bitmap.createBitmap(page.exportPixels(true), page.width, page.height, Bitmap.Config.ARGB_8888);
-        Bitmap upright = PageOverview.turned(image, rotation);
-        if (upright != image) image.recycle();
+        } else {
+            int[] pixels = page.exportPixels(true);
+            // Inkwash: the page's fridge magnets drawn over it.
+            Magnets.stamp(pixels, page.width, page.height, page.magnets(), WordsMode.exportTiles());
+            image = Bitmap.createBitmap(pixels, page.width, page.height, Bitmap.Config.ARGB_8888);
+        }
         try {
-            if (tree != null) writeTree(upright, file);
+            if (tree != null) writeTree(image, file);
             else if (directory != null || Build.VERSION.SDK_INT < 29) {
-                try (OutputStream output = new FileOutputStream(plainFile(file))) { encode(upright, output, file); }
-            } else writeShared(upright, file);
-        } finally { upright.recycle(); }
+                try (OutputStream output = new FileOutputStream(plainFile(file))) { encode(image, output, file); }
+            } else writeShared(image, file);
+        } finally { image.recycle(); }
     }
     private static void encode(Bitmap image, OutputStream output, String file) throws IOException {
         if (!image.compress(Bitmap.CompressFormat.PNG, 100, output)) throw new IOException("Could not encode " + file);

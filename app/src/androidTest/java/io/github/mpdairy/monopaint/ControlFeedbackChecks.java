@@ -11,8 +11,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
-import io.github.mpdairy.fasteink.FastEink;
-import io.github.mpdairy.fasteink.Mode;
 
 /** Exercises the real control renderers and the gray-patch fallback. */
 final class ControlFeedbackChecks {
@@ -36,7 +34,7 @@ final class ControlFeedbackChecks {
                     check(app.paint.wetness==target,"Wetness reaches exact pen/finger position including release: expected="+target+" got="+app.paint.wetness);
                     check(app.paint.wetCanvas==(target>0),"Zero dries and positive wetness enables blending");
                     check(app.selectionFeedback.submitted>count,"Wetness feedback is immediate without pacing");
-                    check(app.selectionFeedback.lastMode==fastMode(),"Wetness and wet-state dot use fast mode");
+                    check(app.selectionFeedback.lastDisplayMode==fastMode(),"Wetness and wet-state dot use fast mode");
                 });
                 SystemClock.sleep(8);
             }
@@ -50,7 +48,7 @@ final class ControlFeedbackChecks {
             main(test,() -> {
                 LinearLayout row=new LinearLayout(app);row.setBackgroundColor(Color.WHITE);
                 button[0]=new ToolButton(app,app);button[0].setBackgroundColor(Color.WHITE);
-                button[0].iconOnly(R.drawable.ic_layer_visible);button[0].caption="100%";
+                button[0].iconOnly(R.drawable.ic_ph_eye);button[0].caption="100%";
                 button[0].press.feedback=feedback;
                 swatch[0]=new PaletteSwatch(app,0,true);gray[0]=new GrayControl(app);
                 row.addView(button[0],new LinearLayout.LayoutParams(140,150));
@@ -65,13 +63,13 @@ final class ControlFeedbackChecks {
                 for(int i=0;i<6;i++) {
                     final int index=i;
                     update(feedback,button[0],() -> button[0].caption=index%2==0?"125%":"100%",fastMode());
-                    update(feedback,button[0],() -> button[0].iconOnly(index%2==0?R.drawable.ic_layer_hidden:R.drawable.ic_layer_visible),fastMode());
+                    update(feedback,button[0],() -> button[0].iconOnly(index%2==0?R.drawable.ic_ph_eye_closed:R.drawable.ic_ph_eye),fastMode());
                     update(feedback,button[0],() -> button[0].press.pressed=!button[0].press.pressed,fastMode());
                     update(feedback,button[0],() -> button[0].marked=!button[0].marked,fastMode());
                     int count=feedback.submitted;
                     swatch[0].presentTone(index%2==0?128:255,feedback,app.hasWindowFocus());
-                    check(feedback.submitted>count && feedback.lastMode==fastMode(),"Nonfocusable popup swatch updates immediately");
-                    update(feedback,gray[0],() -> gray[0].selected=!gray[0].selected,Mode.GRAY);
+                    check(feedback.submitted>count && feedback.lastDisplayMode==fastMode(),"Nonfocusable popup swatch updates immediately");
+                    update(feedback,gray[0],() -> gray[0].selected=!gray[0].selected,7);
                 }
                 int count=feedback.submitted;
                 feedback.update(button[0],new Rect(0,0,140,150),() -> {},true);
@@ -82,13 +80,13 @@ final class ControlFeedbackChecks {
             main(test,() -> {feedback.close();if(window[0]!=null)window[0].dismiss();app.root.invalidate();});
         }
     }
-    private static void update(SelectionFeedback feedback,View view,Runnable change,Mode mode) {
+    private static void update(SelectionFeedback feedback,View view,Runnable change,int mode) {
         int count=feedback.submitted;
         feedback.update(view,new Rect(0,0,view.getWidth(),view.getHeight()),change,true);
         check(feedback.submitted>count,"Changed control submitted immediately: "+view.getClass().getSimpleName());
-        check(feedback.lastMode==mode,"Control mode expected="+mode+" got="+feedback.lastMode+" "+view.getClass().getSimpleName());
+        check(feedback.lastDisplayMode==mode,"Control mode expected="+mode+" got="+feedback.lastDisplayMode+" "+view.getClass().getSimpleName());
     }
-    private static Mode fastMode() {return FastEink.supportsFastBinary()?Mode.FAST_BINARY:Mode.GRAY;}
+    private static int fastMode() {return DirectEink.fastBinaryControls()?9:7;}
     private static final class GrayControl extends View {
         boolean selected;final Paint ink=new Paint();
         GrayControl(PaintActivity app) {super(app);}

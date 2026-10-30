@@ -1,0 +1,33 @@
+# Tool kits: the brushes one way of working needs, put on the bar together from the Tools page (its Kits chip,
+# or Load Kit under This Brush when the brush shown is in a kit). A kit fills the bar's first slots, in this order.
+#
+# A kit starts with "Kit: Its Name", then "Intro: one whole sentence" saying how the kit is used, in order.
+# Then one line a brush, in the order it is used: the Basic tool's name exactly as on the Tools page, a colon,
+# and its job in two or three words ("Sumi: Drop ink"). The bar's slot says "1 Drop ink" when it is picked.
+# A last line "Eraser Dry Media: Erase pencil" also sets the eraser to that kind as the kit loads
+# (Everything, Pen, Paint or Dry Media). At most eight brushes a kit. Lines starting with # are notes.
+# Plain, warm words, no semicolons (docs/TEXT-STYLE.md).
+
+Kit: Marbling
+Intro: Drop ink and clear water in turn to grow rings, then comb them before they print.
+Sumi: Drop ink
+Clear water: Drop water
+Comb: Comb rings
+
+Kit: Sketch and Ink
+Intro: Sketch in pencil, ink over it, then erase the pencil and the ink stays.
+Sketch pencil: Sketch
+Steady line: Ink over
+Eraser Dry Media: Erase pencil
+
+Kit: Watercolour with Masking
+Intro: Mask the whites, wash over them, blot to lift paint, then rub the mask off.
+Masking fluid: Mask whites
+Soft wash: Wash over
+Damp tissue: Blot to lift
+Eraser Everything: Rub off mask
+
+Kit: Colouring In
+Intro: Draw shapes in ink, then scribble inside one and it fills to its lines.
+Steady line: Draw shapes
+Fill in: Fill shapes

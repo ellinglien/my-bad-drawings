@@ -158,12 +158,12 @@ final class Toolbar {
         return button;
     }
     private void addLayers() {
-        layersButton = railButton("Layers", R.drawable.ic_layers, () -> app.showLayers(layersButton));
+        layersButton = railButton("Layers", R.drawable.ic_ph_stack, () -> app.showLayers(layersButton));
         layersButton.selectionOutline = true; layersButton.press.feedback = app.selectionFeedback;
         markActive(layersButton, false);
     }
     private void addZoom() {
-        zoomButton = railButton("Zoom", R.drawable.ic_zoom, app::toggleNavigationLock);
+        zoomButton = railButton("Zoom", R.drawable.ic_ph_magnifying_glass, app::toggleNavigationLock);
         zoomButton.setOnTouchListener(new ZoomButtonTouch(app,zoomButton));
         zoomButton.iconHalf = 16;
         zoomButton.overlay = (canvas, button) -> drawLock(canvas, button, app.navigationLocked);
@@ -176,7 +176,7 @@ final class Toolbar {
             else if (!selectedKey().equals(key)) select.run();
             else if (settings) app.showToolSettings();
         });
-        if (settings) control.settingsArrow = app.getDrawable(R.drawable.ic_chevron);
+        if (settings) control.settingsArrow = app.getDrawable(R.drawable.ic_ph_caret_right);
         control.selectionOutline = true;
         control.iconOffset = -4;
         control.setContentDescription(name + (settings ? ". Tap to select; tap again for settings." : ". Tap to select."));
@@ -237,7 +237,7 @@ final class Toolbar {
     }
     private void presentTool(ToolButton button, ToolSettings settings, ToolLibrary.Preset preset) {
         boolean unchosenShapes = preset == null && settings.tool == ToolSettings.Tool.SHAPES && !shapeChosen();
-        button.iconOnly(unchosenShapes ? R.drawable.ic_shapes : ToolIcons.of(settings));
+        button.iconOnly(unchosenShapes ? R.drawable.ic_ph_shapes : ToolIcons.of(settings));
         if (preset == null) {
             button.setContentDescription(unchosenShapes ? "Shapes. Tap to choose a shape."
                     : settings.asBrush().description() + ". Tap to select; tap again for settings.");
@@ -251,7 +251,7 @@ final class Toolbar {
     /** Static background for a toolbar control; the outline shows selection only without fast feedback. */
     void markActive(ToolButton button, boolean selected) {
         boolean outline = selected && !app.selectionFeedback.enabled && !button.selectionOutline;
-        button.setBackground(Ui.outline(outline ? dp(2) : 1, outline ? Color.BLACK : 0xffaaaaaa, dp(4)));
+        button.setBackground(Ui.outline(outline ? dp(2) : 1, outline ? Theme.INK : Theme.GREY_400, 0));
         button.setSelected(selected);
     }
 
@@ -302,14 +302,8 @@ final class Toolbar {
         LinearLayout.LayoutParams block = new LinearLayout.LayoutParams(landscape ? -2 : dp(60), landscape ? dp(60) : -2);
         block.setMargins(dp(2), dp(2), dp(2), dp(2));
         toolRail.addView(sidebarPalette, block);
-        ToolButton settings = app.iconButton("Palette settings", R.drawable.ic_palette, app::paletteSettings);
-        settings.settingsArrow = app.getDrawable(R.drawable.ic_chevron);
-        markActive(settings, false);
-        sidebarPalette.addView(settings, new LinearLayout.LayoutParams(dp(landscape ? 44 : 60), dp(landscape ? 60 : 44)));
         addSidebarSwatches(app.prefs.paletteShades());
     }
-    /** The palette icon, which anchors the palette editor. */
-    View paletteAnchor() { return sidebarPalette.getChildAt(0); }
     private void addSidebarSwatches(List<Integer> shades) {
         boolean landscape = landscape();
         sidebarSwatches.clear();
@@ -327,20 +321,6 @@ final class Toolbar {
                 });
                 pair.addView(swatch, new LinearLayout.LayoutParams(dp(landscape ? 40 : 30), dp(landscape ? 30 : 40)));
             }
-        }
-    }
-    /** Shows changed palette shades without rebuilding the toolbar when only tones changed. */
-    void showPaletteShades(List<Integer> shades) {
-        if (sidebarPalette == null) return;
-        if (sidebarSwatches.size() != shades.size()) {
-            while (sidebarPalette.getChildCount() > 1) sidebarPalette.removeViewAt(1);
-            addSidebarSwatches(shades);
-            return;
-        }
-        for (int i = 0; i < shades.size(); i++) {
-            PaletteSwatch swatch = sidebarSwatches.get(i);
-            swatch.presentTone(shades.get(i), app.selectionFeedback, app.hasWindowFocus());
-            describe(swatch, i);
         }
     }
     private static void describe(PaletteSwatch swatch, int index) {

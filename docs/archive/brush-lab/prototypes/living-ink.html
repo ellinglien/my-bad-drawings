@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Living Ink</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap">
+<style>
+/* Brutalist, as Brush Lab Web: hard black rules, square corners, one monospace face, inverted fills for what's on.
+   Deliberately one theme: it imitates the Manta's black-on-white screen. */
+:root {
+  --desk: #dcdcd6; --screen: #ffffff; --ink: #000000; --grey: #5c5c56; --rule: #b4b4ad;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --desk: #dcdcd6; --screen: #ffffff; --ink: #000000; } }
+:root[data-theme="dark"] { --desk: #dcdcd6; --screen: #ffffff; --ink: #000000; }
+* { box-sizing: border-box; }
+html, body { background: var(--desk); color: var(--ink); margin: 0; }
+body { font-family: var(--mono); font-size: 15px; line-height: 1.4; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 18px 16px 32px; display: grid; gap: 14px; }
+h1 { font-size: 1.6rem; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: .02em; }
+h2 { font-size: .8rem; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: .08em; }
+p { margin: 0; max-width: 72ch; }
+.muted { color: var(--grey); }
+.device { background: var(--screen); border: 3px solid var(--ink); display: grid; min-width: 0; }
+.bar { display: flex; flex-wrap: wrap; align-items: stretch; border-bottom: 3px solid var(--ink); }
+.bar > * { border-right: 2px solid var(--ink); }
+.bar > *:last-child { border-right: 0; }
+.bar .title { font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 0 14px; display: grid; align-items: center; min-height: 44px; }
+.spring { flex: 1; }
+.btn { min-width: 44px; height: 44px; display: inline-grid; grid-auto-flow: column; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; background: var(--screen); color: var(--ink); border: 0; border-radius: 0; cursor: pointer; font: inherit; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.btn:hover:not(:disabled), .btn[aria-pressed="true"] { background: var(--ink); color: var(--screen); }
+.btn:focus-visible, .chip:focus-visible, .spec:focus-visible, input:focus-visible, .switch:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.work { display: grid; grid-template-columns: minmax(0, 1fr) 360px; min-width: 0; }
+.main { display: flex; flex-direction: column; min-width: 0; }
+.test { flex: 1; display: flex; flex-direction: column; padding: 12px; border-bottom: 2px solid var(--ink); }
+.head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.head h2 { margin-right: auto; }
+.canvasbox { flex: 1; position: relative; min-height: 440px; border: 2px solid var(--ink); margin-top: 8px; background: #fbfbfb; }
+.canvasbox canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; display: block; }
+.wetbar { height: 8px; border: 2px solid var(--ink); border-top: 0; position: relative; }
+.wetbar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); width: 0; }
+.sizes { display: flex; }
+.size { width: 44px; height: 44px; border: 2px solid var(--ink); background: var(--screen); margin-left: -2px; padding: 0; cursor: pointer; display: grid; place-items: center; border-radius: 0; }
+.size:first-child { margin-left: 0; }
+.size i { display: block; background: var(--ink); border-radius: 50%; }
+.size[aria-pressed="true"] { background: var(--ink); }
+.size[aria-pressed="true"] i { background: var(--screen); }
+.specs { padding: 8px 12px 12px; }
+.specs .head { margin-bottom: 8px; }
+.grid5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-left: 2px solid var(--ink); border-top: 2px solid var(--ink); }
+.spec { padding: 0; border: 0; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); border-radius: 0; background: var(--screen); cursor: pointer; font: inherit; color: var(--ink); text-align: left; min-width: 0; }
+.spec canvas { width: 100%; display: block; aspect-ratio: 300 / 190; }
+.spec span { border-top: 2px solid var(--ink); padding: 4px 6px; display: block; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spec[aria-pressed="true"] span, .spec:hover span { background: var(--ink); color: var(--screen); }
+.settings { border-left: 3px solid var(--ink); display: grid; align-content: start; min-width: 0; }
+.pane { padding: 10px 12px; display: grid; gap: 8px; border-bottom: 2px solid var(--ink); }
+.lab { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { font: inherit; font-size: .78rem; min-height: 36px; padding: 4px 10px; border: 2px solid var(--ink); border-radius: 0; background: var(--screen); color: var(--ink); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--screen); }
+.blurb { font-size: .8rem; min-height: 3.6em; }
+.gene { display: grid; grid-template-columns: 104px minmax(0, 1fr) 58px; align-items: center; min-height: 44px; border-bottom: 1px solid var(--rule); padding: 0 12px; gap: 6px; }
+.gene .val { color: var(--grey); font-size: .74rem; text-align: right; font-variant-numeric: tabular-nums; }
+.gene.life { border-bottom: 2px solid var(--ink); }
+input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 36px; margin: 0; background: transparent; cursor: pointer; }
+input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--ink); }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 26px; margin-top: -12px; background: var(--ink); border: 0; border-radius: 0; }
+input[type="range"]::-moz-range-track { height: 2px; background: var(--ink); }
+input[type="range"]::-moz-range-thumb { width: 14px; height: 26px; background: var(--ink); border: 0; border-radius: 0; }
+.switchrow { display: flex; align-items: center; gap: 10px; font-size: .78rem; min-height: 36px; }
+.switch { position: relative; width: 52px; height: 28px; padding: 0; border: 2px solid var(--ink); border-radius: 0; background: var(--screen); cursor: pointer; flex: none; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; background: var(--ink); }
+.switch[aria-checked="true"] { background: var(--ink); }
+.switch[aria-checked="true"]::after { left: 27px; background: var(--screen); }
+.code { font-size: .78rem; word-break: break-all; }
+.code b { font-weight: 700; }
+.status { border-top: 3px solid var(--ink); padding: 8px 12px; min-height: 2.4em; font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+details { border-top: 0; }
+summary { cursor: pointer; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; list-style: none; min-height: 28px; display: flex; align-items: center; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "+ "; white-space: pre; }
+details[open] summary::before { content: "− "; }
+table { border-collapse: collapse; font-size: .7rem; width: 100%; }
+td, th { border: 1px solid var(--ink); padding: 2px 4px; text-align: right; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+.notes { font-size: .78rem; display: grid; gap: 6px; }
+.notes ul { margin: 0; padding-left: 1.1em; display: grid; gap: 3px; }
+@media (max-width: 860px) {
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .settings { border-left: 0; border-top: 3px solid var(--ink); }
+  .canvasbox { min-height: 0; height: 58vh; max-height: 520px; flex: none; }
+  .grid5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  h1 { font-size: 1.3rem; }
+  .wrap { padding: 12px 10px 24px; gap: 10px; }
+  .bar .title, .bar .spring { display: none; }
+  .btn { padding: 0 10px; flex: 1; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Living Ink</h1>
+    <p class="muted">Ink that is alive while it's wet: microscopic growth after the pen lifts, slowing as it dries, then fixed for good. Same seed and stroke, same growth.</p>
+  </header>
+  <div class="device">
+    <div class="bar">
+      <span class="title">Inkwash · wild pen</span>
+      <span class="spring"></span>
+      <button class="btn" id="demo" type="button">Demo</button>
+      <button class="btn" id="drynow" type="button">Dry now</button>
+      <button class="btn" id="clear" type="button">Clear</button>
+    </div>
+    <div class="work">
+      <div class="main">
+        <div class="test">
+          <div class="head">
+            <h2>Test pad</h2>
+            <div class="sizes" role="group" aria-label="Pen size">
+              <button class="size" id="sz0" type="button" aria-pressed="false" aria-label="Fine"><i style="width:6px;height:6px"></i></button>
+              <button class="size" id="sz1" type="button" aria-pressed="true" aria-label="Medium"><i style="width:12px;height:12px"></i></button>
+              <button class="size" id="sz2" type="button" aria-pressed="false" aria-label="Broad"><i style="width:20px;height:20px"></i></button>
+            </div>
+          </div>
+          <div class="canvasbox"><canvas id="pad" width="600" height="400" aria-label="Test pad: draw here"></canvas></div>
+          <div class="wetbar" title="Wetness of the newest living stroke"><i id="wet"></i></div>
+        </div>
+        <div class="specs">
+          <div class="head"><h2>Mutations</h2><span class="muted" style="font-size:.72rem">dried specimens, your dials</span></div>
+          <div class="grid5" id="specs"></div>
+        </div>
+      </div>
+      <div class="settings">
+        <div class="pane">
+          <span class="lab">Mutation</span>
+          <div class="chips" id="chips" role="group" aria-label="Mutation"></div>
+          <p class="blurb" id="blurb"></p>
+        </div>
+        <div id="dials"></div>
+        <div class="pane">
+          <div class="switchrow"><button class="switch" id="manta" type="button" role="switch" aria-checked="false" aria-label="Manta cadence"></button><span><b>Manta cadence</b> · 3 redraws/s, slight ghost</span></div>
+          <div class="switchrow"><span class="lab" style="width:auto">Seed</span><span id="seed" class="code"></span><span class="spring"></span><button class="chip" id="reroll" type="button">Reroll</button></div>
+          <div class="code" id="code"></div>
+        </div>
+        <div class="pane">
+          <details id="benchbox"><summary>Cost bench</summary>
+            <div class="notes"><p class="muted">One typical stroke (two loops, ~700 px, medium nib), each mutation at its dials, 10 s life, run twice to check it reproduces.</p>
+              <button class="chip" id="bench" type="button">Run bench</button><div id="benchout"></div></div>
+          </details>
+          <details><summary>How it lives</summary>
+            <div class="notes"><ul>
+              <li>Grows only after lift, only within Reach of its own stroke.</li>
+              <li>10 fixed ticks per wet second; vigour = (1 − t/life)<sup>1.4</sup>, so it slows as it dries.</li>
+              <li>Only darkens, never lightens: kinder to e-ink ghosting.</li>
+              <li>Drying here is the paint dial's curve, 0.75 s + 29.25 s × d², so 0.75–30 s.</li>
+              <li>Randomness from brush seed × stroke hash; paper fibres fixed to the page.</li>
+            </ul></div>
+          </details>
+        </div>
+      </div>
+    </div>
+    <div class="status" id="status">Draw on the pad. The ink lives until it dries.</div>
+  </div>
+</div>
+
+<script id="engine">
+"use strict";
+// ---------- copied from weblab/src/engine.js: rng, clamp, lerp, addPoint, a lean stampInk (round nib), compose ----------
+function rng(seed) {
+  let s = seed >>> 0;
+  return function () {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const clamp = (v, a = 0, b = 1) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = t => { t = clamp(t); return t * t * (3 - 2 * t); };
+function addPoint(pts, x, y, p, t) {
+  const q = pts[pts.length - 1];
+  if (!q) { pts.push({ x, y, p, t, d: 0, v: 0 }); return true; }
+  const seg = Math.hypot(x - q.x, y - q.y);
+  if (seg < 0.6) return false;
+  const v = q.v * 0.75 + (seg / Math.max(1, t - q.t)) * 0.25;
+  pts.push({ x, y, p, t, d: q.d + seg, v });
+  return true;
+}
+const INK_SIZE = [3, 8, 16];
+const PEN = { taperIn: .35, taperOut: .45, pressure: .55, speed: -.25 };
+function surface(w, h) { return { w, h, ink: new Float32Array(w * h), scratch: new Float32Array(w * h) }; }
+// The Wild pen's round nib, pressure, speed and tapers only: the living part is what this page is about.
+function stampInk(surf, pts, size, final, from) {
+  const { w, h, scratch: buf } = surf, total = pts.length ? pts[pts.length - 1].d : 0;
+  const inLen = PEN.taperIn * 70, outLen = PEN.taperOut * 90, rect = [w, h, 0, 0];
+  for (let k = Math.max(1, from); k < pts.length; k++) {
+    const p0 = pts[k - 1], p1 = pts[k], seg = p1.d - p0.d;
+    const steps = Math.max(1, Math.ceil(seg / Math.max(0.4, size * 0.1)));
+    for (let s = (k === 1 ? 0 : 1); s <= steps; s++) {
+      const t = s / steps, x = lerp(p0.x, p1.x, t), y = lerp(p0.y, p1.y, t), d = lerp(p0.d, p1.d, t);
+      const pr = lerp(p0.p, p1.p, t), v = lerp(p0.v, p1.v, t);
+      let wd = size * lerp(1 - 0.75 * PEN.pressure, 1 + 0.6 * PEN.pressure, pr);
+      wd *= clamp(1 + PEN.speed * 0.55 * (clamp(v / 2.5) - 0.3), 0.35, 1.6);
+      wd *= Math.pow(clamp(d / inLen), 0.6) * 0.92 + 0.08;
+      if (final) wd *= Math.pow(clamp((total - d) / outLen), 0.6) * 0.92 + 0.08;
+      const a = Math.max(0.6, wd / 2), R = Math.ceil(a + 1.5);
+      const x0 = Math.max(0, Math.floor(x - R)), x1 = Math.min(w - 1, Math.ceil(x + R));
+      const y0 = Math.max(0, Math.floor(y - R)), y1 = Math.min(h - 1, Math.ceil(y + R));
+      for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
+        const i = py * w + px; if (buf[i] >= 1) continue;
+        const cov = clamp(a + 0.5 - Math.hypot(px + 0.5 - x, py + 0.5 - y));
+        if (cov > buf[i]) buf[i] = cov;
+      }
+      if (x0 < rect[0]) rect[0] = x0; if (y0 < rect[1]) rect[1] = y0; if (x1 > rect[2]) rect[2] = x1; if (y1 > rect[3]) rect[3] = y1;
+    }
+  }
+  return rect;
+}
+const PAPER = 251;
+const toneOf = id => Math.round(PAPER * (1 - id) / 17) * 17;   // 16 greys, as the Manta
+
+// ---------- the paper's fibres: a 256 px tile fixed to the page, as the app's PaperGrain ----------
+const FT = 256;
+const FIB = (() => {
+  const r = rng(0x5eedf1b7);
+  const tile = cell => {
+    const g = FT / cell, lat = new Float32Array(g * g), out = new Float32Array(FT * FT);
+    for (let i = 0; i < lat.length; i++) lat[i] = r();
+    for (let y = 0; y < FT; y++) {
+      const fy = y / cell, iy = fy | 0, sy = smooth(fy - iy);
+      for (let x = 0; x < FT; x++) {
+        const fx = x / cell, ix = fx | 0, sx = smooth(fx - ix);
+        const a = lat[iy % g * g + ix % g], b = lat[iy % g * g + (ix + 1) % g], c = lat[(iy + 1) % g * g + ix % g], d = lat[(iy + 1) % g * g + (ix + 1) % g];
+        out[y * FT + x] = lerp(lerp(a, b, sx), lerp(c, d, sx), sy);
+      }
+    }
+    return out;
+  };
+  const a = tile(32), b = tile(8), c = tile(2), cos = new Float32Array(FT * FT), sin = new Float32Array(FT * FT);
+  for (let i = 0; i < cos.length; i++) {
+    // Fibres are axial: an angle over 0..pi, mostly the broad drift of the sheet, a little the local tangle.
+    const phi = Math.PI * 2 * (a[i] * 0.8 + b[i] * 0.2);
+    cos[i] = Math.cos(phi); sin[i] = Math.sin(phi);
+  }
+  return { cos, sin, fine: c };
+})();
+const fib = (x, y) => ((y & 255) << 8) | (x & 255);
+
+// ---------- life ----------
+const TPS = 10;                                   // fixed ticks per wet second: the growth never depends on the frame rate
+const LIVING_QUICKEST = 750, LIVING_SLOWEST = 30000;
+const lifeMs = d => Math.round(LIVING_QUICKEST + (LIVING_SLOWEST - LIVING_QUICKEST) * d * d);
+const reachPx = r => Math.round(8 + 56 * r);
+function strokeHash(pts) {
+  let h = 0x811c9dc5;
+  for (const p of pts) { h = Math.imul(h ^ Math.round(p.x * 4), 16777619); h = Math.imul(h ^ Math.round(p.y * 4), 16777619); }
+  return h >>> 0;
+}
+function chamfer(own, w, h) {
+  const d = new Float32Array(w * h);
+  for (let i = 0; i < d.length; i++) d[i] = own[i] >= 0.5 ? 0 : 1e9;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; let v = d[i];
+    if (x > 0) v = Math.min(v, d[i - 1] + 1);
+    if (y > 0) { v = Math.min(v, d[i - w] + 1); if (x > 0) v = Math.min(v, d[i - w - 1] + 1.414); if (x < w - 1) v = Math.min(v, d[i - w + 1] + 1.414); }
+    d[i] = v;
+  }
+  for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) {
+    const i = y * w + x; let v = d[i];
+    if (x < w - 1) v = Math.min(v, d[i + 1] + 1);
+    if (y < h - 1) { v = Math.min(v, d[i + w] + 1); if (x < w - 1) v = Math.min(v, d[i + w + 1] + 1.414); if (x > 0) v = Math.min(v, d[i + w - 1] + 1.414); }
+    d[i] = v;
+  }
+  return d;
+}
+function pick(r, arr, k) {
+  const a = arr.slice(); k = Math.min(k, a.length);
+  for (let i = 0; i < k; i++) { const j = i + ((r() * (a.length - i)) | 0), t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a.slice(0, k);
+}
+// A living stroke: its own region (stroke rectangle grown by Reach), never anything outside it.
+function makeLiving(surf, brush, pts, rect, dark) {
+  const R = reachPx(brush.reach);
+  const x0 = Math.max(0, rect[0] - R - 3), y0 = Math.max(0, rect[1] - R - 3);
+  const x1 = Math.min(surf.w - 1, rect[2] + R + 3), y1 = Math.min(surf.h - 1, rect[3] + R + 3);
+  const w = x1 - x0 + 1, h = y1 - y0 + 1, own = new Float32Array(w * h), env = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const g = (y + y0) * surf.w + x + x0;
+    own[y * w + x] = surf.scratch[g]; env[y * w + x] = Math.max(surf.ink[g], surf.scratch[g] * dark);
+  }
+  const dist = chamfer(own, w, h), bandL = [];
+  // The region's border is never alive, so neighbours of a band pixel always exist (a stroke at the page's edge).
+  for (let x = 0; x < w; x++) { dist[x] = 1e9; dist[(h - 1) * w + x] = 1e9; }
+  for (let y = 0; y < h; y++) { dist[y * w] = 1e9; dist[y * w + w - 1] = 1e9; }
+  for (let i = 0; i < dist.length; i++) if (dist[i] <= R) bandL.push(i);
+  const seed = (brush.seed ^ strokeHash(pts) ^ MUTS[brush.life].salt) >>> 0;
+  const L = { surf, brush, m: MUTS[brush.life], x0, y0, w, h, R, own, env, dist, band: Int32Array.from(bandL), lev: new Float32Array(w * h),
+    N: Math.max(1, Math.round(lifeMs(brush.drying) / 1000 * TPS)), tick: 0, r: rng(seed), dark, dirty: [w, h, -1, -1], ms: 0, peak: 0, agents: 0 };
+  const t0 = performance.now();
+  L.m.init(L);
+  L.ms += performance.now() - t0;
+  return L;
+}
+const edgesOf = L => {
+  const { w, h, own } = L, out = [];
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x;
+    if (own[i] >= .5 && (own[i - 1] < .5 || own[i + 1] < .5 || own[i - w] < .5 || own[i + w] < .5)) out.push(i);
+  }
+  return out;
+};
+const ownOf = L => { const out = []; for (let i = 0; i < L.own.length; i++) if (L.own[i] >= .5) out.push(i); return out; };
+// Away from the stroke: the distance field's slope, or a seeded direction where it has none.
+function outward(L, x, y) {
+  const { w, h, dist: d } = L, xi = clamp(x | 0, 1, w - 2), yi = clamp(y | 0, 1, h - 2), i = yi * w + xi;
+  const gx = d[i + 1] - d[i - 1], gy = d[i + w] - d[i - w], n = Math.hypot(gx, gy);
+  if (n < 1e-6 || n > 1e6) { const a = L.r() * 6.2832; return [Math.cos(a), Math.sin(a)]; }
+  return [gx / n, gy / n];
+}
+const inBand = (L, x, y) => x >= 0 && y >= 0 && x < L.w && y < L.h && L.dist[(y | 0) * L.w + (x | 0)] <= L.R;
+function mark(L, x, y) { const d = L.dirty; if (x < d[0]) d[0] = x; if (y < d[1]) d[1] = y; if (x > d[2]) d[2] = x; if (y > d[3]) d[3] = y; }
+// Ink only darkens: accumulate (a wash of many faint passes) or keep the stronger (a fixed pattern being revealed).
+function add(L, x, y, a) {
+  if (x < 0 || y < 0 || x >= L.w || y >= L.h || a <= 0) return;
+  const i = y * L.w + x, v = Math.min(0.92, 1 - (1 - L.lev[i]) * (1 - a));
+  if (v > L.lev[i]) { L.lev[i] = v; mark(L, x, y); }
+}
+function keep(L, x, y, a) {
+  if (x < 0 || y < 0 || x >= L.w || y >= L.h) return;
+  const i = y * L.w + x;
+  if (a > L.lev[i]) { L.lev[i] = a; mark(L, x, y); }
+}
+function splat(L, fx, fy, a) {
+  const ix = Math.floor(fx - .5), iy = Math.floor(fy - .5), tx = fx - .5 - ix, ty = fy - .5 - iy;
+  add(L, ix, iy, a * (1 - tx) * (1 - ty)); add(L, ix + 1, iy, a * tx * (1 - ty));
+  add(L, ix, iy + 1, a * (1 - tx) * ty); add(L, ix + 1, iy + 1, a * tx * ty);
+}
+// One tick: vigour falls as the ink dries, so growth slows to nothing rather than stopping dead.
+function stepLiving(L) {
+  const t0 = performance.now(), vig = Math.pow(1 - L.tick / L.N, 1.4);
+  L.m.tick(L, vig);
+  L.tick++;
+  const d = L.dirty;
+  if (d[2] >= d[0]) {
+    const { ink, w: SW } = L.surf;
+    for (let y = d[1]; y <= d[3]; y++) for (let x = d[0]; x <= d[2]; x++) {
+      const g = (y + L.y0) * SW + x + L.x0, v = L.lev[y * L.w + x] * L.dark;
+      if (v > ink[g]) ink[g] = v;
+    }
+  }
+  const ms = performance.now() - t0; L.ms += ms; if (ms > L.peak) L.peak = ms;
+  const out = d[2] >= d[0] ? [d[0] + L.x0, d[1] + L.y0, d[2] + L.x0, d[3] + L.y0] : null;
+  L.dirty = [L.w, L.h, -1, -1];
+  return out;
+}
+
+// ---------- the mutations ----------
+const MUTS = {
+  // Capillary tendrils: hair-fine threads wick out of the edge along the paper's fibres, thinning as they drink.
+  wick: { name: "Wick", habit: "Fibre pull", salt: 0x3a11c0de,
+    blurb: "Hair-fine tendrils wick out of the edge along the paper's fibres, thinning as they go.",
+    init(L) {
+      const b = L.brush, e = edgesOf(L), K = Math.min(420, Math.round(e.length * (0.03 + 0.2 * b.growth)));
+      L.ag = pick(L.r, e, K).map(i => {
+        const x = i % L.w + .5, y = (i / L.w | 0) + .5, [nx, ny] = outward(L, x, y);
+        return { x: x + nx * .8, y: y + ny * .8, dx: nx, dy: ny, load: .55 + .45 * L.r(), sp: .3 + .5 * L.r(), wait: Math.floor(L.r() * L.r() * L.N * .45), alive: true };
+      });
+      L.agents = L.ag.length;
+    },
+    tick(L, v) {
+      const pull = L.brush.habit, cap = 900, n = L.ag.length, decay = 0.69 / (0.55 * L.R);
+      for (let k = 0; k < n; k++) {
+        const t = L.ag[k];
+        if (!t.alive) continue;
+        if (t.wait > 0) { t.wait--; continue; }
+        const f = fib(L.x0 + (t.x | 0), L.y0 + (t.y | 0));
+        let fx = FIB.cos[f], fy = FIB.sin[f];
+        if (fx * t.dx + fy * t.dy < 0) { fx = -fx; fy = -fy; }
+        const j = (L.r() - .5) * .45;
+        let dx = t.dx + pull * .5 * fx - t.dy * j, dy = t.dy + pull * .5 * fy + t.dx * j;
+        const n2 = Math.hypot(dx, dy) || 1; t.dx = dx / n2; t.dy = dy / n2;
+        const s = t.sp * v; t.x += t.dx * s; t.y += t.dy * s;
+        if (!inBand(L, t.x, t.y)) { t.alive = false; continue; }
+        const li = (t.y | 0) * L.w + (t.x | 0);
+        if (L.env[li] > .5 && L.dist[li] > 2) { t.alive = false; continue; }   // drank into other ink
+        splat(L, t.x, t.y, t.load * (.2 + .3 * FIB.fine[f]) * Math.min(1, s * 2.2));
+        t.load *= Math.exp(-s * decay);
+        if (t.load < .1) { t.alive = false; continue; }
+        if (L.ag.length < cap && L.r() < .025 * s * (.3 + L.brush.growth)) {
+          const a = (L.r() < .5 ? -1 : 1) * (.35 + .45 * L.r()), c = Math.cos(a), sn = Math.sin(a);
+          t.load *= .75;
+          L.ag.push({ x: t.x, y: t.y, dx: t.dx * c - t.dy * sn, dy: t.dx * sn + t.dy * c, load: t.load * .85, sp: t.sp * (.8 + .3 * L.r()), wait: 0, alive: true });
+        }
+      }
+      L.agents = Math.max(L.agents, L.ag.length);
+    } },
+
+  // Cell budding: cells swell on the edge and bud daughters outward, a little smaller each generation, into colonies.
+  bud: { name: "Bud", habit: "Cell size", salt: 0x0b0dce11,
+    blurb: "Cells swell on the edge and bud daughters outward, a little smaller each time, into colonies.",
+    init(L) {
+      const b = L.brush, rc = 1.3 + 3.7 * b.habit, e = edgesOf(L);
+      L.taken = new Uint8Array(L.w * L.h); L.cells = [];
+      const K = Math.min(220, Math.round(e.length / (rc * 2.5) * (.12 + .5 * b.growth)));
+      for (const i of pick(L.r, e, K)) {
+        const x = i % L.w + .5, y = (i / L.w | 0) + .5, [nx, ny] = outward(L, x, y), r = rc * (.7 + .5 * L.r());
+        this.tryCell(L, x + nx * r * .9, y + ny * r * .9, r, 0, Math.floor(L.r() * L.r() * L.N * .35), true);
+      }
+      L.agents = L.cells.length;
+    },
+    free(L, x, y, r) {
+      for (let a = 0; a < 7; a++) {
+        const px = a === 6 ? x : x + Math.cos(a * 1.047) * r * .8, py = a === 6 ? y : y + Math.sin(a * 1.047) * r * .8;
+        if (!inBand(L, px, py)) return false;
+        const i = (py | 0) * L.w + (px | 0);
+        if (L.taken[i] || (L.env[i] > .5 && L.dist[i] > 1.5)) return false;
+      }
+      return true;
+    },
+    tryCell(L, x, y, r, gen, wait, onEdge) {
+      if (!this.free(L, x, y, onEdge ? r * .5 : r)) return false;
+      const R = Math.ceil(r);
+      for (let py = (y - R) | 0; py <= y + R; py++) for (let px = (x - R) | 0; px <= x + R; px++)
+        if (px >= 0 && py >= 0 && px < L.w && py < L.h && Math.hypot(px + .5 - x, py + .5 - y) <= r * .9) L.taken[py * L.w + px] = 1;
+      // Each cell's look is fixed when it buds (membrane, a nucleus); growing only reveals it from the centre out.
+      L.cells.push({ x, y, r, g: Math.min(r, .6), gen, buds: 0, wait, nuc: L.r() < .55 ? [(L.r() - .5) * r * .6, (L.r() - .5) * r * .6, .25 + .35 * L.r()] : null });
+      return true;
+    },
+    draw(L, c) {
+      const R = Math.ceil(c.g + 1);
+      for (let py = Math.floor(c.y - R); py <= c.y + R; py++) for (let px = Math.floor(c.x - R); px <= c.x + R; px++) {
+        const d = Math.hypot(px + .5 - c.x, py + .5 - c.y), cov = clamp(c.g + .5 - d);
+        if (cov <= 0) continue;
+        const u = d / c.r;
+        let s = .14 + .5 * smooth((u - .6) / .3) * (1 - .6 * smooth((u - .98) / .12));
+        if (c.nuc) { const nd = Math.hypot(px + .5 - c.x - c.nuc[0], py + .5 - c.y - c.nuc[1]); s = Math.max(s, c.nuc[2] * clamp(c.r * .28 + .5 - nd)); }
+        keep(L, px, py, s * cov);
+      }
+    },
+    tick(L, v) {
+      const b = L.brush, n = L.cells.length, cap = 1400;
+      for (let k = 0; k < n; k++) {
+        const c = L.cells[k];
+        if (c.wait > 0) { c.wait--; continue; }
+        if (c.g < c.r) { c.g = Math.min(c.r, c.g + (.06 + .14 * b.growth) * v * c.r); this.draw(L, c); continue; }
+        if (c.buds >= 3 || L.cells.length >= cap || L.r() > (.03 + .16 * b.growth) * v) continue;
+        c.buds++;
+        const [ox, oy] = outward(L, c.x, c.y), a = Math.atan2(oy, ox) + (L.r() - .5) * 2.4;
+        const r2 = c.r * (.72 + .26 * L.r()), dd = (c.r + r2) * .9;
+        if (r2 > .9) this.tryCell(L, c.x + Math.cos(a) * dd, c.y + Math.sin(a) * dd, r2, c.gen + 1, 0, false);
+      }
+      L.agents = Math.max(L.agents, L.cells.length);
+    } },
+
+  // Physarum: scouts sense three ways ahead (Fluoddity's paired sensors), steer up the trail and toward other ink, lay
+  // trail; the trail diffuses and fades (Fluoddity's persistence and diffusion). Where the traffic is thick, veins darken.
+  mould: { name: "Mould", habit: "Wander", salt: 0x51a3e01d,
+    blurb: "Slime-mould scouts lay trails, find other ink nearby and thicken the veins between.",
+    init(L) {
+      const b = L.brush, e = edgesOf(L), K = Math.min(2400, Math.round(L.band.length * (.01 + .05 * b.growth)));
+      L.T = new Float32Array(L.w * L.h); L.T2 = new Float32Array(L.w * L.h); L.acc = new Float32Array(L.w * L.h);
+      L.ag = [];
+      for (let k = 0; k < K && e.length; k++) {
+        const i = e[(L.r() * e.length) | 0], x = i % L.w + .5, y = (i / L.w | 0) + .5, [nx, ny] = outward(L, x, y);
+        // Out from the edge at varied depths, late starters further out: no single front to trace a ring around the stroke.
+        const out = 1.5 + L.r() * L.r() * L.R * .8;
+        if (!inBand(L, x + nx * out, y + ny * out)) continue;
+        L.ag.push({ x: x + nx * out, y: y + ny * out, h: Math.atan2(ny, nx) + (L.r() - .5) * 2.4, wait: Math.floor(L.r() * L.N * .15) });
+      }
+      L.sa = (18 + 52 * b.habit) * Math.PI / 180; L.agents = L.ag.length;
+    },
+    // Trail, and other ink as food: the scouts find it and the veins between thicken. Their own stroke is home, not food.
+    sense(L, x, y) {
+      if (!inBand(L, x, y)) return -1;
+      const i = (y | 0) * L.w + (x | 0);
+      return L.T[i] + (L.env[i] > .5 && L.dist[i] > 2 ? 3 : 0);
+    },
+    tick(L, v) {
+      const { T, w } = L, SD = 6, sa = L.sa, ra = sa * .5;
+      for (let sub = 0; sub < 2; sub++) for (const a of L.ag) {
+        if (a.wait > 0) { if (sub === 0) a.wait--; continue; }
+        const F = this.sense(L, a.x + Math.cos(a.h) * SD, a.y + Math.sin(a.h) * SD);
+        const Lv = this.sense(L, a.x + Math.cos(a.h - sa) * SD, a.y + Math.sin(a.h - sa) * SD);
+        const Rv = this.sense(L, a.x + Math.cos(a.h + sa) * SD, a.y + Math.sin(a.h + sa) * SD);
+        if (F >= Lv && F >= Rv) { } else if (Lv > Rv) a.h -= ra; else if (Rv > Lv) a.h += ra; else a.h += L.r() < .5 ? -ra : ra;
+        a.h += (L.r() - .5) * .25;
+        const sp = .3 + .8 * v, nx = a.x + Math.cos(a.h) * sp, ny = a.y + Math.sin(a.h) * sp;
+        if (!inBand(L, nx, ny)) { a.h += Math.PI * (.6 + .8 * L.r()); continue; }
+        a.x = nx; a.y = ny;
+        T[(ny | 0) * w + (nx | 0)] += 1;
+      }
+      // Diffuse and fade over the band only (Fluoddity's persistence and 4-neighbour diffusion): cost follows the stroke.
+      const T2 = L.T2, K = 3, pers = .88, band = L.band, acc = L.acc;
+      let sum = 0;
+      for (let k = 0; k < band.length; k++) {
+        const i = band[k];
+        sum += T2[i] = pers * (T[i] * K + T[i - 1] + T[i + 1] + T[i - w] + T[i + w]) / (4 + K);
+      }
+      // A vein is where traffic runs well above the band's average; it darkens slowly, faster while wet.
+      const thr = .6 + 3 * sum / band.length, rate = .04 * v;
+      for (let k = 0; k < band.length; k++) {
+        const i = band[k], t = T2[i]; T[i] = t;
+        if (t > thr && L.dist[i] > 2) {
+          acc[i] = Math.min(1, acc[i] + (t - thr) / thr * rate * smooth((L.dist[i] - 2) / 7));
+          keep(L, i % w, i / w | 0, smooth(acc[i]) * .6);
+        }
+      }
+    } },
+
+  // Diffusion-limited growth: specks wander in from the edge of reach and stick where they touch, so branches screen
+  // each other and grow from their tips. Crystal: soft coral (sticks reluctantly, denser) to fine six-fold frost.
+  frost: { name: "Frost", habit: "Crystal", salt: 0xf2057a11,
+    blurb: "Drifting specks stick where they touch the ink, branching out as soft coral or fine frost.",
+    init(L) {
+      const b = L.brush, e = edgesOf(L);
+      L.fz = new Uint8Array(L.w * L.h); L.front = 2; L.axis = L.r() * Math.PI / 3;
+      L.budget = Math.round(e.length * (.5 + 4.5 * b.growth)); L.stuck = 0; L.allow = 0;
+      L.buckets = [];
+      for (const i of L.band) { const d = Math.round(L.dist[i]); (L.buckets[d] ||= []).push(i); }
+      const W = Math.min(420, Math.round(40 + L.band.length * (.002 + .01 * b.growth)));
+      L.ag = []; for (let k = 0; k < W; k++) { const a = { i: 0 }; this.spawn(L, a); L.ag.push(a); }
+      L.agents = W;
+    },
+    spawn(L, a) {
+      for (let t = 0; t < 8; t++) {
+        const d = Math.min(L.R, Math.round(L.front + 2 + L.r() * 8)), bk = L.buckets[d];
+        if (!bk || !bk.length) continue;
+        const i = bk[(L.r() * bk.length) | 0];
+        if (!this.occ(L, i)) { a.i = i; return; }
+      }
+      a.i = -1;
+    },
+    occ: (L, i) => L.fz[i] === 1 || L.own[i] >= .5 || L.env[i] > .5,
+    tick(L, v) {
+      // Paced by vigour (whose integral over a life is 1/2.4), so the frost spreads over the whole wet time and slows as it dries.
+      L.allow += L.budget * 2.4 / L.N * v;
+      if (L.stuck >= L.budget || L.allow < 1) return;
+      const { w, dist } = L, crystal = L.brush.habit, steps = Math.ceil(20 * v);
+      const DX = [1, 1, 0, -1, -1, -1, 0, 1], DY = [0, 1, 1, 1, 0, -1, -1, -1];
+      for (const a of L.ag) {
+        if (a.i < 0) { this.spawn(L, a); continue; }
+        for (let s = 0; s < steps; s++) {
+          const i = a.i, x = i % w, y = i / w | 0;
+          let stuck = false;
+          for (let k = 0; k < 8; k += 1) {
+            const nx = x + DX[k], ny = y + DY[k];
+            if (!this.occ(L, ny * w + nx)) continue;
+            const al = Math.abs(Math.cos(3 * (Math.atan2(DY[k], DX[k]) - L.axis)));
+            if (L.r() < lerp(.3, 1, crystal) * lerp(1, .6 + .4 * al, crystal * .75)) { stuck = true; break; }
+          }
+          if (stuck) {
+            L.fz[i] = 1; L.stuck++; L.allow--; if (dist[i] > L.front) L.front = Math.min(L.R - 2, dist[i]);
+            const f = FIB.fine[fib(L.x0 + x, L.y0 + y)], s0 = (.42 + .3 * f) * (.6 + .4 * v);
+            keep(L, x, y, s0);
+            for (let k = 0; k < 8; k += 2) keep(L, x + DX[k], y + DY[k], Math.min(L.lev[(y + DY[k]) * w + x + DX[k]] + .1, s0 * .45));
+            this.spawn(L, a);
+            if (L.stuck >= L.budget || L.allow < 1) return;
+            break;
+          }
+          // Walk: mostly random, a slight drift down toward the stroke.
+          let k = (L.r() * 8) | 0;
+          if (L.r() < .18) { let best = 1e9; for (let q = 0; q < 8; q++) { const j = (y + DY[q]) * w + x + DX[q]; if (dist[j] < best) { best = dist[j]; k = q; } } }
+          const nx = x + DX[k], ny = y + DY[k];
+          if (!inBand(L, nx, ny)) { this.spawn(L, a); break; }
+          if (this.occ(L, ny * w + nx)) continue;
+          a.i = ny * w + nx;
+        }
+      }
+    } },
+
+  // Fluoddity's own rule: each swimmer reads the current it and its kin left behind at two sensors, and a seeded
+  // Fourier "black box" (mirrored for no left/right bias) turns that into a push and a hop. Cohorts carry mutated copies.
+  swim: { name: "Swim", habit: "Mutation", salt: 0x5f1dd17e,
+    blurb: "Fluoddity's rule: swimmers steer by the currents they leave; the seed picks the species, cohorts mutate it.",
+    rule(seed, mut, cohort) {
+      const r = rng(seed ^ 0xf100dd17), m = rng((seed ^ Math.imul(cohort + 1, 0x9e3779b1)) >>> 0), C = [];
+      for (let i = 0; i < 10; i++) {
+        const fs = 1 + 2 * r() * r(), f = [0, 0, 0, 0].map(() => (r() * 2 - 1) * fs), a = [0, 0, 0, 0].map(() => r() * 2 - 1);
+        if (cohort > 0) for (let q = 0; q < 4; q++) { a[q] += mut * (m() * 2 - 1); f[q] *= 1 + mut * .5 * (m() - .5); }
+        C.push({ f, a });
+      }
+      return C;
+    },
+    box(C, l0, l1, r0, r1, out) {
+      out[0] = out[1] = out[2] = out[3] = 0;
+      for (let i = 0; i < 10; i++) {
+        const c = C[i], ph = l0 * c.f[0] + l1 * c.f[1] + r0 * c.f[2] + r1 * c.f[3], off = 2 * i * .6283 + c.a[3] * 3.14159;
+        out[0] += c.a[0] * Math.sin(ph + off); out[1] += c.a[1] * Math.cos(ph + off * .7);
+        out[2] += c.a[2] * Math.sin(ph * 2 + off * 1.3); out[3] += c.a[3] * Math.cos(ph * 2 + off * .5);
+      }
+    },
+    init(L) {
+      const b = L.brush, e = edgesOf(L), K = Math.min(420, Math.round(L.band.length * (.002 + .012 * b.growth)));
+      L.rules = [0, 1, 2].map(c => this.rule(b.seed, b.habit * .9, c));
+      L.VX = new Float32Array(L.w * L.h); L.VY = new Float32Array(L.w * L.h); L.V2 = new Float32Array(L.w * L.h); L.V3 = new Float32Array(L.w * L.h);
+      L.edges = e; L.o1 = [0, 0, 0, 0]; L.o2 = [0, 0, 0, 0];
+      L.ag = []; for (let k = 0; k < K; k++) { const a = { c: k % 3 }; this.spawn(L, a); L.ag.push(a); }
+      L.agents = K;
+    },
+    spawn(L, a) {
+      const i = L.edges.length ? L.edges[(L.r() * L.edges.length) | 0] : L.band[(L.r() * L.band.length) | 0];
+      a.x = i % L.w + .5; a.y = (i / L.w | 0) + .5;
+      const [nx, ny] = outward(L, a.x, a.y), t = (L.r() - .5) * 1.6;
+      a.vx = (nx * Math.cos(t) - ny * Math.sin(t)) * .4; a.vy = (nx * Math.sin(t) + ny * Math.cos(t)) * .4;
+    },
+    // As the ink dries the swimmers stop where they are and darken in place over the last ticks: bodies, fixed.
+    body(L, a, k) {
+      if (a.fx === undefined) { const sp = Math.hypot(a.vx, a.vy); a.fx = sp > 1e-6 ? a.vx / sp : 1; a.fy = sp > 1e-6 ? a.vy / sp : 0; }
+      const fx = a.fx, fy = a.fy, len = 1.2 + .9 * a.c;
+      for (let t = -len; t <= len; t += .5) {
+        const x = a.x + fx * t, y = a.y + fy * t, xi = x | 0, yi = y | 0;
+        if (xi < 0 || yi < 0 || xi >= L.w || yi >= L.h || L.own[yi * L.w + xi] >= .5) continue;
+        keep(L, xi, yi, k * .62 * (1 - .5 * Math.abs(t) / len));
+      }
+    },
+    tick(L, v) {
+      const { w, VX, VY } = L, SD = 4, SA = .28 * Math.PI, gain = 1.6, o1 = L.o1, o2 = L.o2;
+      const at = (x, y) => (x >= 0 && y >= 0 && x < L.w && y < L.h) ? (y | 0) * w + (x | 0) : -1;
+      if (v < .12) { for (const a of L.ag) this.body(L, a, (.12 - v) / .12); return; }
+      for (let sub = 0; sub < 2; sub++) for (const a of L.ag) {
+        if (L.r() < .002) { this.spawn(L, a); continue; }
+        let sp = Math.hypot(a.vx, a.vy);
+        const fx = sp > 1e-6 ? a.vx / sp : 1, fy = sp > 1e-6 ? a.vy / sp : 0, lx = fy, ly = -fx;
+        const c = Math.cos(SA), s = Math.sin(SA);
+        const il = at(a.x + (fx * c - fy * s) * SD, a.y + (fx * s + fy * c) * SD), ir = at(a.x + (fx * c + fy * s) * SD, a.y + (-fx * s + fy * c) * SD);
+        const Lx = il < 0 ? 0 : VX[il] * gain, Ly = il < 0 ? 0 : VY[il] * gain, Rx = ir < 0 ? 0 : VX[ir] * gain, Ry = ir < 0 ? 0 : VY[ir] * gain;
+        const L0 = Lx * fx + Ly * fy, L1 = Lx * lx + Ly * ly, R0 = Rx * fx + Ry * fy, R1 = Rx * lx + Ry * ly;
+        const C = L.rules[a.c];
+        this.box(C, L0, L1, R0, R1, o1); this.box(C, R0, -R1, L0, -L1, o2);
+        const F0 = o1[0] + o2[0], F1 = o1[1] - o2[1], S0 = o1[2] + o2[2], S1 = o1[3] - o2[3];
+        a.vx = a.vx * .8 + (fx * F0 + lx * F1) * .14 * v; a.vy = a.vy * .8 + (fy * F0 + ly * F1) * .14 * v;
+        sp = Math.hypot(a.vx, a.vy); const cap = .04 + 1.1 * v; if (sp > cap) { a.vx *= cap / sp; a.vy *= cap / sp; }
+        let nx = a.x + a.vx + (fx * S0 + lx * S1) * .1 * v, ny = a.y + a.vy + (fy * S0 + ly * S1) * .1 * v;
+        if (!inBand(L, nx, ny)) {
+          const [ox, oy] = outward(L, a.x, a.y);   // turned back toward the ink at the edge of its reach
+          a.vx = a.vx * .5 - ox * .3; a.vy = a.vy * .5 - oy * .3;
+          if (!inBand(L, a.x, a.y)) this.spawn(L, a);
+          continue;
+        }
+        a.x = nx; a.y = ny;
+        const i = (ny | 0) * w + (nx | 0);
+        VX[i] += a.vx; VY[i] += a.vy;
+        if (L.own[i] < .5) splat(L, nx, ny, .022 * v);
+      }
+
+      const band = L.band, V2 = L.V2, V3 = L.V3, K = 3, pers = .9;
+      for (let k = 0; k < band.length; k++) {
+        const i = band[k];
+        V2[i] = pers * (VX[i] * K + VX[i - 1] + VX[i + 1] + VX[i - w] + VX[i + w]) / (4 + K);
+        V3[i] = pers * (VY[i] * K + VY[i - 1] + VY[i + 1] + VY[i - w] + VY[i + w]) / (4 + K);
+      }
+      for (let k = 0; k < band.length; k++) { const i = band[k]; VX[i] = V2[i]; VY[i] = V3[i]; }
+    } }
+};
+const MUT_KEYS = Object.keys(MUTS);
+
+// ---------- demo strokes, specimens and the bench: the same engine, offscreen ----------
+function synthStroke(path, step = 2.2) {
+  const pts = []; let t = 0;
+  for (let k = 1; k < path.length; k++) {
+    const [ax, ay] = path[k - 1], [bx, by] = path[k], n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / step));
+    for (let s = 0; s < n; s++) { const u = s / n; t += 7; addPoint(pts, lerp(ax, bx, u), lerp(ay, by, u), .55 + .25 * Math.sin(t / 90), t); }
+  }
+  const [lx, ly] = path[path.length - 1]; addPoint(pts, lx, ly, .5, t + 7);
+  return pts;
+}
+function curve(fn, n) { const out = []; for (let i = 0; i <= n; i++) out.push(fn(i / n)); return out; }
+// A wave and a dash beside it: room to wick, bud and bridge.
+function specimenPaths(w, h) {
+  return [curve(t => [w * (.08 + .7 * t), h * (.55 + .2 * Math.sin(t * 6.3))], 60), curve(t => [w * (.62 + .28 * t), h * (.22 + .06 * t)], 10)];
+}
+function layStroke(surf, pts, size, dark, brush) {
+  surf.scratch.fill(0);
+  const rect = stampInk(surf, pts, size, true, 1);
+  const L = brush && brush.life ? makeLiving(surf, brush, pts, rect, dark) : null;
+  for (let y = rect[1]; y <= rect[3]; y++) for (let x = rect[0]; x <= rect[2]; x++) {
+    const i = y * surf.w + x, v = surf.scratch[i] * dark; if (v > surf.ink[i]) surf.ink[i] = v; surf.scratch[i] = 0;
+  }
+  return { L, rect };
+}
+function runToDry(L) { while (L.tick < L.N) stepLiving(L); }
+function checksum(a) { let h = 0x811c9dc5; for (let i = 0; i < a.length; i++) h = Math.imul(h ^ Math.round(a[i] * 255), 16777619); return h >>> 0; }
+function bench(dialsOf, seed) {
+  const rows = [];
+  for (const k of MUT_KEYS) {
+    const sums = [];
+    let row = null;
+    for (let run = 0; run < 2; run++) {
+      const surf = surface(640, 400), brush = { ...dialsOf(k), life: k, seed, drying: Math.sqrt((10000 - 750) / 29250) };
+      const path = curve(t => [60 + 520 * t + 40 * Math.sin(t * 12.6), 200 + 110 * Math.sin(t * 6.3) - 60 * Math.cos(t * 12.6)], 120);
+      const pts = synthStroke(path);
+      const { L } = layStroke(surf, pts, INK_SIZE[1], 1, brush);
+      runToDry(L);
+      sums.push(checksum(surf.ink));
+      let touched = 0; for (let i = 0; i < L.lev.length; i++) if (L.lev[i] > .03) touched++;
+      row = { k, len: Math.round(pts[pts.length - 1].d), ticks: L.N, msTick: L.ms / L.N, peak: L.peak, msWetSec: L.ms / L.N * TPS, band: L.band.length, region: L.w * L.h, agents: L.agents, touched };
+    }
+    row.same = sums[0] === sums[1];
+    rows.push(row);
+  }
+  return rows;
+}
+</script>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const DEF = { growth: .5, reach: .5, habit: .5, drying: .55 };
+const S = { life: "mould", dials: {}, size: 1, seed: 0x2c6f9a1, manta: false };
+for (const k of MUT_KEYS) S.dials[k] = { ...DEF };
+S.dials.wick.habit = .7; S.dials.bud.habit = .45; S.dials.frost.habit = .35; S.dials.swim.habit = .4; S.dials.mould.reach = .6;
+const params = new URLSearchParams(location.search);
+if (MUTS[params.get("m")]) S.life = params.get("m");
+const brushNow = () => ({ ...S.dials[S.life], life: S.life, seed: S.seed });
+
+// ---------- dials and the share code's tail ----------
+const DIALS = [["growth", "Growth"], ["reach", "Reach"], ["habit", null], ["drying", "Drying time"]];
+function shown(k, v) {
+  if (k === "drying") return (lifeMs(v) / 1000).toFixed(1) + " s";
+  if (k === "reach") return reachPx(v) + " px";
+  return v.toFixed(2);
+}
+function renderDials() {
+  const d = S.dials[S.life], m = MUTS[S.life];
+  $("dials").innerHTML = DIALS.map(([k, lab]) => `<div class="gene${k === "drying" ? " life" : ""}"><label class="lab" for="d-${k}">${lab || m.habit}</label>` +
+    `<input type="range" id="d-${k}" min="0" max="1" step="0.001" value="${d[k]}"><span class="val" id="v-${k}">${shown(k, d[k])}</span></div>`).join("");
+  for (const [k] of DIALS) {
+    const input = $("d-" + k);
+    input.addEventListener("input", () => { d[k] = +input.value; $("v-" + k).textContent = shown(k, d[k]); renderCode(); });
+    input.addEventListener("change", () => queueSpecimen(S.life));
+  }
+}
+// As BrushCode: a choice is one digit, a dial two base-36 digits over its range (1295 steps). Appended after Splatter.
+const step36 = v => { const s = Math.round(clamp(v) * 1295).toString(36); return s.length < 2 ? "0" + s : s; };
+function renderCode() {
+  const d = S.dials[S.life], digit = MUT_KEYS.indexOf(S.life) + 1;
+  $("code").innerHTML = `<span class="lab">Code tail</span> …<b>${digit}${step36(d.growth)}${step36(d.reach)}${step36(d.habit)}${step36(d.drying)}</b>.${(S.seed >>> 0).toString(36)}` +
+    `<br><span class="muted">life ${digit} (${MUTS[S.life].name.toLowerCase()}) · growth · reach · ${MUTS[S.life].habit.toLowerCase()} · drying · seed</span>`;
+  $("seed").textContent = (S.seed >>> 0).toString(36);
+}
+function renderChips() {
+  $("chips").innerHTML = MUT_KEYS.map(k => `<button class="chip" type="button" data-k="${k}" aria-pressed="${k === S.life}">${MUTS[k].name}</button>`).join("");
+  $("chips").querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => choose(b.dataset.k)));
+  $("blurb").textContent = MUTS[S.life].blurb;
+  document.querySelectorAll(".spec").forEach(b => b.setAttribute("aria-pressed", b.dataset.k === S.life));
+}
+function choose(k) { S.life = k; renderChips(); renderDials(); renderCode(); status(MUTS[k].name + ": " + MUTS[k].blurb); }
+
+// ---------- the pad ----------
+const pad = $("pad"), pctx = pad.getContext("2d");
+const DENSITY = 1.5;
+let surf = surface(pad.width, pad.height), shownT = new Float32Array(pad.width * pad.height).fill(toneOf(0));
+let living = [], pending = null, ghostRect = null, lastRefresh = 0, live = null;
+const union = (a, b) => !a ? b : !b ? a : [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
+function fit() {
+  const box = pad.parentElement;
+  const w = Math.max(200, Math.min(1800, Math.round(box.clientWidth * DENSITY))), h = Math.max(200, Math.min(1400, Math.round(box.clientHeight * DENSITY)));
+  if (w === surf.w && h === surf.h) return;
+  const old = surf, next = surface(w, h), cw = Math.min(w, old.w);
+  for (let y = 0; y < Math.min(h, old.h); y++) next.ink.set(old.ink.subarray(y * old.w, y * old.w + cw), y * w);
+  living = [];   // a resize dries everything in place
+  surf = next; pad.width = w; pad.height = h; shownT = new Float32Array(w * h).fill(toneOf(0));
+  render([0, 0, w - 1, h - 1], false);
+}
+// What the screen shows. On Manta cadence, each refresh keeps a little of what was there: e-ink's ghost.
+const GHOST = .18, MANTA_MS = 333;
+function render(rect, ghost) {
+  const x0 = Math.max(0, rect[0]), y0 = Math.max(0, rect[1]), x1 = Math.min(surf.w - 1, rect[2]), y1 = Math.min(surf.h - 1, rect[3]);
+  if (x1 < x0 || y1 < y0) return;
+  const rw = x1 - x0 + 1, rh = y1 - y0 + 1, img = pctx.createImageData(rw, rh), data = img.data, { w, ink, scratch } = surf;
+  for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) {
+    const i = (y + y0) * w + x + x0;
+    let id = ink[i]; if (live && scratch[i] > 0) id = Math.max(id, scratch[i] * live.dark);
+    const t = toneOf(id);
+    let s = ghost ? t + (shownT[i] - t) * GHOST : t;
+    if (Math.abs(s - t) < 1.5) s = t;
+    shownT[i] = s;
+    const o = (y * rw + x) * 4; data[o] = data[o + 1] = data[o + 2] = s; data[o + 3] = 255;
+  }
+  pctx.putImageData(img, x0, y0);
+}
+function pagePoint(e) {
+  const r = pad.getBoundingClientRect(), sx = pad.width / r.width, sy = pad.height / r.height;
+  const pen = e.pointerType === "pen" && e.pressure > 0;
+  return [(e.clientX - r.left) * sx, (e.clientY - r.top) * sy, pen ? e.pressure : .5, e.timeStamp];
+}
+pad.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  try { pad.setPointerCapture(e.pointerId); } catch (err) { }
+  live = { pts: [], dark: 1, size: INK_SIZE[S.size], done: 1 };
+  addPoint(live.pts, ...pagePoint(e));
+});
+pad.addEventListener("pointermove", e => {
+  if (!live) return;
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  let added = false;
+  for (const ev of evs) added = addPoint(live.pts, ...pagePoint(ev)) || added;
+  if (!added || live.pts.length < 2) return;
+  const rect = stampInk(surf, live.pts, live.size, false, live.done);
+  live.done = live.pts.length;
+  render(rect, false);   // the pen itself draws at once, as the Manta's fast pen mode
+});
+function endStroke() {
+  if (!live) return;
+  const Lv = live;
+  if (Lv.pts.length < 2) { const p = Lv.pts[0]; if (p) addPoint(Lv.pts, p.x + .8, p.y, p.p, p.t + 16); }
+  surf.scratch.fill(0);
+  const { L, rect } = layStroke(surf, Lv.pts, Lv.size, Lv.dark, brushNow());
+  live = null;
+  if (L) { L.born = performance.now(); living.push(L); }
+  render([rect[0] - 4, rect[1] - 4, rect[2] + 4, rect[3] + 4], false);
+}
+pad.addEventListener("pointerup", endStroke);
+pad.addEventListener("pointercancel", endStroke);
+new ResizeObserver(() => fit()).observe(pad.parentElement);
+
+// ---------- the clock: fixed ticks follow wall time; the screen follows the cadence ----------
+let lastStatus = 0;
+function pump() {
+  const now = performance.now();
+  for (const L of living) {
+    const target = Math.min(L.N, Math.floor((now - L.born) * TPS / 1000));
+    let n = 0;
+    while (L.tick < target && n < 4) { const r = stepLiving(L); if (r) pending = union(pending, r); n++; }
+  }
+  living = living.filter(L => L.tick < L.N);
+  if (S.manta) {
+    if (now - lastRefresh >= MANTA_MS && (pending || ghostRect)) { const r = union(pending, ghostRect); render(r, true); ghostRect = pending; pending = null; lastRefresh = now; }
+  } else if (pending) { render(pending, false); pending = null; }
+  if (now - lastStatus > 250) { lastStatus = now; liveStatus(now); }
+}
+setInterval(pump, 40);
+let lastCost = null;
+function liveStatus(now) {
+  const newest = living[living.length - 1];
+  $("wet").style.width = newest ? (100 * (1 - newest.tick / newest.N)).toFixed(1) + "%" : "0";
+  if (!living.length) { if (lastCost) { status(lastCost); lastCost = null; } return; }
+  const L = newest, left = Math.max(0, (L.N - L.tick) / TPS), msTick = L.ms / Math.max(1, L.tick);
+  status(`${living.length} alive · ${L.m.name.toLowerCase()} dries in ${left.toFixed(1)} s · ${msTick.toFixed(2)} ms/tick ≈ ${(msTick * TPS).toFixed(0)} ms per wet second · ${L.agents} agents · ${L.band.length} px in reach`);
+  lastCost = `Dried. Last stroke: ${(msTick * TPS).toFixed(0)} ms of work per wet second (${msTick.toFixed(2)} ms/tick, peak ${L.peak.toFixed(1)}).`;
+}
+function status(t) { $("status").textContent = t; $("status").title = t; }
+function dryAll() {
+  let r = null;
+  for (const L of living) while (L.tick < L.N) r = union(r, stepLiving(L)) || r;
+  living = [];
+  if (r) render(r, false);
+  status("Dried: fixed for good.");
+}
+function demo() {
+  const w = surf.w, h = surf.h, b = brushNow(), paths = [
+    curve(t => [w * (.1 + .55 * t), h * (.42 + .16 * Math.sin(t * 7))], 70),
+    curve(t => [w * (.52 + .3 * t), h * (.7 - .08 * t)], 12),
+    curve(t => [w * (.74 + .1 * Math.cos(t * 6.283)), h * (.32 + .14 * Math.sin(t * 6.283))], 40)];
+  const now = performance.now();
+  for (const p of paths) {
+    const { L, rect } = layStroke(surf, synthStroke(p.map(([x, y]) => [x, y])), INK_SIZE[S.size], 1, b);
+    if (L) { L.born = now; living.push(L); }
+    render([rect[0] - 4, rect[1] - 4, rect[2] + 4, rect[3] + 4], false);
+  }
+}
+$("demo").addEventListener("click", demo);
+$("drynow").addEventListener("click", dryAll);
+$("clear").addEventListener("click", () => { living = []; surf.ink.fill(0); surf.scratch.fill(0); render([0, 0, surf.w - 1, surf.h - 1], false); status("Clear."); });
+[0, 1, 2].forEach(i => $("sz" + i).addEventListener("click", () => { S.size = i; [0, 1, 2].forEach(j => $("sz" + j).setAttribute("aria-pressed", i === j)); }));
+$("manta").addEventListener("click", () => {
+  S.manta = !S.manta; $("manta").setAttribute("aria-checked", S.manta);
+  status(S.manta ? "Manta cadence: growth redraws 3 times a second, each leaving a faint ghost." : "Full frame rate.");
+});
+$("reroll").addEventListener("click", () => { S.seed = (Math.random() * 4294967296) >>> 0; renderCode(); MUT_KEYS.forEach(queueSpecimen); });
+
+// ---------- specimens ----------
+const SPW = 300, SPH = 190;
+$("specs").innerHTML = MUT_KEYS.map(k => `<button class="spec" type="button" data-k="${k}" aria-pressed="false"><canvas width="${SPW}" height="${SPH}"></canvas><span>${MUTS[k].name}</span></button>`).join("");
+document.querySelectorAll(".spec").forEach(b => b.addEventListener("click", () => choose(b.dataset.k)));
+const specQueue = new Set();
+let specTimer = 0;
+function queueSpecimen(k) { specQueue.add(k); clearTimeout(specTimer); specTimer = setTimeout(drainSpecimens, 30); }
+function drainSpecimens() {
+  const k = specQueue.values().next().value;
+  if (!k) return;
+  specQueue.delete(k);
+  const s = surface(SPW, SPH), b = { ...S.dials[k], life: k, seed: S.seed };
+  for (const p of specimenPaths(SPW, SPH)) { const { L } = layStroke(s, synthStroke(p), INK_SIZE[1] * .75, 1, b); runToDry(L); }
+  const cv = document.querySelector(`.spec[data-k="${k}"] canvas`), cx = cv.getContext("2d"), img = cx.createImageData(SPW, SPH);
+  for (let i = 0; i < s.ink.length; i++) { const t = toneOf(s.ink[i]); img.data[i * 4] = img.data[i * 4 + 1] = img.data[i * 4 + 2] = t; img.data[i * 4 + 3] = 255; }
+  cx.putImageData(img, 0, 0);
+  if (specQueue.size) specTimer = setTimeout(drainSpecimens, 0);
+}
+
+// ---------- bench ----------
+function runBench() {
+  status("Benching…");
+  setTimeout(() => {
+    const rows = bench(k => S.dials[k], S.seed);
+    $("benchout").innerHTML = `<table><tr><th>mutation</th><th>ms/tick</th><th>peak</th><th>ms per wet s</th><th>px in reach</th><th>agents</th><th>same twice</th></tr>` +
+      rows.map(r => `<tr><td>${MUTS[r.k].name}</td><td>${r.msTick.toFixed(2)}</td><td>${r.peak.toFixed(1)}</td><td>${r.msWetSec.toFixed(1)}</td><td>${r.band}</td><td>${r.agents}</td><td>${r.same ? "yes" : "NO"}</td></tr>`).join("") + `</table>`;
+    window.BENCH = rows;
+    status(`Bench: stroke ${rows[0].len} px, 10 s life. ` + rows.map(r => `${MUTS[r.k].name} ${r.msWetSec.toFixed(0)} ms/s`).join(" · "));
+  }, 30);
+}
+$("bench").addEventListener("click", runBench);
+
+// ---------- start ----------
+renderChips(); renderDials(); renderCode();
+fit();
+MUT_KEYS.forEach(queueSpecimen);
+setTimeout(() => {
+  demo();
+  if (params.has("dry")) dryAll();
+  if (params.has("manta")) $("manta").click();
+  if (params.has("bench")) { $("benchbox").open = true; runBench(); }
+}, 60);
+</script>
+</body>
+</html>

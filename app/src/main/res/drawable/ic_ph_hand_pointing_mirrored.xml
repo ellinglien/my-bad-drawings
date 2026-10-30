@@ -1,0 +1,9 @@
+<!-- Drawn for My Bad Drawings in Iconoir's style: a simple open hand, mirrored for the Right-Handed row. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <group android:scaleX="-1" android:pivotX="12" android:pivotY="12">
+        <path android:pathData="M7.5 12.5V5C7.5 3.2 10.5 3.2 10.5 5V11" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+        <path android:pathData="M10.5 11V4C10.5 2.2 13.5 2.2 13.5 4V11" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+        <path android:pathData="M13.5 11V4.5C13.5 2.7 16.5 2.7 16.5 4.5V11" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+        <path android:pathData="M16.5 11V6.5C16.5 4.7 19.5 4.7 19.5 6.5V15C19.5 19 16.8 22 13 22H12C9.6 22 8 20.8 6.9 18.9L3.9 13.6C3.3 12.5 3.7 11.3 4.8 11C5.8 10.7 6.7 11.2 7.2 12.1L7.5 12.5" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    </group>
+</vector>

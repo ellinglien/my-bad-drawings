@@ -8,9 +8,9 @@ final class EraseChecks {
         byte[] original=doc.snapshot();
         ToolSettings settings=ToolSettings.defaults(ToolSettings.Tool.AIRBRUSH).size(64).strength(70);
         ToolStroke erase=new ToolStroke(doc,settings,0,true);
-        erase.sample(40,64.5f,.45f,0,0);erase.sample(88,64.5f,.45f,0,0);
+        erase.sample(40,64.5f,.78f,0,0);erase.sample(88,64.5f,.78f,0,0);
         int first=doc.opacity(64,64);
-        erase.sample(40,64.5f,.45f,0,0);
+        erase.sample(40,64.5f,.78f,0,0);
         check(doc.opacity(64,64)<first,"Another pass removes more coverage");
         check(doc.opacity(64,64)<doc.opacity(82,64),"Soft edge retains more coverage");
         erase.finish();byte[] erased=doc.snapshot();
@@ -27,7 +27,7 @@ final class EraseChecks {
         doc.finish();check(!Arrays.equals(original,doc.snapshot()),"Pencil removes pigment with its grain");
         check(doc.undo()&&Arrays.equals(original,doc.snapshot()),"Pencil undo restores layer");
         ToneDocument empty=new ToneDocument(128,128);
-        erase=new ToolStroke(empty,settings,255,true);erase.sample(64,64,.45f,0,0);
+        erase=new ToolStroke(empty,settings,255,true);erase.sample(64,64,.78f,0,0);
         check(!erase.finish()&&empty.opacity(64,64)==0,"Erasing empty layer adds no paint or undo");
         ToneDocument painted=new ToneDocument(128,128),removed=layered();
         ToolStroke paint=new ToolStroke(painted,settings,0),rub=new ToolStroke(removed,settings,255,true);

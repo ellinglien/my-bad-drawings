@@ -1,0 +1,11 @@
+<!-- Drawn for My Bad Drawings in Iconoir's style: pointing finger with a tap, after Iconoir one-finger-select-hand-gesture. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <group android:scaleX="0.8" android:scaleY="0.8" android:translateX="0.4" android:pivotX="12" android:pivotY="22">
+        <path android:pathData="M7.5 12L5.49591 14.6721C4.91845 15.4421 4.97127 16.5141 5.6216 17.2236L9.4055 21.3515C9.78431 21.7647 10.3183 22 10.8789 22C11.9651 22 13.7415 22 15.5 22C17.9 22 19.5 20 19.5 18V9.42859" android:strokeColor="#000000" android:strokeWidth="1.875" android:strokeLineCap="round" android:strokeLineJoin="round" />
+        <path android:pathData="M16.5 10V9.42852C16.5 7.1428 19.5 7.1428 19.5 9.42852" android:strokeColor="#000000" android:strokeWidth="1.875" android:strokeLineCap="round" android:strokeLineJoin="round" />
+        <path android:pathData="M13.5 10V8.2857C13.5 5.99998 16.5 5.99998 16.5 8.2857V10" android:strokeColor="#000000" android:strokeWidth="1.875" android:strokeLineCap="round" android:strokeLineJoin="round" />
+        <path android:pathData="M10.5 10V7.50005C10.5 5.21434 13.5 5.21434 13.5 7.50005V10" android:strokeColor="#000000" android:strokeWidth="1.875" android:strokeLineCap="round" android:strokeLineJoin="round" />
+        <path android:pathData="M10.5 10V3.49899C10.5 2.67056 9.82843 2 9 2C8.17157 2 7.5 2.67157 7.5 3.5V15" android:strokeColor="#000000" android:strokeWidth="1.875" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    </group>
+    <path android:pathData="M7.9 5.1L6.8 4M10 4.2V2.7M12.1 5.1L13.2 4" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

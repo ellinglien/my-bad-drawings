@@ -3,7 +3,6 @@ package io.github.mpdairy.monopaint;
 import android.app.AlertDialog;
 import android.graphics.Color;
 import android.graphics.RectF;
-import android.graphics.Typeface;
 import android.text.InputFilter;
 import android.text.TextUtils;
 import android.view.Gravity;
@@ -13,7 +12,6 @@ import android.widget.PopupWindow;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
-import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /**
  * The Layers popup: list with visibility toggles, plus add, reorder, opacity, rename
@@ -32,7 +30,7 @@ final class LayersPanel {
         rows.setBackground(Ui.outline(dp(2), Color.BLACK, 0));
         TextView title = new TextView(app); title.setText("Layers · " + document.layerCount() + " / " + ToneDocument.MAX_LAYERS);
         title.setTextColor(Color.BLACK); title.setTextSize(18); title.setPadding(dp(8), dp(4), 0, dp(4));
-        title.setTypeface(null, Typeface.BOLD); rows.addView(title);
+        title.setTypeface(Theme.face(700)); rows.addView(title);
         TextView hint = SettingsForm.hintText(app, "Top layers cover the ones below. Tap a name to draw on it.");
         hint.setPadding(dp(8), 0, dp(8), dp(8)); rows.addView(hint);
         LinearLayout actions = new LinearLayout(app); rows.addView(actions);
@@ -86,7 +84,7 @@ final class LayersPanel {
         LinearLayout row = new LinearLayout(app); row.setGravity(Gravity.CENTER_VERTICAL);
         ToolButton name = textButton(document.layerName(index) + (selected ? "  ✓" : ""));
         name.setTextSize(15); name.setSingleLine(true); name.setEllipsize(TextUtils.TruncateAt.END);
-        name.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
+        name.setTypeface(Theme.face(selected ? 700 : 400));
         app.toolbar.markActive(name, selected);
         name.setOnClickListener(v -> { change(() -> document.selectLayer(index)); dismiss(); });
         row.addView(name, new LinearLayout.LayoutParams(0, dp(52), 1));
@@ -94,7 +92,7 @@ final class LayersPanel {
         visible.setBackgroundColor(Color.WHITE); visible.setPadding(dp(10), dp(10), dp(10), dp(10));
         Runnable describe = () -> {
             boolean shown = document.layerVisible(index);
-            visible.iconOnly(shown ? R.drawable.ic_layer_visible : R.drawable.ic_layer_hidden);
+            visible.iconOnly(shown ? R.drawable.ic_ph_eye : R.drawable.ic_ph_eye_closed);
             visible.setContentDescription((shown ? "Hide " : "Show ") + document.layerName(index));
             visible.setTooltipText(visible.getContentDescription());
             name.setContentDescription(document.layerName(index) + (selected ? ", selected" : "") + ", " + (shown ? "visible" : "hidden"));

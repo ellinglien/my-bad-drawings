@@ -1,0 +1,7 @@
+<!-- Drawn for My Bad Drawings in Iconoir's style: a lasso: its loop, the rope crossing it, and its tail. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <group android:rotation="-10" android:pivotX="13.5" android:pivotY="8.5">
+        <path android:pathData="M5.5 8.5A8 5 0 1 0 21.5 8.5A8 5 0 1 0 5.5 8.5Z" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    </group>
+    <path android:pathData="M10.5 10.8C8.6 12.4 7.3 14.4 7.7 16.4C8.1 18.4 6.9 20.4 4.6 21.5" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

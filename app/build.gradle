@@ -1,4 +1,9 @@
 plugins { id 'com.android.application' }
+// The app's visible name has one switch: AppName.NAME in the Java source (docs/RENAMING.md). It gives the launcher label
+// and the library folders here, and every message and file name in the code.
+def appNameSource = file('src/main/java/io/github/mpdairy/monopaint/AppName.java').text =~ /(?m)^\s*static final String NAME = "([^"]+)";/
+if (!appNameSource.find()) throw new GradleException('AppName.java: no NAME line')
+def appName = appNameSource.group(1)
 android {
     namespace 'io.github.mpdairy.monopaint'
     compileSdk 34
@@ -7,23 +12,62 @@ android {
         cmake { path file('src/main/cpp/CMakeLists.txt'); version '3.22.1' }
     }
     defaultConfig {
-        // Keep the installed identity so updates retain existing private drawings.
-        applicationId 'dev.tilesmile.supernote.paint'
+        // Installs beside MonoPaint, with its own drawings. ing.ell.mybaddrawings since 2026-10-30 (docs/RENAMING.md);
+        // -PlegacyId builds the old id once more, the handover build that passes its private state on (HandOver.java).
+        applicationId project.hasProperty('legacyId') ? 'app.helpyy.inkwash' : 'ing.ell.mybaddrawings'
         minSdk 27
         targetSdk 34
-        versionCode 50
-        versionName '0.98.3'
+        versionCode 9
+        versionName '0.9'
         testInstrumentationRunner 'io.github.mpdairy.monopaint.WidthInstrumentation'
         ndk { abiFilters 'arm64-v8a' }
-        buildConfigField 'String', 'LIBRARY_FOLDER', '"MonoPaint"'
+        // Drawings in Document/<folder>, PNG copies in EXPORT/<folder>.
+        buildConfigField 'String', 'LIBRARY_FOLDER', "\"${appName}\""
+        resValue 'string', 'app_name', appName
     }
     buildFeatures { buildConfig true }
+    signingConfigs {
+        // A local release key, if keystore.properties is at the repo root (gitignored; docs/BUILDING.md). Without it
+        // every build is signed with Android's debug key, so anyone can build. -PlegacyId reads its legacy.* keys.
+        release {
+            def keys = new Properties()
+            def keysFile = rootProject.file('keystore.properties')
+            if (keysFile.exists()) keysFile.withInputStream { keys.load(it) }
+            def p = project.hasProperty('legacyId') ? 'legacy.' : ''
+            if (keys.getProperty(p + 'storeFile')) {
+                storeFile file(keys.getProperty(p + 'storeFile'))
+                storePassword keys.getProperty(p + 'storePassword')
+                keyAlias keys.getProperty(p + 'keyAlias')
+                keyPassword keys.getProperty(p + 'keyPassword') ?: keys.getProperty(p + 'storePassword')
+            }
+        }
+    }
+    def signing = signingConfigs.release.storeFile ? signingConfigs.release : signingConfigs.debug
+    // scripts/bench_device.sh times the drawing engine on the device (-Pbench): a release-speed, profileable build
+    // under its own id, beside the user's app, with its own library folder.
+    if (project.hasProperty('bench')) testBuildType 'bench'
     buildTypes {
+        bench {
+            initWith release
+            applicationIdSuffix '.bench'
+            signingConfig signingConfigs.debug
+            debuggable false
+            matchingFallbacks = ['release']
+            buildConfigField 'String', 'LIBRARY_FOLDER', "\"${appName} bench\""
+        }
+        // What goes on the Manta: a debuggable build runs the drawing code several times slower.
+        release {
+            signingConfig signing
+        }
         debug {
+            signingConfig signing
             // Device checks can run beside the user's app with their own library, private or shared.
             if (project.hasProperty('isolatedChecks')) {
                 applicationIdSuffix '.checks'
-                buildConfigField 'String', 'LIBRARY_FOLDER', '"MonoPaint checks"'
+                buildConfigField 'String', 'LIBRARY_FOLDER', "\"${appName} checks\""
+                // -PfastChecks: at release speed (Brush Lab's samples, drawn on the main thread, stall a debuggable build
+                // past Android's 15 s focus limit; scripts/screens_device.sh's pictures need it).
+                if (project.hasProperty('fastChecks')) debuggable false
             }
         }
     }
@@ -31,7 +75,4 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-}
-dependencies {
-    implementation project(':fasteink')
 }

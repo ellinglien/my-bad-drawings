@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brush Lab Dials</title>
+<meta name="description" content="What each part, choice and dial of a Scribulor brush does, drawn live by the web Brush Lab's engine.">
+<!--
+  Built by docs/brush-lab/dial-demo-src/build.cjs from the Modular Brush Lab's engine as it stands (engine: /*@@ENGINE_FILES@@*/)
+  and Brush Studio's tile drawing. Edit dial-demo-src, not this file. ?steps shows the step strips; ?inpage draws
+  without workers; ?all draws every tile at once.
+-->
+<style>
+/*@@FONTS@@*/
+/*@@CSS@@*/
+</style>
+</head>
+<body>
+<header class="wrap top">
+  <p class="kicker">Scribulor · Brush Lab</p>
+  <h1>What each dial does</h1>
+  <p class="lead">A Scribulor brush has six parts. Each part holds one choice, and each choice has its own dials. Every tile below draws the same stroke, the wave from Brush Lab's cards, while one thing changes: a choice's Basic slider, or one dial from low to high.</p>
+  <p class="lead">The tiles are drawn live by the web Brush Lab's engine, in the Manta's 16 greys. Names, ranges and steps are the lab's own.</p>
+  <ul class="key">
+    <li><b>Choices</b> each with its Basic slider</li>
+    <li><b>Dials</b> the Advanced dials, one at a time</li>
+    <li><b>After lift</b> each setting played over time</li>
+  </ul>
+</header>
+<div class="bar">
+  <div class="wrap">
+    <nav id="parts" aria-label="Parts"></nav>
+    <div class="controls">
+      <button id="play" type="button" aria-pressed="false">Pause</button>
+      <button id="steps" type="button" aria-pressed="false">Steps</button>
+    </div>
+  </div>
+</div>
+<main id="main" class="wrap"></main>
+<footer class="wrap">
+  <p>Every tile uses the same stroke and the same seed, so the named dial is the only thing that changes. Everything else is at the lab's defaults: a round tip, dry ink, smooth paper and Quick drying, unless the tile says otherwise.</p>
+  <p>Drawn with the web Brush Lab's engine (docs/brush-lab/prototypes/modular-lab-src). Left out, as the web lab draws none of them: the runs, drips and pools of a tilted page, Control's page tilt, charcoal's dust, Grey Shift's own set of greys and the bristle's paint load.</p>
+  <details><summary>Type: iA Writer Duo · SIL Open Font License 1.1</summary>
+    <p>iA Writer Duo © 2018 Information Architects Inc., with Reserved Font Name “iA Writer”; based on IBM Plex © 2017 IBM Corp., with Reserved Font Name “Plex”. Embedded unmodified under the SIL Open Font License 1.1:</p>
+    <pre>/*@@OFL@@*/</pre></details>
+</footer>
+<script id="tex">
+/*@@TEXTURES@@*/
+</script>
+<script id="engine">
+/*@@ENGINE@@*/
+</script>
+<script id="render">
+/*@@RENDER@@*/
+</script>
+<script id="tiles">
+/*@@TILES@@*/
+</script>
+<script id="page">
+/*@@PAGE@@*/
+</script>
+</body>
+</html>

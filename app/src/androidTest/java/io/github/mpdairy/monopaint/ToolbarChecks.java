@@ -18,7 +18,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
-import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Real toolbar controls and pen input, on a temporary book with session restoration. */
 final class ToolbarChecks {
@@ -57,66 +56,9 @@ final class ToolbarChecks {
                 ToolLibrary library=(ToolLibrary)get(activity,"library");
                 library.select(ToolSettings.Tool.PENCIL);library.edit(library.current().size(37));
                 call(get(activity,"toolbar"),"rebuildTools");
-                dialog[0]=(AlertDialog)call(activity,"appSettings");
             });
             test.waitForIdleSync();
-            main(test,() -> {
-                View settings=dialog[0].getWindow().getDecorView();
-                check((findCheck(settings,"Nomad Simulation Mode")!=null)==(Boolean)call(activity,"canSimulate"),
-                        "Simulation toggle appears exactly when this tablet can simulate a smaller one");
-                check(activity.device!=Device.MANTA || (Boolean)call(activity,"canSimulate"),
-                        "Connected Manta exposes simulation despite its misleading Nomad model name");
-                check(findCheck(settings,"Instant selection dots (experimental)")==null,"No optional instant selection setting");
-                check(findCheck(settings,"Blending stump")!=null && findCheck(settings,"Soften")==null,"Blending stump has its proper name");
-                for(String name:new String[]{"Brush","Pencil","Airbrush","Fill","Eraser","Blending stump","Layers","Zoom","Palette"})
-                    check(findCheck(settings,name).getCompoundDrawables()[0]!=null,"Settings shows the actual icon for "+name);
-                check(!description(settings,"Move Brush up").isEnabled(),"First item cannot move up");
-                check(!description(settings,"Move Palette down").isEnabled(),"Last item cannot move down");
-                int zoomIndex=((java.util.List<?>)call(get(activity,"toolbar"),"toolbarOrder")).indexOf("ZOOM");
-                description(settings,"Move Zoom up").performClick();
-                check(((java.util.List<?>)call(get(activity,"toolbar"),"toolbarOrder")).get(zoomIndex-1).equals("ZOOM"),"Zoom can move in saved order");
-                check(((ViewGroup)get(get(activity,"toolbar"),"toolRail")).getChildAt(zoomIndex-1)==get(get(activity,"toolbar"),"zoomButton"),"Zoom uses chosen position");
-                description(settings,"Move Zoom down").performClick();
-                CheckBox zoom=findCheck(settings,"Zoom");zoom.performClick();
-                check(get(get(activity,"toolbar"),"zoomButton")==null && !prefs.getBoolean("tool_visible_ZOOM",true),"Zoom can be hidden and saves");
-                call(get(activity,"toolbar"),"refreshZoom");
-                zoom.performClick();
-                check(get(get(activity,"toolbar"),"zoomButton")!=null,"Zoom can return to toolbar");
-                int layerIndex=((java.util.List<?>)call(get(activity,"toolbar"),"toolbarOrder")).indexOf("LAYERS");
-                description(settings,"Move Layers up").performClick();
-                description(settings,"Move Layers down").performClick();
-                check(((java.util.List<?>)call(get(activity,"toolbar"),"toolbarOrder")).get(layerIndex).equals("LAYERS"),"Down control reverses an upward move");
-                for(int i=0;i<layerIndex;i++)description(settings,"Move Layers up").performClick();
-                check(prefs.getString("toolbar_order","").startsWith("LAYERS,"),"Toolbar order persists");
-                ViewGroup rail=(ViewGroup)get(get(activity,"toolbar"),"toolRail");
-                check(rail.getChildAt(0)==get(get(activity,"toolbar"),"layersButton"),"Toolbar uses chosen layer position");
-                CheckBox layers=findCheck(settings,"Layers");layers.performClick();
-                check(get(get(activity,"toolbar"),"layersButton")==null && !prefs.getBoolean("tool_visible_LAYERS",true),"Layers can be hidden and preference saves");
-                layers.performClick();
-                check(rail.getChildAt(0)==get(get(activity,"toolbar"),"layersButton"),"Layers returns to chosen position");
-                CheckBox pencil=findCheck(dialog[0].getWindow().getDecorView(),"Pencil");
-                check(pencil!=null && pencil.isChecked(),"Pencil visible by default");pencil.performClick();
-                ToolLibrary library=(ToolLibrary)get(activity,"library");
-                check(!buttons(activity).containsKey("tool:PENCIL"),"Hiding removes the tool button");
-                check(library.current().tool==ToolSettings.Tool.BRUSH,"Hiding selected tool selects a visible tool");
-                check(library.builtin(ToolSettings.Tool.PENCIL).maximum==37,"Hidden settings preserved");
-                check(!prefs.getBoolean("tool_visible_PENCIL",true),"Visibility saved");
-                pencil.performClick();
-                check(buttons(activity).containsKey("tool:PENCIL"),"Tool can be re-enabled");
-                library.select(ToolSettings.Tool.PENCIL);String id=library.add("Test pencil").id;
-                call(get(activity,"toolbar"),"rebuildTools");pencil.performClick();
-                check(buttons(activity).containsKey(id) && library.activeId().equals(id),"Hiding base tool preserves selected favorite");
-                for(ToolSettings.Tool tool:Toolbar.TOOLS) {
-                    CheckBox other=findCheck(dialog[0].getWindow().getDecorView(),tool.label);
-                    if(tool!=ToolSettings.Tool.BRUSH && other.isChecked())other.performClick();
-                }
-                CheckBox brush=findCheck(dialog[0].getWindow().getDecorView(),"Brush");brush.performClick();
-                check(brush.isChecked() && buttons(activity).containsKey("tool:BRUSH"),"Cannot hide last regular tool");
-                call(activity,"saveToolState");
-                ToolLibrary decoded=ToolLibrary.decode(java.util.Base64.getDecoder().decode(prefs.getString("tools","")));
-                check(decoded.activeId().equals(id) && decoded.builtin(ToolSettings.Tool.PENCIL).maximum==37,"Saved favorite and hidden settings survive decoding");
-                dialog[0].dismiss();dialog[0]=null;
-            });
+            // MonoPaint's settings dialog (tool visibility and order) was deleted (the refocus, 2026-10-24), its checks with it.
             await(test,activity::hasWindowFocus,"Canvas focus");
             byte[] before=encoded(doc);
             String preset=((ToolLibrary)get(activity,"library")).activeId();
@@ -130,8 +72,6 @@ final class ToolbarChecks {
                 });
                 test.waitForIdleSync();SystemClock.sleep(150);
                 main(test,() -> {
-                    check(((ViewGroup)get(get(activity,"toolbar"),"toolRail")).getChildAt(0)==get(get(activity,"toolbar"),"layersButton"),"Toolbar order survives orientation and hand changes");
-                    dialog[0]=(AlertDialog)call(activity,"appSettings");
                 });
                 test.waitForIdleSync();
                 main(test,() -> {
@@ -142,12 +82,6 @@ final class ToolbarChecks {
                     check((Integer)get(get(activity,"eyedropperButton"),"iconHalf")==14,"Header icon size stays unchanged");
                 });
                 screenshot(test,activity,"toolbar-large-"+quarter+"-"+right+".png");
-                // Exercise the move targets through the rotated dialog, not only performClick.
-                tap(test,description(dialog[0].getWindow().getDecorView(),"Move Layers down"));
-                tap(test,description(dialog[0].getWindow().getDecorView(),"Move Layers up"));
-                main(test,() -> check(((java.util.List<?>)call(get(activity,"toolbar"),"toolbarOrder")).get(0).equals("LAYERS"),"Rotated Settings move targets respond"));
-                screenshot(test,activity,"toolbar-settings-"+quarter+"-"+right+".png");
-                main(test,() -> {dialog[0].dismiss();dialog[0]=null;});
                 await(test,activity::hasWindowFocus,"Canvas focus after Settings");
                 main(test,() -> markerChecks(activity));
                 main(test,() -> ((View)get(activity,"eyedropperButton")).performClick());
@@ -184,7 +118,7 @@ final class ToolbarChecks {
                 check(doc.compositeTone(200,200)==expected,"Next brush stroke uses picked shade");
                 check(doc.undo() && doc.compositeTone(200,200)==255,"Sampling adds no undo action");
             });
-            report.append("PASS: toolbar icons, Layers visibility, saved order, rotated move targets, always-on instant selection, last-tool guard, hidden settings and favorites; eyedropper layered shade, all rotations and hands, hidden selected layer, cancellation, no marks, next stroke and undo; marker transfer to the color marker's side, hidden color indicators, exact cancel restoration, normal and instant feedback.\n");
+            report.append("PASS: toolbar icons, always-on instant selection and favorites; eyedropper layered shade, all rotations and hands, hidden selected layer, cancellation, no marks, next stroke and undo; marker transfer to the color marker's side, hidden color indicators, exact cancel restoration, normal and instant feedback.\n");
         } finally {
             main(test,() -> {
                 if(dialog[0]!=null)dialog[0].dismiss();
@@ -205,7 +139,7 @@ final class ToolbarChecks {
                 editor.putBoolean("toolbox_right",Boolean.TRUE.equals(originalPrefs.get("toolbox_right"))).apply();
                 call(activity,"replaceBook",new Class<?>[]{DrawingBook.class},original);
                 call(activity,"requestQuarter",new Class<?>[]{int.class},originalRotation);call(activity,"applyToolboxSide");
-                call(activity,"saveToolState");call(activity,"recovery");
+                call(activity,"saveToolState");call(activity,"recoveryNow");
             });
             TestSessionSave.await(activity);
         }

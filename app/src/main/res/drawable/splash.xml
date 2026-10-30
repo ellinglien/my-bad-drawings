@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The loading screen (PaintActivity's window background, AppTheme.Loading): shown by Android before any of the app's
+     code runs, until the first page is ready (PaintActivity.reveal). Paper, and the owner's own drawing of the name
+     (2026-10-29: "i've drawn a welcome screen / loading screen"; the launcher icon and splash_name until then), drawn
+     with My Bad Drawings' Ben-Day brush and rendered black and white from the notebook at the Manta's pixels
+     (drawable-nodpi, so never scaled), centred. Still: e-ink. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@android:color/white" />
+    <item>
+        <bitmap android:src="@drawable/splash_drawing" android:gravity="center" android:filter="false" android:antialias="false" />
+    </item>
+</layer-list>

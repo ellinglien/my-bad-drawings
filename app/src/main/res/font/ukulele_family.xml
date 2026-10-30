@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ukulele, the app's one family (Theme.face; the app theme's font): the owner's (Ukulele font by Elling Lien, CC BY 3.0),
+     its two weights made by scripts/ukulele_font.py. -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <font android:fontStyle="normal" android:fontWeight="400" android:font="@font/ukulele" />
+    <font android:fontStyle="normal" android:fontWeight="700" android:font="@font/ukulele_bold" />
+</font-family>

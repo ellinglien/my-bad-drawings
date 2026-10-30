@@ -14,7 +14,6 @@ import android.widget.PopupWindow;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Runs on ShapeUiChecks' disposable book and shares its verified restoration. */
 final class NomadUiChecks {
@@ -31,10 +30,9 @@ final class NomadUiChecks {
         AlertDialog[] dialog={null};
         try {
             main(test,() -> call(app,"setSimulating",new Class<?>[]{boolean.class},false));idle(test);
-            main(test,() -> dialog[0]=(AlertDialog)call(app,"appSettings"));idle(test);
-            tap(test,find(dialog[0].getWindow().getDecorView(),"Nomad Simulation Mode"));idle(test);
-            check(prefs.getBoolean("nomad_mode",false)&&!dialog[0].isShowing(),"Settings toggle persists and dismisses");
-            dialog[0]=null;
+            // MonoPaint's settings dialog, once the simulation's toggle, was deleted (the refocus, 2026-10-24).
+            main(test,() -> call(app,"setSimulating",new Class<?>[]{boolean.class},true));idle(test);
+            check(prefs.getBoolean("nomad_mode",false),"Simulation persists");
             for(int turn=0;turn<4;turn++)for(boolean right:new boolean[]{false,true}) {
                 final int quarter=turn;
                 main(test,() -> {
@@ -47,6 +45,7 @@ final class NomadUiChecks {
                     check(((android.graphics.drawable.ColorDrawable)((View)get(app,"previewFrame")).getBackground()).getColor()==android.graphics.Color.BLACK,"Simulation margins are black");
                     check(menu.getWidth()==controlWidth,"Physical control size unchanged");
                     check(area.contains(bounds(pad)),"Canvas inside preview");
+                    layout(app,right);
                     check(get(pad,"direct")!=null,"Manta fast display is connected in centered viewport");
                     check(Arrays.equals(before,doc.snapshot()),"Toggles and rotations preserve document");
                 });
@@ -69,17 +68,12 @@ final class NomadUiChecks {
                 PopupWindow tools=(PopupWindow)get(app,"toolPicker");
                 check(bounds(frame).contains(bounds(tools.getContentView())),"Tool panel inside preview");
                 main(test,tools::dismiss);
-                main(test,() -> dialog[0]=(AlertDialog)call(app,"appSettings"));idle(test);
-                check(bounds(frame).contains(bounds(dialog[0].getWindow().getDecorView())),"Settings dialog inside preview: "+bounds(dialog[0].getWindow().getDecorView()));
-                if(turn==0&&!right)screenshot(test,app,"nomad-settings.png");
-                main(test,() -> dialog[0].dismiss());dialog[0]=null;idle(test);
                 if(!right)screenshot(test,app,"nomad-"+turn+".png");
                 report.append("PASS: centered Nomad viewport, unchanged controls, pen, margins and panels; turn=").append(turn).append(" right=").append(right).append(".\n");
             }
-            main(test,() -> dialog[0]=(AlertDialog)call(app,"appSettings"));idle(test);
-            tap(test,find(dialog[0].getWindow().getDecorView(),"Nomad Simulation Mode"));idle(test);dialog[0]=null;
-            check(!prefs.getBoolean("nomad_mode",true)&&frame.getWidth()==1920&&frame.getHeight()==2560,"Toggle off restores full screen");
-            report.append("PASS: Nomad mode can be disabled through the rotated Settings toggle.\n");
+            main(test,() -> call(app,"setSimulating",new Class<?>[]{boolean.class},false));idle(test);
+            check(!prefs.getBoolean("nomad_mode",true)&&frame.getWidth()==1920&&frame.getHeight()==2560,"Off restores full screen");
+            report.append("PASS: Nomad simulation can be turned off.\n");
             PageNavigationChecks.run(test,app,report);
             RotationPromptChecks.run(test,app,report);
         } finally {
@@ -90,6 +84,60 @@ final class NomadUiChecks {
                 PopupWindow file=(PopupWindow)get(app,"filePopup");if(file!=null)file.dismiss();
                 call(app,"setSimulating",new Class<?>[]{boolean.class},original);
             });idle(test);
+        }
+    }
+    /**
+     * The drawing screen as laid out (the design pass, 2026-10-23), in the app's own turn: the page bar along the page's
+     * top, the brush line along the foot under it, Zen Mode's button in the foot corner on the column's axis, the brush
+     * line starting a clear gap past it, Menu level with the page previews.
+     */
+    static void layout(PaintActivity app,boolean right)throws Exception {
+        View root=app.root;
+        RectF page=Popups.bounds(root,app.pad),bar=Popups.bounds(root,app.inkWashBar.turner.view),line=Popups.bounds(root,app.inkWashBar.brushLine),
+                column=Popups.bounds(root,app.inkWashBar.view),zen=Popups.bounds(root,(View)get(app,"zenButton"));
+        check(bar.top<1 && Math.abs(bar.bottom-page.top)<2 && Math.abs(bar.left-page.left)<2 && Math.abs(bar.right-page.right)<2,"Page bar along the page's top: "+bar+" over "+page);
+        // Its row's top is the line's top, the room under it centring the line on Zen Mode's icon (PaintActivity's linePlace).
+        check(Math.abs(line.top-page.bottom)<2 && line.bottom<=root.getHeight()+1,"Brush line along the foot under the page: "+line);
+        check(Math.abs(zen.bottom-root.getHeight())<2 && Math.abs(zen.centerX()-column.centerX())<2
+                && zen.top>=column.bottom-app.inkWashBar.view.getPaddingBottom()-1,"Zen Mode's button in the foot corner on the column's axis: "+zen+" column "+column);
+        // A clear gap after Zen Mode's button (the owner, 2026-10-23: "move the active tool info over a bit").
+        float gap=app.dp(DrawLayout.LINE_GAP);
+        check(right ? Math.abs(zen.left-line.right-gap)<2 : Math.abs(line.left-zen.right-gap)<2,"The brush line starts "+DrawLayout.LINE_GAP+" dp past Zen Mode's button: "+line+" "+zen);
+        // Menu level with the page previews (the owner, 2026-10-23: "make the menu icon in the upper right in line with the page previews").
+        RectF menu=Popups.bounds(root,(View)get(app.inkWashBar,"menu"));
+        DrawLayout at=app.inkWashBar.layout();
+        check(Math.abs(menu.centerY()-app.dp(DrawLayout.STRIP_EDGE+at.previewHeight()/2f))<2,"Menu centred on the page previews: "+menu+" under "+bar);
+        // Layout v3 (the owner's mockup, 2026-10-26): under the tray the smudge tool and the eraser, a slot's row each; the
+        // readout over the strip and the slider (the strip left since 2026-10-27); layout v4 (2026-10-26): under them the
+        // Dropper and the Lasso, Refresh alone under them, the whole row (2026-10-28, a finger's target); the wet indicator and the sand timer, then Template Visibility
+        // and Show Kinds, under the block (2026-10-28).
+        View slider=(View)get(app.inkWashBar.swatches,"slider"),strip=(View)get(app.inkWashBar.swatches,"strip"),readout=(View)get(app.inkWashBar.swatches,"readout");
+        RectF s=Popups.bounds(root,slider),g=Popups.bounds(root,strip),r=Popups.bounds(root,readout),
+                wet=Popups.bounds(root,(View)get(app.inkWashBar,"wet")),drop=Popups.bounds(root,app.inkWashBar.swatches.dropper),
+                lasso=Popups.bounds(root,(View)get(app.inkWashBar,"lasso")),kinds=Popups.bounds(root,app.inkWashBar.kinds),
+                ghost=Popups.bounds(root,app.inkWashBar.ghost),shapes=Popups.bounds(root,app.inkWashBar.shapes),play=Popups.bounds(root,app.inkWashBar.play),
+                sand=Popups.bounds(root,(View)get(app.inkWashBar,"sandTimer"));
+        check(Math.abs(s.top-g.top)<2 && Math.abs(s.bottom-g.bottom)<2 && Math.abs(g.right-s.left)<2 && Math.abs(r.bottom-g.top)<2 && r.left>=column.left-1 && r.right<=column.right+1
+                && Math.abs(r.centerX()-column.centerX())<3,"The readout over the strip and the slider: "+r+" over "+g+" "+s);
+        check(Math.abs(lasso.top-drop.top)<2 && Math.abs(lasso.bottom-drop.bottom)<2
+                && Math.abs(drop.right-lasso.left)<2 && Math.abs(ghost.left-drop.left)<2 && Math.abs(ghost.right-lasso.right)<2
+                && ghost.height()>=drop.height()-1 && drop.top>=g.bottom-1,
+                "The Dropper and the Lasso under the strip: "+drop+" "+lasso);
+        // Shapes and Play under Show Kinds and the sand timer (the owner, 2026-10-30), the wet indicator under them.
+        check(Math.abs(kinds.top-sand.top)<2 && Math.abs(kinds.right-sand.left)<2 && Math.abs(kinds.top-drop.bottom)<2
+                && Math.abs(shapes.top-kinds.bottom)<2 && Math.abs(play.top-shapes.top)<2 && Math.abs(shapes.right-play.left)<2 && Math.abs(wet.top-shapes.bottom)<2
+                && ghost.top>wet.bottom && column.contains(ghost),
+                "Show Kinds and the sand timer, Shapes and Play, the wet indicator on its own line, then Refresh: "+kinds+" "+sand+" "+shapes+" "+play+" "+wet+" "+ghost);
+        ToolButton[] tools=(ToolButton[])get(app.inkWashBar,"tools");
+        RectF eraser=Popups.bounds(root,tools[InkWash.ERASER]),smudge=Popups.bounds(root,tools[InkWash.SMUDGE]),last=Popups.bounds(root,tools[DrawLayout.COMPACT_TRAYS-1]);
+        check(smudge.top>=last.bottom-1 && Math.abs(smudge.width()-last.width())<2 && Math.abs(smudge.left-last.left)<2
+                && Math.abs(eraser.top-smudge.bottom)<2 && Math.abs(eraser.width()-last.width())<2 && eraser.bottom<=r.top+1,
+                "The smudge tool and the eraser under the tray, a slot's row each, over the readout: "+smudge+" "+eraser);
+        // Every control in the column inside it: a clipped one can't use the fast display (2026-10-24).
+        for (View v : new View[]{slider,strip,readout,app.inkWashBar.swatches.dropper}) {
+            android.graphics.Rect seen=new android.graphics.Rect();
+            // Its whole area seen, either way up (the app's turn may stand it on its side).
+            check(v.getGlobalVisibleRect(seen) && seen.width()*seen.height()==v.getWidth()*v.getHeight(),"Not clipped: "+v+" "+seen);
         }
     }
     private static RectF bounds(View view) {

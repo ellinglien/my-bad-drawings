@@ -23,9 +23,9 @@ final class ZoomButtonChecks {
             check(app.navigationLocked!=locked,"Single Zoom tap still toggles lock immediately");
             check(Math.abs(app.pad.viewport.scale()-scale)<.001,"Single Zoom tap does not change scale");
             tap(test,button,tool);idle(test,180);
-            check(app.pad.viewport.percent()==100 && Math.abs(app.pad.viewport.scale()-1)<.001,"Double Zoom tap sets actual 100%, including from below fit");
+            check(app.pad.viewport.untouched() && Math.abs(app.pad.viewport.scale()-app.pad.viewport.fitScale)<.001,"Double Zoom tap fits the whole page, including from below fit");
             check(app.navigationLocked==locked && app.prefs.navigationLocked()==locked,"Double Zoom tap preserves original lock state");
-            check(button.getContentDescription().toString().contains("100%"),"Zoom label reports 100%");
+            check(button.getContentDescription().toString().contains(app.pad.viewport.percent()+"%"),"Zoom label reports the fit");
             check(Arrays.equals(artwork,DrawingBook.encode(app.pad.document)),"Zoom reset never edits artwork");
         }
     }

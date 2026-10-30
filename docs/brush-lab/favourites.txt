@@ -1,0 +1,14 @@
+# The owner's favourite brushes, as share codes (one per line). Loaded into Brush Studio's library and,
+# once the app reads their parts, added to the tablet.
+zealous-shallot.M67gzlduui0_1zfmq009t0500ee_0_000_1jz_8rx0000000000000000nz0.vvrysb
+tempera-paint-flat-brush.M66zz00gk5e00_2y800_0_ci0_7_8e00000000000000000nz0.fua620
+grey-pencil-of-sketches.M40i07d2q00ccat_4221z_0_3co_1jz_8m10000000000000000nz0.ir1
+washdor-the-flowing.M60i0000000006a_1sn8h00zzdv00_0_16i_7_8e00000000000000000nz0.fua620
+cheap-bic.M00i00000002g4l_000zzi00000000003l_0_000_1jz_8h77a00000000000000nz0.ir1
+sharpie-permanent-marker.M60i0231u10003i_1hx1l1k420000_0_d1g_2clcl0js_81x0000000000000000dk0.ir1
+ink-wash-pen-waterbrush.M60i06f0000003t_1w85i000s0000zz2_0_d6e_2clcl000_8t00000000000000000nz0.ir1
+ink-wash-pen-brush.M60i06f0000003t_1w85i000s0000zz2_0_d6e_2clcl000_8t00000000000000000nz0.ir1
+another-pencil.M40i02r2q002tat_4cl1z_0_0co_1jz_8m10000000000000000nz0.ir1
+preppy-fountain.M00i00000000h3p_000zz1u00000000000_0_000_1jz_8ag00000000007h0000nz0.ir1
+mr-sketch.M61pfzzi00000001n37_2y200_0_000_1jz_0000000000000000000nz0.ir1
+staedtler-paint-marker.M61uomci00000000000_2zz00_0_000_1jz_00000000000000000001r0.ir1

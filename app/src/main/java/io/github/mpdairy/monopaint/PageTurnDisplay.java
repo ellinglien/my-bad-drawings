@@ -5,13 +5,10 @@ import android.graphics.Matrix;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.view.View;
-import io.github.mpdairy.fasteink.Mode;
-import io.github.mpdairy.fasteink.PanelCoordinates;
-import io.github.mpdairy.fasteink.Session;
 
 /** A one-shot page update. Preserve the previous pixels and never paint over the Pages panel. */
 final class PageTurnDisplay implements AutoCloseable {
-    private final Session display;
+    private final DirectEink display;
     private final Rect bounds, covered;
 
     PageTurnDisplay(View owner,Bitmap before,Matrix bitmapToView,View overlay) {
@@ -26,10 +23,10 @@ final class PageTurnDisplay implements AutoCloseable {
             PanelCoordinates.fromView(overlay).mapRect(area);fromScreen.mapRect(area);area.roundOut(covered);
             if(!covered.intersect(bounds))covered.setEmpty();
         }
-        display=Session.forView(owner,before,bitmapToView, Mode.GRAY);
+        display=DirectEink.forView(owner,before,bitmapToView,0,7);
     }
     boolean present(Bitmap after) {
-        if(covered.isEmpty())return display.present(after,bounds)!=Session.BUSY;
+        if(covered.isEmpty())return display.present(after,bounds)>=0;
         // Each region is disjoint; a busy submission falls back to an Android
         // redraw of the latest page instead of ever retrying a stale page.
         boolean okay=present(after,0,0,bounds.right,covered.top);
@@ -38,7 +35,7 @@ final class PageTurnDisplay implements AutoCloseable {
         return present(after,covered.right,covered.top,bounds.right,covered.bottom)&&okay;
     }
     private boolean present(Bitmap bitmap,int left,int top,int right,int bottom) {
-        return right<=left || bottom<=top || display.present(bitmap,new Rect(left,top,right,bottom))!=Session.BUSY;
+        return right<=left || bottom<=top || display.present(bitmap,new Rect(left,top,right,bottom))>=0;
     }
     @Override public void close() { display.close(); }
 }

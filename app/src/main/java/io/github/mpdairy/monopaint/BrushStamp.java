@@ -8,9 +8,15 @@ import android.graphics.RectF;
 
 /** Shared geometry for the stroke mask and the actual-size settings preview. */
 final class BrushStamp {
-    /** Reused outlines; stamps are drawn on the UI thread only. */
-    private static final Path crescent = new Path(), bite = new Path(), stamp = new Path();
-    private static final Matrix turn = new Matrix();
+    /**
+     * Reused outlines, one set a thread: Brush Lab draws its samples on a background thread while the pen stamps on
+     * the main one, and neither waits on the other.
+     */
+    private static final class Scratch {
+        final Path crescent = new Path(), bite = new Path(), stamp = new Path();
+        final Matrix turn = new Matrix();
+    }
+    private static final ThreadLocal<Scratch> scratch = ThreadLocal.withInitial(Scratch::new);
     /**
      * Oil paint filberts are crescents hollowed on the side they move toward, so the first
      * touch of a stroke is a thin sliver with the filbert's rounded edge, while the dragged
@@ -58,7 +64,7 @@ final class BrushStamp {
         if (settings.head == ToolSettings.Head.FLAT) {
             canvas.drawRect(x-radius, y-minor, x+radius, y+minor, paint);
         } else if (lead != 0 && crescent(settings)) {
-            canvas.drawPath(crescent(x, y, radius, minor, lead), paint);
+            canvas.drawPath(crescent(scratch.get(), x, y, radius, minor, lead), paint);
         } else {
             // Curve the whole edge so even a thin filbert reads as a rounded
             // brush, rather than a flat head with tiny rounded corners.
@@ -81,11 +87,14 @@ final class BrushStamp {
         // An anti-aliased hairline needs no pixel center; keep it centered instead of snapping.
         minor = Math.max(.5f, minor);
         bounds(footprint, x, y, radius, minor, angle);
+        Scratch own = scratch.get();
+        Matrix turn = own.turn;
+        Path stamp = own.stamp;
         turn.setRotate(angle, x, y);
         if (lead != 0 && crescent(settings)) {
             // Path.op output winds either way, which nonzero filling would cancel against its neighbors.
-            crescent(x, y, radius, minor, lead).transform(turn);
-            path.op(crescent, Path.Op.UNION);
+            crescent(own, x, y, radius, minor, lead).transform(turn);
+            path.op(own.crescent, Path.Op.UNION);
             return;
         }
         stamp.reset();
@@ -100,7 +109,8 @@ final class BrushStamp {
         footprint.set(x-dx,y-dy,x+dx,y+dy);
     }
     /** An unrotated crescent: a slightly shorter oval bitten out of the leading side. */
-    private static Path crescent(float x, float y, float radius, float minor, float lead) {
+    private static Path crescent(Scratch own, float x, float y, float radius, float minor, float lead) {
+        Path crescent = own.crescent, bite = own.bite;
         // The middle keeps a quarter of the head, thicker than the dab spacing, and the tips stay full.
         crescent.reset(); bite.reset();
         crescent.addOval(x-radius,y-minor,x+radius,y+minor,Path.Direction.CW);

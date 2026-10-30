@@ -1,0 +1,171 @@
+# A new brush's name, said by what it is, deadpan and in Title Case (the owner, 2026-10-29: "mostly deadpan"; "have the
+# brush names hint at what the brush does for sure"). Every name has its part, the word for what makes it, and most its
+# describer too. About one in five is its three words: a fun word, a describer and the part ("Sloppy Inky Drag"). The
+# rest are one of eight forms from [deadpan] ("Polite Smear", "Regrettable Inky Hake", "Dusty Aunt Charcoal", "Inky
+# Pen Junior", "Smear of Mild Regret", "Wash for Beginners", "Inky Pen Situation", "Budget Dusty Charcoal"). About one
+# in six has a made-up word: the describer's stem or the part with an ending from [deadpan]'s nonsense line
+# ("Wobblefuzz", "Smudgekins"). A name that won't wrap to two lines of a card (12 letters a line) takes the next form,
+# then its words, then just the describer and part.
+# Each section below is a list of lines: something a brush can have (as brush codes name it), a colon, then its words,
+# short and lowercase, one word each (-y and -ish welcome). A brush takes the first line it has, top to bottom, and one
+# of its words picked by its seed, so two alike brushes still differ. Drying and smudges count when they aren't the
+# style's usual, a paper only with a strong grain. "any" is every brush. A line starting with # is a note; a word in
+# square brackets starts a section.
+
+[part]
+# The part that makes it, most telling first: special tips, then smudges, then tips, then the medium.
+tip.stamp: stamp
+tip.spiro: spiro loop
+tip.handhatch: hatch
+tip.hatch: hatch
+medium.scratch: scraper blade
+medium.crayon: crayon
+tip.stipple: dots stipple
+medium.wax: wax candle
+medium.resist: mask
+medium.tone: tone
+medium.screen: print
+life.float: float
+life.halo: mold
+carry.water: water
+carry.stayin: filler
+carry.comb: comb
+carry.stump: stump
+carry.lift: lift
+carry.drag: drag
+carry.smudge: smear smudge
+tip.bristles: bristle
+tip.split: split
+tip.multi: rake
+tip.hake: hake
+tip.chisel: chisel
+tip.flat: nib
+tip.filbert: filbert
+medium.ink: pen liner
+medium.wash: wash
+medium.cover: paint
+medium.charcoal: charcoal
+medium.graphite: pencil
+any: brush
+
+[describer]
+# What it does, most telling first: its mischief, its drying and marks, then its paper, then its medium.
+blend.invert: flipped topsy
+blend.behind: tucked shy
+blend.white: chalky pale ghostly
+life.fade: fading ghostly
+life.lemon: secret sour
+carry.pload: oily loaded
+tip.flick: flicky whippy
+medium.fling: flingy splatty
+medium.dust: dusty sooty
+medium.bloom: bloomy blossomy
+medium.backrun: rippled frilly
+medium.bleed: bleedy feathery
+life.drips: drippy dribbly
+life.runs: runny trickly
+life.pool: puddly pooling
+life.sink: silty sandy
+life.blend: rocky swirly
+life.wetpaint: wettish dewy
+life.dry: damp dampish soggy
+medium.splatter: spattery splotchy
+medium.impasto: lumpy ridged thick
+medium.pool: puddly blotchy
+tip.dry: scratchy streaky
+paper.cold press: grainy toothy
+paper.laid: ribbed ribby
+paper.felt: felty fuzzy
+paper.crumpled: crinkly creased
+paper.canvas: woven weavy
+paper.watercolour: cottony
+paper.rough: bumpy lumpy
+paper.unryu: wispy fibrous
+paper.library: bookish
+paper.kraft: brownish papery
+paper.old buff: oldish faded
+paper.blue fibre: fibrous flecked
+paper.fine speck: flecky specked
+tip.wobble: wobbly shaky
+tip.taper: pointy tapered
+medium.crayon: waxy crayony
+medium.wax: waxy
+medium.resist: masky rubbery
+medium.ink: inky inkish
+medium.wash: washy watery
+medium.cover: painty creamy
+medium.charcoal: sooty powdery chalky
+medium.graphite: greyish leady
+medium.tone: dotty
+any: plain simple
+
+[fun]
+# A word for its mood, mostly so two names don't clash: playful, wet, rough, thick, soft, then neat.
+life.fade: sly impish wistful shy fleeting coy
+life.lemon: sly sneaky secret coy wily cagey
+tip.flick: giddy cheeky perky zippy frisky jolly
+medium.fling: giddy zany rowdy wild madcap frisky
+tip.spiro: giddy loopy dizzy whirly jolly zany
+tip.stamp: cheeky perky chirpy bouncy jolly plucky
+life.halo: creepy eerie spooky weird furtive odd
+blend.invert: sly topsy contrary rogue odd wily
+medium.wax: sly secret sneaky hidden coy cagey
+medium.resist: careful patient polite tidy shy prim
+life.float: dreamy drifty floaty calm serene lazy
+life.wetpaint: sloppy loose juicy lush gooey slick
+life.dry: loose dreamy lazy patient slow mellow
+medium.bloom: dreamy loose airy lush tender hazy
+medium.wash: loose mellow breezy easy calm fluid gentle wistful lazy carefree
+life.drips: sloppy messy leaky soggy clumsy gooey
+life.runs: sloppy loose leaky restless runaway wayward
+medium.dust: gruff rugged grubby rumpled crusty grimy
+tip.dry: scratchy gruff wiry gritty raspy rough thirsty parched crusty grainy
+tip.bristles: shaggy scruffy unkempt tousled wiry wild
+medium.charcoal: gruff smoky grubby moody brooding rugged grumpy stormy dusky gloomy
+medium.scratch: gruff edgy feisty prickly spiky sharp
+medium.crayon: chunky sunny merry cheery bold plucky
+medium.impasto: hearty burly chunky stout beefy robust
+medium.cover: hearty bold stout sturdy brash plush jolly sunny merry earnest
+carry.drag: sloppy bold brash pushy burly hasty
+carry.pload: hearty plump greasy rich lavish slick
+carry.smudge: hazy gentle dreamy soft fuzzy woolly
+carry.stump: hazy gentle velvet soft mellow tender
+carry.lift: gentle airy light polite careful mild
+tip.hatch: tidy prim patient orderly fussy steady
+tip.handhatch: tidy patient fussy diligent busy steady
+tip.stipple: patient fussy dotty finicky busy steady
+tip.flat: prim dapper formal stately elegant poised
+tip.chisel: patient tidy crisp sharp stately keen bold brisk upright proud
+medium.graphite: tidy humble quiet modest sober plain shy pensive bookish studious
+medium.ink: tidy prim neat crisp keen proper dainty earnest snappy perky
+any: brisk spry jaunty nimble bright swift
+
+[deadpan]
+# Not keyed by what a brush has: the deadpan forms' words, a line each. manner: "Polite Smear"; relative: "Dusty Aunt
+# Charcoal"; edition: "Inky Pen Junior"; mild and concern: "Smear of Mild Regret"; nonsense: a made-up word's ending
+# ("wobblefuzz", "smudgekins").
+manner: polite nervous regrettable apologetic reluctant sensible earnest suspicious hopeful modest tired puzzled sincere decent humble cautious sheepish dutiful unbothered optimistic sleepy worried confident tentative bashful
+relative: uncle aunt cousin nephew niece neighbour grandpa grandma landlord roommate
+edition: deluxe classic junior lite original
+mild: mild some minor modest slight faint passing
+concern: regret concern doubt worry interest suspicion unease bother
+nonsense: fuzz monger whistle wump kins wick doodle ery
+
+# ---- A new notebook's title ----
+# Not a brush's: [title] names new notebooks, deadpan, in fourteen forms: "Several Opinions About Soup", "A Brief Inventory
+# of Lint", "Notes Toward a Better Spoon", "The Pamphlet of Mild Concerns", "Doodles for a Goose", "Mistakes Volume
+# Three", "Probably Fine", "The Lukewarm Pamphlet", "Spoons I Have Known", "In Defence of Fog", "Advice from a Puffin",
+# "Minutes of the Pigeon Committee", "Field Notes on Scones" and "Letters to a Walrus". About one in six has a made-up word instead, a lear word with a nonsense ending:
+# "The Flimwhistle Papers", "Doodles for a Pobblewick", "Wobblefuzz and Other Concerns". A title too long for a shelf
+# tile takes a shorter form. Only new notebooks: a name already given never changes.
+
+[title]
+# Its words, a line each. things: plural, or a heap of; thing and creature follow "a".
+things: lint spoons crumbs socks puddles pigeons biscuits receipts buttons noodles pebbles mittens teaspoons potatoes soup toast gravel fog weather drizzle doorknobs envelopes pickles turnips sandwiches gulls kettles hats lunches parsnips napkins cushions clouds raisins sweaters crackers onions marbles lampshades staplers shoelaces paperclips thimbles scones hedges icebergs mussels rhubarb porridge
+thing: spoon kettle sandwich chair bench sock hat potato toaster mailbox teapot biscuit puddle tuesday doorknob lunchbox cardigan mitten bucket ladder pencil sofa parsnip thimble teacup napkin scone spatula cushion doormat saucepan stapler shoelace
+creature: goose pigeon moth badger hedgehog walrus heron sheep duck newt snail puffin moose crab gull capelin lobster beetle pony hen squid caribou toad ferret llama pelican plover vole wombat mole lemming seal trout cod raven robin
+adj: mild minor modest lukewarm damp polite vague reasonable unofficial ordinary sensible tepid small quiet humble careful tentative soggy beige decent brief tidy lumpy plain overdue borrowed ongoing sincere
+book: pamphlet ledger logbook binder handbook almanac folder report bulletin register leaflet dossier
+verdict: fine okay alright harmless edible waterproof sturdy accurate legal adequate enough upright dry fireproof finished correct square
+number: two three four five six seven eight nine eleven twelve
+lear: flim wobble quib splotch bumble pobble jumble quangle fizzle plonk gribble dimble wimble crumple flonk

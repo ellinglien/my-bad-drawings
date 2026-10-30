@@ -7,7 +7,6 @@ import android.graphics.drawable.ColorDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.PopupWindow;
-import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /**
  * Popups placed in the app's own upright coordinates.
@@ -38,9 +37,11 @@ final class Popups {
     static PopupWindow create(View content, int turn) { return create(content, turn, true, Color.WHITE); }
 
     /** A view's bounds in the root's app coordinates. */
-    static RectF bounds(View root, View view) {
+    static RectF bounds(View root, View view) { return bounds(root, view, new RectF(0, 0, view.getWidth(), view.getHeight())); }
+    /** {@code area}, in {@code view}'s pixels, in the root's app coordinates. */
+    static RectF bounds(View root, View view, RectF area) {
         Matrix toRoot = new Matrix(); PanelCoordinates.fromView(root).invert(toRoot);
-        RectF bounds = new RectF(0, 0, view.getWidth(), view.getHeight());
+        RectF bounds = new RectF(area);
         PanelCoordinates.fromView(view).mapRect(bounds); toRoot.mapRect(bounds);
         return bounds;
     }

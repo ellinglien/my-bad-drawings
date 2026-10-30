@@ -1,0 +1,4 @@
+<!-- The picker box's lower-left triangle, the shade picker, filled: the strip's greys show inside it (the owner's drawing, 2026-10-27, docs/icons/picker-box-drawing.png, drawn clean on 2026-10-29: "doesn't need to look hand drawn now... match the line size from iconoir", then "b 164 looks good"). In dp at the Manta's upright size, stretched where it is drawn: its white tip in the box's top-left corner, its foot along the box's foot to 1.6 dp short of the right, so its long side runs parallel to the size slider's (shape_box_size) with an even 1.5 dp gap; its right angle rounded 1.5 dp. Its outline is shape_box_shade_line. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="56dp" android:height="176dp" android:viewportWidth="56" android:viewportHeight="176">
+    <path android:fillColor="#000000" android:pathData="M0,0 L0,174.5 C0,175.328 0.672,176 1.5,176 L54.4,176 Z"/>
+</vector>

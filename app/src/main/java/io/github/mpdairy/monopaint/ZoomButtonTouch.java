@@ -4,7 +4,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 
-/** Keep the immediate lock toggle on a single tap; a second quick tap restores 100%. */
+/** Keep the immediate lock toggle on a single tap; a second quick tap fits the whole page, keeping the lock as it was. */
 final class ZoomButtonTouch implements View.OnTouchListener {
     private final PaintActivity app;
     private final ToolButton button;
@@ -35,7 +35,7 @@ final class ZoomButtonTouch implements View.OnTouchListener {
         MotionEvent cancel=MotionEvent.obtain(e);cancel.setAction(MotionEvent.ACTION_CANCEL);
         button.onTouchEvent(cancel);cancel.recycle();button.press.releaseLater();
         if(app.navigationLocked!=firstLock)app.toggleNavigationLock();
-        app.pad.actualSize();
+        if(!app.pad.viewport.untouched())app.pad.fitPage();
         return true;
     }
 }

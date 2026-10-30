@@ -16,8 +16,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
-import io.github.mpdairy.fasteink.PanelCoordinates;
-import io.github.mpdairy.fasteink.Session;
 
 /** Real pen gestures on a temporary book; restore and drain the original session afterward. */
 final class ShapeUiChecks {
@@ -62,7 +60,6 @@ final class ShapeUiChecks {
                 ((View)buttons.get("tool:SHAPES")).performClick();
                 check(((ToolLibrary)get(activity,"library")).current().tool==ToolSettings.Tool.SHAPES,"Sidebar selects Shapes");
             });
-            if(settingsOnly){SettingsUiChecks.run(test,activity,report);return;}
             if(pagesOnly){PageNavigationChecks.run(test,activity,report);return;}
             if(nomadOnly) {
                 main(test,() -> call(activity,"replaceBook",new Class<?>[]{DrawingBook.class},new DrawingBook(new ToneDocument(640,720))));
@@ -196,17 +193,19 @@ final class ShapeUiChecks {
                 call(activity,"replaceBook",new Class<?>[]{DrawingBook.class},original);
                 prefs.edit().putBoolean("toolbox_right",right).putBoolean("tool_visible_SHAPES",visible).putBoolean("tool_visible_BRUSH",brushVisible).apply();
                 call(activity,"requestQuarter",new Class<?>[]{int.class},quarter);call(activity,"applyToolboxSide");call(get(activity,"toolbar"),"rebuildTools");
-                call(activity,"saveToolState");call(activity,"recovery");
+                call(activity,"saveToolState");call(activity,"recoveryNow");
             });
             TestSessionSave.await(activity);
             try(java.io.FileInputStream input=new java.io.FileInputStream(DrawingStorage.recovery(activity))) {
-                RecoveryCodec.Recovered recovered=RecoveryCodec.read(input);
+                Object store=get(activity,"store");
+                // A named notebook's recovery refers to the pages already in its file; read them from there, as the app does.
+                RecoveryCodec.Recovered recovered=RecoveryCodec.read(input,path -> { try { return (java.io.File)call(store,"drawingFile",new Class<?>[]{String.class},path); } catch(Exception e) { return null; } });
                 check(recovered.path.equals(name),"Original drawing destination restored");
                 check(recovered.book.index()==originalPages.index&&recovered.book.count()==originalPages.pages.size(),"Original page restored");
                 check(Arrays.equals(originalPage,DrawingBook.encode(recovered.book.current())),"Saved original page and layers unchanged");
                 DrawingBook.Snapshot saved=recovered.book.snapshot();
                 for(int i=0;i<saved.pages.size();i++)if(i!=saved.index)
-                    check(Arrays.equals(originalPages.pages.get(i),saved.pages.get(i)),"Other saved pages unchanged");
+                    check(Arrays.equals(originalPages.pages.get(i).bytes(),saved.pages.get(i).bytes()),"Other saved pages unchanged");
                 report.append("PASS: Restored drawing destination, every page/layer, and page ").append(saved.index+1).append(" of ").append(saved.pages.size()).append(" verified from saved recovery.\n");
             }
         }
@@ -222,7 +221,7 @@ final class ShapeUiChecks {
                 if(row[x]!=expected)throw new AssertionError("Sparse shape display differs from full composite at "+x+","+y);
             }
         }
-        Session direct=(Session)get(pad,"direct");
+        DirectEink direct=(DirectEink)get(pad,"direct");
         if(direct!=null) {
             call(pad,"present");Bitmap source=viewport==null?display:viewport.bitmap;
             // The driver's mapped plane is shared with Android; untouched regions are not

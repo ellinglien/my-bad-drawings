@@ -1,0 +1,10 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- The timing bench (scripts/bench_device.sh): profileable, and never in the launcher beside the user's app. -->
+    <application android:label="Scribulor bench" tools:replace="android:label">
+        <profileable android:shell="true" />
+        <activity android:name="io.github.mpdairy.monopaint.PaintActivity" tools:node="merge">
+            <intent-filter tools:node="removeAll" />
+        </activity>
+    </application>
+</manifest>

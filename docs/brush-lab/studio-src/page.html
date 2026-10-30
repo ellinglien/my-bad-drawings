@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brush Studio</title>
+<meta name="description" content="Brush Studio for Scribulor: every part of a brush and its dials, drawn by the real engine at the Manta's 16 greys.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&amp;display=swap">
+<style>
+/*@@FONTS@@*/
+/*@@CSS@@*/
+</style>
+</head>
+<body>
+<header class="top" id="top">
+  <span class="brand">Brush Studio</span>
+  <nav class="tabs" id="tabs" aria-label="Studio">
+    <button type="button" data-tab="community" aria-pressed="false">Community library</button>
+    <button type="button" data-tab="roll" aria-pressed="false">Random</button>
+  </nav>
+</header>
+<div class="shell">
+<!-- This brush: a persistent sidebar (docs/DESIGN.md "This brush"): the brush, its actions, and the ways to change it. -->
+<aside class="brushbar" id="brushbar" aria-label="This brush">
+  <h2 class="lab">This brush</h2>
+  <span class="frame idloop"><canvas id="idloop" aria-hidden="true"></canvas></span>
+  <div class="ident" id="ident">
+    <button type="button" class="idname" id="idname" data-act="rename" title="Rename"><span id="idnametext"></span><span class="ico" data-icon="pencil"></span></button>
+    <input type="text" class="idinput" id="idinput" maxlength="32" hidden aria-label="Brush name">
+  </div>
+  <p class="words" id="words"></p>
+  <div class="acts" id="brushacts">
+    <button type="button" class="btn sm withicon" data-act="undo" data-undo><span class="ico" data-icon="undo"></span><span>Undo</span></button>
+    <button type="button" class="btn sm" data-act="revert" id="revertbtn">Revert</button>
+    <button type="button" class="btn sm withicon" data-act="save" id="savebtn"><span id="savetext">Save</span><span class="ico" data-icon="check" id="saveico"></span></button>
+    <button type="button" class="btn sm" data-act="library">Load</button>
+    <button type="button" class="btn sm" data-act="share" id="sharebtn" aria-expanded="false">Share</button>
+  </div>
+  <nav class="change" id="change" aria-label="Change this brush">
+    <button type="button" class="btn big" data-tab="lab" aria-pressed="true">Adjust</button>
+    <button type="button" class="btn big" data-tab="tune" aria-pressed="false">Close-up</button>
+    <button type="button" class="btn big" data-tab="mix" aria-pressed="false">Mix</button>
+  </nav>
+  <span class="status" id="status" role="status" aria-live="polite"></span>
+  <!-- Share: this brush's code, to copy or to scan on the tablet, and Publish to Community library (the artifact's db) -->
+  <div class="sharepanel" id="sharepanel" hidden role="dialog" aria-label="Share">
+    <div class="qrbox"><canvas id="qr" aria-label="QR code of the brush code"></canvas></div>
+    <div class="sharetext">
+      <label class="field"><span class="lab">Brush code</span><input type="text" id="code" readonly></label>
+      <div class="acts">
+        <button type="button" class="btn primary" data-act="copy">Copy code</button>
+        <button type="button" class="btn" data-act="download" id="dltablet">Download for tablet</button>
+        <button type="button" class="btn" data-act="publish" id="pubbtn" disabled>Publish to Community library</button>
+        <span class="grow"></span><button type="button" class="btn sm" data-act="share">Close</button>
+      </div>
+      <p class="note">Save it to Document/Scribulor in your Drive; the tablet adds it next time Scribulor opens.</p>
+      <div class="acts"><button type="button" class="btn" data-act="export" id="exportbtn">Export</button>
+        <span class="note" id="exportnote">A Procreate set of this brush and the saved ones. Drying and smudge stay in Scribulor.</span></div>
+      <div class="acts pubconfirm" id="pubconfirm" hidden><span class="note">Everyone with this page can try it.</span>
+        <button type="button" class="btn primary" data-act="pubyes">Publish</button><button type="button" class="btn" data-act="pubno">Cancel</button></div>
+      <span class="note" id="pubnote"></span>
+    </div>
+  </div>
+</aside>
+<div class="content">
+<main id="main">
+  <!-- 1 · Lab: every part at once, the test page, the sweep and the last change -->
+  <section class="screen labscreen" id="s-lab" data-screen="lab">
+    <div class="partscol">
+      <div class="hrow adjhead" id="adjhead"><h2>Adjust</h2><span class="grow"></span>
+        <button type="button" class="btn sm withicon stylebtn" data-act="styles" id="stylebtn" aria-expanded="false"><span id="stylename"></span><span class="ico" data-icon="caret"></span></button>
+        <button type="button" class="btn sm primary withicon" data-act="randomize"><span class="ico" data-icon="dice"></span><span>Randomize</span></button></div>
+      <div class="styles" id="styles" hidden role="group" aria-label="Style"></div>
+      <div class="cards" id="cards"></div>
+    </div>
+    <div class="side" id="side">
+      <section class="testsec" aria-label="Test page">
+        <div class="bar">
+          <button type="button" class="btn sm" data-act="clear">Clear</button>
+          <button type="button" class="btn sm" data-act="eraser" id="eraserbtn" aria-pressed="false">Eraser</button>
+          <span class="tools"><span class="seg" id="sizes" role="group" aria-label="Size"></span>
+          <span class="seg greys" id="greys" role="group" aria-label="Grey"></span></span>
+        </div>
+        <span class="frame testframe" id="testframe"><canvas id="test" aria-label="Test page"></canvas></span>
+      </section>
+      <section class="sweepsec" aria-label="Sweep">
+        <div class="hrow"><h2 id="sweeptitle"></h2><span class="cap" id="sweeppart"></span></div>
+        <div class="sweep" id="sweep"></div>
+      </section>
+      <section class="basec" aria-label="Before and after">
+        <div class="hrow"><h2>Before and after</h2><span class="cap" id="bawhat"></span><span class="grow"></span>
+          <label class="check"><input type="checkbox" id="showdiff" checked><span class="box" aria-hidden="true"></span>Show changed pixels</label></div>
+        <div class="ba">
+          <figure><span class="frame quiet"><canvas id="before" aria-label="Before"></canvas></span><figcaption class="cap">Before</figcaption></figure>
+          <figure><span class="frame"><canvas id="after" aria-label="After"></canvas></span><figcaption id="aftercap">After</figcaption></figure>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- 2 · Close-up (Fine-tune until 2026-10-30; the owner: "it's not really a way to fine tune... it's more of a closeup view"): the test stroke, its curves, the magnified view and the history -->
+  <section class="screen tune" id="s-tune" data-screen="tune" hidden>
+    <div class="tunemain">
+      <section class="comparesec" id="comparesec" aria-label="Compare" hidden>
+        <div class="hrow"><h2>Compare</h2><span class="grow"></span><button type="button" class="btn sm" data-act="compareoff">Done</button></div>
+        <div class="compare" id="compare"></div>
+      </section>
+      <section aria-label="The stroke">
+        <div class="hrow"><h2>The stroke</h2><span class="grow"></span>
+          <button type="button" class="btn sm" data-act="laststroke" id="lastbtn">Use my last stroke</button></div>
+        <span class="frame stripframe" id="stripframe"><canvas id="strip" aria-label="The stroke"></canvas><span class="cursor" id="stripcursor"></span></span>
+        <div class="curves" id="curves"></div>
+      </section>
+      <section class="closesec" aria-label="Close up">
+        <div class="hrow"><h2>Magnified</h2><span class="cap">16 greys, as on the Manta</span><span class="grow"></span>
+          <span class="seg" id="zooms" role="group" aria-label="Zoom"></span></div>
+        <span class="frame closeframe" id="closeframe"><canvas id="close" aria-label="Close up"></canvas></span>
+      </section>
+    </div>
+    <aside class="history" aria-label="History">
+      <h2>History</h2>
+      <ol class="hist" id="hist"></ol>
+      <div class="acts">
+        <button type="button" class="btn sm" data-act="comparepick" id="comparebtn" aria-pressed="false">Compare two</button>
+        <button type="button" class="btn sm" data-act="saveasnew">Save as new</button>
+      </div>
+    </aside>
+  </section>
+
+  <!-- 3 · Mix: two parts crossed, the rest of the brush held still -->
+  <section class="screen mix" id="s-mix" data-screen="mix" hidden>
+    <div class="hrow wrap"><h2>Mix two parts</h2>
+      <label class="pick">Rows <select id="crossrow"></select></label>
+      <label class="pick">Columns <select id="crosscol"></select></label></div>
+    <div class="cross" id="cross"></div>
+  </section>
+
+  <!-- 4 · Roll: twelve random brushes from this one, keeping its locks -->
+  <section class="screen roll" id="s-roll" data-screen="roll" hidden>
+    <div class="hrow wrap"><h2>12 random brushes</h2><span class="cap">From this brush, keeping what's locked</span></div>
+    <div class="locks" id="wildlocks"></div>
+    <div class="wild" id="wild"></div>
+    <div class="rollfoot"><button type="button" class="btn primary big withicon" data-act="wild"><span class="ico" data-icon="dice"></span><span>Generate other random brushes</span></button></div>
+  </section>
+
+  <!-- 0 · Community library: brushes people published (the artifact's db), else eight examples; Try puts one in Adjust -->
+  <section class="screen community" id="s-community" data-screen="community" hidden>
+    <div class="hrow wrap"><h2>Community library</h2><span class="tag" id="commtag">Examples</span><span class="cap">Brushes people made and shared</span><span class="note" id="commnote"></span></div>
+    <div class="sharedgrid" id="sharedgrid"></div>
+      <div class="foot">
+  <span>Scribulor Brush Studio<!-- engine: /*@@ENGINE_FILES@@*/ --></span>
+  <details><summary>Type: iA Writer Duo · SIL Open Font License 1.1</summary>
+    <p>iA Writer Duo © 2018 Information Architects Inc., with Reserved Font Name “iA Writer”; based on IBM Plex © 2017 IBM Corp., with Reserved Font Name “Plex”. Embedded unmodified under the SIL Open Font License 1.1:</p>
+    <pre>/*@@OFL@@*/</pre></details>
+</div>
+  </section>
+</main>
+</div></div>
+
+<div class="sheet" id="library" hidden role="dialog" aria-modal="true" aria-label="Library">
+  <div class="sheetbox">
+    <div class="hrow"><h2>Library</h2><span class="grow"></span><button type="button" class="btn sm" data-act="libclose">Close</button></div>
+    <div class="loadcode">
+      <label class="field"><span class="lab">Load a code</span><input type="text" id="paste" placeholder="name.M…" autocomplete="off" spellcheck="false"></label>
+      <div class="acts"><button type="button" class="btn" data-act="paste">Paste</button><button type="button" class="btn" data-act="loadcode">Load</button><span class="note" id="loadnote"></span></div>
+    </div>
+    <div id="libbody"></div>
+  </div>
+</div>
+
+
+
+<script id="tex">
+/*@@TEXTURES@@*/
+</script>
+<script id="engine">
+/*@@ENGINE@@*/
+</script>
+<script id="render">
+/*@@RENDER@@*/
+</script>
+<script id="qrsrc">
+/*@@QR@@*/
+</script>
+<script id="export">
+/*@@EXPORT@@*/
+</script>
+<script id="studio">
+/*@@STUDIO@@*/
+</script>
+</body>
+</html>

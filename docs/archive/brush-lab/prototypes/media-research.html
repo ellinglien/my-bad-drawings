@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paint Media Research</title>
+<meta name="description" content="Charcoal, gouache, oils, pencil and pastels: what the real media do, how apps and papers simulate them, and what Inkwash should build.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+/* Brutalist, as Inkwash's Brush Lab: hard black rules, square corners, one monospace face.
+   Deliberately one theme: it imitates the e-ink screen's black on white. */
+:root {
+  --desk: #dcdcd6;
+  --screen: #ffffff;
+  --ink: #000000;
+  --grey: #5c5c56;
+  --rule: #b4b4ad;
+  --hatch: #8d8d86;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --desk: #dcdcd6; --screen: #ffffff; --ink: #000000; } }
+:root[data-theme="dark"] { --desk: #dcdcd6; --screen: #ffffff; --ink: #000000; }
+* { box-sizing: border-box; }
+html, body { background: var(--desk); color: var(--ink); margin: 0; }
+body { font-family: var(--mono); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 18px 16px 40px; }
+.device { background: var(--screen); border: 3px solid var(--ink); min-width: 0; }
+.bar { display: flex; flex-wrap: wrap; align-items: stretch; border-bottom: 3px solid var(--ink); }
+.bar .title { font-weight: 700; text-transform: uppercase; letter-spacing: .06em; padding: 12px 14px; flex: 1; min-width: 0; }
+.bar .title h1 { font-size: 1.5rem; margin: 0; line-height: 1.15; }
+.bar .tag { border-left: 2px solid var(--ink); display: grid; place-items: center; padding: 0 14px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; background: var(--ink); color: var(--screen); }
+nav { display: flex; flex-wrap: wrap; border-bottom: 3px solid var(--ink); }
+nav a { flex: 1 1 auto; padding: 8px 10px; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink); text-decoration: none; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); margin-bottom: -2px; white-space: nowrap; }
+nav a:hover { background: var(--ink); color: var(--screen); }
+.lede { padding: 14px 16px; border-bottom: 2px solid var(--ink); color: var(--grey); }
+section { padding: 16px 16px 20px; border-bottom: 2px solid var(--ink); }
+section:last-child { border-bottom: 0; }
+h2 { font-size: .9rem; font-weight: 700; margin: 0 0 12px; text-transform: uppercase; letter-spacing: .08em; padding-bottom: 6px; border-bottom: 3px solid var(--ink); }
+h3 { font-size: .8rem; font-weight: 700; margin: 18px 0 6px; text-transform: uppercase; letter-spacing: .08em; }
+p { margin: 8px 0; max-width: 78ch; }
+ul, ol { margin: 6px 0 10px; padding-left: 1.3em; max-width: 80ch; }
+li { margin: 3px 0; }
+li::marker { color: var(--grey); }
+a { color: var(--ink); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { background: var(--ink); color: var(--screen); text-decoration: none; }
+code { font-family: var(--mono); font-size: .88em; background: #ececE6; padding: 0 3px; }
+pre { font-family: var(--mono); font-size: .8rem; line-height: 1.45; background: var(--screen); border: 2px solid var(--ink); border-left-width: 8px; padding: 10px 12px; margin: 10px 0; overflow-x: auto; }
+.tbl { overflow-x: auto; margin: 10px 0; border: 2px solid var(--ink); }
+table { border-collapse: collapse; width: 100%; font-size: .74rem; line-height: 1.4; }
+th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+th { background: var(--ink); color: var(--screen); text-transform: uppercase; letter-spacing: .06em; font-size: .66rem; border-right-color: var(--grey); }
+td:first-child { font-weight: 400; min-width: 9em; }
+tr:last-child td { border-bottom: 0; }
+th:last-child, td:last-child { border-right: 0; }
+.tbl table.wide { min-width: 640px; }
+figure { margin: 12px 0 16px; border: 2px solid var(--ink); }
+figure svg { display: block; width: 100%; height: auto; background: var(--screen); padding: 6px; }
+figcaption { border-top: 2px solid var(--ink); padding: 6px 10px; font-size: .72rem; color: var(--grey); }
+.svgt { font-family: var(--mono); font-size: 11px; fill: var(--grey); }
+.svgt.b { font-weight: 700; fill: var(--ink); letter-spacing: .06em; }
+footer { padding: 10px 16px; font-size: .7rem; color: var(--grey); border-top: 3px solid var(--ink); }
+@media (max-width: 560px) {
+  body { font-size: 14px; }
+  .wrap { padding: 10px 8px 28px; }
+  .bar .title h1 { font-size: 1.15rem; }
+  section { padding: 14px 12px 16px; }
+  .lede { padding: 12px; }
+  nav a { flex-basis: 50%; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<main class="device">
+  <div class="bar"><div class="title"><h1>Paint Media Research</h1></div><div class="tag">Inkwash</div></div>
+  <nav aria-label="Sections"><a href="#summary">Summary</a><a href="#1-the-real-media">1. The real media</a><a href="#2-how-the-apps-do-it">2. How the apps do it</a><a href="#3-key-papers">3. Key papers</a><a href="#4-shared-part-carry">4. Shared part: Carry</a><a href="#5-charcoal">5. Charcoal</a><a href="#6-gouache">6. Gouache</a><a href="#7-oils">7. Oils</a><a href="#8-order-of-work">8. Order of work</a><a href="#9-pencil-and-pastels">9. Pencil and Pastels</a></nav>
+  <p class="lede">This report covers what the three real media do, how other apps and research papers fake them, and the cheapest believable version for Inkwash: grayscale e-ink, Java on the CPU, about 3 screen updates a second.</p>
+<section>
+<h2 id="summary">Summary</h2>
+<ul><li><strong>Carry (new, shared).</strong> A small tone buffer that travels with the tool: it picks paint up and lays it back down.
+<ul><li>Uses: the finger smudge on charcoal, the drag of wet oils, and gouache lifting a little of the paint beneath it.
+</li><li>The code already has two parts of it: <code>PaintLoad</code> (pickup) and <code>ToneDabs.soften</code> (drag).
+</li></ul>
+</li><li><strong>Charcoal.</strong>
+<ul><li>The paper's height map decides where the stick touches. Pressure and build-up reach into the valleys.
+</li><li>A finger smudges. The eraser lifts but leaves a ghost in the valleys.
+</li></ul>
+</li><li><strong>Oils.</strong> A per-layer height plane (1 byte per pixel, in tiles), shaded at lift by one fixed light.
+</li><li><strong>Gouache.</strong> Cover = 1, plus a little pickup and an optional dry shift.
+</li><li><strong>Leave out:</strong> fluid simulation, pigment optics, 3D bristles, gloss and cracking.
+</li></ul>
+</section>
+<section>
+<h2 id="1-the-real-media">1. The real media</h2>
+<h3 id="charcoal">Charcoal</h3>
+<ul><li><strong>Vine or willow:</strong> burnt twigs. It is soft, grey-black and powdery. It sits loosely on the paper, smudges at a touch and erases almost clean (<a href="https://skizze.eu/en/art-101-an-introduction-to-charcoal-as-a-drawing-medium/" target="_blank" rel="noopener">skizze.eu</a>, <a href="https://thevirtualinstructor.com/charcoal.html" target="_blank" rel="noopener">Virtual Instructor</a>).
+</li><li><strong>Compressed:</strong> charcoal powder bound into sticks. It is darker, and harder to smudge or erase.
+</li><li><strong>Tooth:</strong> paper has tiny hills and valleys. A light stroke only touches the hilltops, leaving white specks. Pressure, or more layers, reach into the valleys.
+</li><li><strong>Smudging:</strong> a finger or a paper stump pushes the dust sideways and down into the valleys. The tone becomes smoother and softer-edged.
+</li><li><strong>Erasing is drawing:</strong> artists tone an area grey, then lift highlights out with a kneaded eraser. The hilltops come clean, but the valleys keep a ghost.
+</li><li><strong>The stick's side:</strong> laying it flat gives a broad, light, grainy band. Loose dust falls around the marks.
+</li><li><strong>In grayscale:</strong> charcoal is natively grey. Artists exaggerate contrast because its range is limited (<a href="https://www.cs.unc.edu/Research/ootf/publications/Majumder_NPAR02.pdf" target="_blank" rel="noopener">Majumder &amp; Gopi</a>).
+</li></ul>
+<h3 id="gouache">Gouache</h3>
+<ul><li><strong>Opaque and matte:</strong> it is watercolour with more pigment plus a chalky filler (<a href="https://bowseat.org/resources/inspiration/guide-to-visual-arts-mediums/guide-to-visual-arts-mediums-animation/guide-to-visual-arts-mediums-2d-painting/guide-to-visual-arts-mediums-2d-painting-gouache/" target="_blank" rel="noopener">Bow Seat</a>).
+</li><li><strong>Light over dark:</strong> white paint covers black.
+</li><li><strong>Flat shapes:</strong> it dries in flat, even shapes with crisp edges.
+</li><li><strong>Re-wets:</strong> a new wet stroke lifts a little of the old paint, so light over dark starts slightly dirty.
+</li><li><strong>Value shift as it dries:</strong> lights dry a bit darker and darks a bit lighter (<a href="https://zoungyart.substack.com/p/gouache-basics" target="_blank" rel="noopener">Zoungy</a>).
+</li><li><strong>Dry brush:</strong> thin paint on a dry brush looks chalky.
+</li></ul>
+<h3 id="oils">Oils</h3>
+<p>Oil paint is pigment in linseed oil. It is buttery and opaque, and it stays wet for days (<a href="https://drawpaintacademy.com/9-oil-painting-techniques-for-beginners/" target="_blank" rel="noopener">Draw Paint Academy</a>, <a href="https://www.artsupplies.co.uk/a/oil-painting-techniques" target="_blank" rel="noopener">Art Supplies UK</a>).</p>
+<ul><li><strong>Wet into wet:</strong> each stroke drags and mixes the wet paint beneath it. White pulled across wet black turns grey and streaky. This is the most "oil" behaviour.
+</li><li><strong>Impasto:</strong> paint thick enough to stand up. It shows ridges, bristle grooves and raised lips, lit on one side and shadowed on the other.
+</li><li><strong>Running out:</strong> a loaded brush lays solid paint, then breaks up into scratchy marks.
+</li><li><strong>Scumble and glaze:</strong> a scumble is a dry, broken film over the canvas weave. A glaze is a thin, transparent darkening film.
+</li><li><strong>Palette knife:</strong> it lays flat slabs with sharp edges and raised lips. It also scrapes paint off.
+</li><li><strong>In grayscale:</strong> the drag and the relief read well. Colour mixing doesn't apply, and a glaze is simply darkening.
+</li></ul>
+</section>
+<section>
+<h2 id="2-how-the-apps-do-it">2. How the apps do it</h2>
+<div class="tbl"><table class="wide"><thead><tr><th>App</th><th>Grain</th><th>Smudge / pickup</th><th>Impasto</th><th>Loading</th></tr></thead><tbody><tr><td><strong>Procreate</strong> (technique only)</td><td><em>Texturized</em> grain is fixed to the canvas; <em>Moving</em> grain travels with the brush; <em>Depth</em> sets contrast (<a href="https://help.procreate.com/procreate/handbook/brushes/brush-studio-settings" target="_blank" rel="noopener">handbook</a>)</td><td>Wet Mix <em>Pull</em> drags paint; <em>Blur</em> softens it</td><td>—</td><td><em>Charge</em> thins along the stroke; <em>Attack</em></td></tr><tr><td><strong>Krita</strong></td><td>textured tip</td><td><strong>Smearing</strong> copies the previous dab's pixels. <strong>Dulling</strong> fills the dab with the average beneath it. <em>Smudge length</em> and <em>Color rate</em> (<a href="https://docs.krita.org/Color_Smudge" target="_blank" rel="noopener">docs</a>)</td><td>Lightness tips write a height map</td><td>Bristle engine: ink depletion, soak ink (<a href="https://docs.krita.org/Bristle" target="_blank" rel="noopener">docs</a>)</td></tr><tr><td><strong>Corel Painter</strong></td><td>grain-reactive</td><td>Artists' Oils <em>Blend</em> and <em>Wetness</em>; <em>Dirty mode</em></td><td>Depth stored on the canvas under one global light (<a href="https://product.corel.com/help/Painter/540111162/Corel-Painter-en/Corel-Painter-Impasto-lighting-and-depth.html" target="_blank" rel="noopener">lighting</a>, <a href="https://product.corel.com/help/Painter/540111162/Corel-Painter-en/Corel-Painter-Thick-Paint.html" target="_blank" rel="noopener">Thick Paint</a>)</td><td><em>Amount</em>; <em>Viscosity</em> (how fast it runs dry) (<a href="https://product.corel.com/help/Painter/540111162/Corel-Painter-en/Corel-Painter-Artists-Oils-controls.html" target="_blank" rel="noopener">controls</a>); <a href="https://product.corel.com/help/Painter/540230868/Main/EN/Win-Documentation/Corel-Painter-RealBristle-Brushes.html" target="_blank" rel="noopener">RealBristle</a> hairs</td></tr><tr><td><strong>ArtRage</strong> (the oils benchmark)</td><td>grain-reactive</td><td>Wet oils smear unless <em>Insta-Dry</em> is on; the knife smears; <em>Auto Clean</em> (<a href="https://www.artrage.com/manuals/natural-media-tools/oil-paint-settings/" target="_blank" rel="noopener">oils</a>)</td><td>Thickness, with an adjustable light (<a href="https://www.artrage.com/artrage-6/" target="_blank" rel="noopener">v6</a>); method unpublished</td><td><em>Loading</em> sets stroke length; <em>Thinners</em></td></tr><tr><td><strong>Rebelle</strong></td><td>dry tools for charcoal and pastel (<a href="https://www.escapemotions.com/products/rebelle/documents/Rebelle_Manual_v.7.0.pdf" target="_blank" rel="noopener">manual</a>)</td><td>Blend, Smudge, re-wet</td><td>Thick or thin paint</td><td>per brush</td></tr><tr><td><strong>Fresco</strong> live oils</td><td>—</td><td>Physics engine; blends with wet paint (<a href="https://helpx.adobe.com/fresco/using/live-brushes.html" target="_blank" rel="noopener">help</a>)</td><td>Ridges set by pressure</td><td>Method unpublished (<a href="https://history.siggraph.org/?p=210425" target="_blank" rel="noopener">Wetbrush</a>?)</td></tr><tr><td><strong>Clip Studio</strong></td><td>paper texture</td><td><em>Blend</em> or <em>Running color</em>; <em>Color stretch</em> (<a href="https://help.clip-studio.com/en-us/manual_en/240_brushes/Blending_tools.htm" target="_blank" rel="noopener">manual</a>)</td><td>—</td><td><em>Amount</em> and <em>Density</em> of paint</td></tr><tr><td><strong>Infinite Painter</strong></td><td>grain</td><td>Paint, <strong>Blend</strong> and Erase modes; a finger can Blend (<a href="https://docs.infinitestudio.art/painter/brushes/editing/" target="_blank" rel="noopener">docs</a>)</td><td>—</td><td>editor</td></tr><tr><td><strong>Expresii</strong></td><td>—</td><td>GPU fluid ink, MoXi's successor (<a href="https://cgpress.org/archives/expresii_ink_painting_software.html" target="_blank" rel="noopener">CG Press</a>); listed for contrast only</td><td>—</td><td>—</td></tr></tbody></table></div>
+<p><strong>The pattern:</strong></p>
+<ul><li><strong>Pickup</strong> is always three numbers: how much the brush picks up, how long it keeps it, and how much fresh paint it adds.
+</li><li><strong>Impasto</strong> is always a separate height channel under one light.
+</li><li><strong>Charcoal</strong> is always grain fixed to the canvas, with pressure driving contrast.
+</li></ul>
+</section>
+<section>
+<h2 id="3-key-papers">3. Key papers</h2>
+<ul><li><strong>Sousa &amp; Buchanan.</strong> Pencil (<a href="https://diglib.eg.org/handle/10.2312/8605" target="_blank" rel="noopener">CGF 2000</a>); blenders and erasers (<a href="https://graphicsinterface.org/proceedings/gi1999/gi1999-21" target="_blank" rel="noopener">GI 1999</a>).
+<ul><li>The paper surface is a height field.
+</li><li>A blender carries a buffer. It removes 70%×pressure of the lead from the paper and returns 50%×pressure.
+</li><li>Blending "fills the paper's low grains". An eraser only removes.
+</li><li>Applies directly to charcoal.
+</li></ul>
+</li><li><strong>Majumder &amp; Gopi</strong> (<a href="https://www.cs.unc.edu/Research/ootf/publications/Majumder_NPAR02.pdf" target="_blank" rel="noopener">NPAR 2002</a>). Charcoal from a contrast curve on the paper texture.
+</li><li><strong>Rudolf, Mould &amp; Neufeld</strong>, wax crayon (<a href="https://isgwww.cs.uni-magdeburg.de/~stefans/npr/entry-Rudolf-2003-SWC.html" target="_blank" rel="noopener">2003</a>, <a href="https://isgwww.cs.uni-magdeburg.de/~stefans/npr/entry-Rudolf-2005-BDM.html" target="_blank" rel="noopener">2005</a>). Paper is a height field. Deposit follows contact and force. Wax already laid is smeared and redeposited.
+</li><li><strong>Baxter et al., dAb</strong> (<a href="https://research.google/pubs/dab-interactive-haptic-painting-with-3d-virtual-brushes/" target="_blank" rel="noopener">2001</a>). Wet and dry layers. The brush both deposits and picks up.
+</li><li><strong>IMPaSTo</strong> (<a href="https://gamma.cs.unc.edu/IMPASTO/" target="_blank" rel="noopener">project</a>, <a href="https://math.vu.nl/~eliens/demo/local/documents/impasto.htm" target="_blank" rel="noopener">summary</a>, <a href="https://www.billbaxter.com/dissertation/Baxter-dissertation.pdf" target="_blank" rel="noopener">thesis</a>).
+<ul><li>Each cell stores paint volume and pigment.
+</li><li>Paint transfers in one direction per cell, from whichever side holds more, at 10% of the difference.
+</li><li>Relief is bump-mapped.
+</li><li>Too heavy for Inkwash, but its transfer rule is useful.
+</li></ul>
+</li><li><strong>Hertzmann, Fast Paint Texture</strong> (<a href="https://www.dgp.toronto.edu/papers/ahertzmann_NPAR2002.pdf" target="_blank" rel="noopener">NPAR 2002</a>).
+<ul><li>Each stroke stamps a height texture that <strong>overwrites</strong> the height already there rather than adding to it. Adding let hidden strokes show through.
+</li><li>A small offset per stroke marks the stroke boundaries.
+</li><li>One fixed light. <strong>This is the model for Inkwash.</strong>
+</li></ul>
+</li><li><strong>Chu et al.</strong> (<a href="https://microsoft.com/en-us/research/wp-content/uploads/2010/06/PaintModel_NPAR_2010.pdf" target="_blank" rel="noopener">NPAR 2010</a>). A 2D <strong>pickup map</strong> under the brush keeps the streaks when smearing. This is Carry.
+</li><li><strong>RealBrush</strong> (<a href="https://gfx.cs.princeton.edu/pubs/Lu_2013_RPW/Lu_2013_RPW.pdf" target="_blank" rel="noopener">2013</a>). Separates <em>shape</em>, <em>smear</em> (wet) and <em>smudge</em> (dry brush or finger).
+</li><li><strong>For contrast:</strong> <strong>MoXi</strong> (<a href="https://history.siggraph.org/learning/moxi-real-time-ink-dispersion-in-absorbent-paper-by-chu-and-tai-2" target="_blank" rel="noopener">2005</a>) and <strong>Wetbrush</strong> are GPU fluid simulations, suited to ink rather than these media.
+</li></ul>
+</section>
+<section>
+<h2 id="4-shared-part-carry">4. Shared part: Carry</h2>
+<figure><svg viewBox="0 0 640 190" role="img" aria-label="Carry buffer: a finger or brush picks up black and lays a fading grey trail onto white"><rect x="20" y="40" width="300" height="70" fill="var(--ink)"/><rect x="320" y="40" width="300" height="70" fill="var(--screen)" stroke="var(--ink)" stroke-width="2"/><rect x="20" y="40" width="600" height="70" fill="none" stroke="var(--ink)" stroke-width="2"/><rect x="320" y="58" width="20" height="34" fill="rgb(40,40,40)"/><rect x="340" y="58" width="20" height="34" fill="rgb(82,82,82)"/><rect x="360" y="58" width="20" height="34" fill="rgb(117,117,117)"/><rect x="380" y="58" width="20" height="34" fill="rgb(144,144,144)"/><rect x="400" y="58" width="20" height="34" fill="rgb(166,166,166)"/><rect x="420" y="58" width="20" height="34" fill="rgb(184,184,184)"/><rect x="440" y="58" width="20" height="34" fill="rgb(198,198,198)"/><rect x="460" y="58" width="20" height="34" fill="rgb(209,209,209)"/><rect x="480" y="58" width="20" height="34" fill="rgb(218,218,218)"/><rect x="500" y="58" width="20" height="34" fill="rgb(225,225,225)"/><rect x="520" y="58" width="20" height="34" fill="rgb(231,231,231)"/><rect x="540" y="58" width="20" height="34" fill="rgb(236,236,236)"/><rect x="560" y="58" width="20" height="34" fill="rgb(240,240,240)"/><rect x="580" y="58" width="20" height="34" fill="rgb(243,243,243)"/><circle cx="200" cy="75" r="22" fill="none" stroke="var(--screen)" stroke-width="2" stroke-dasharray="3 3"/><circle cx="260" cy="75" r="22" fill="none" stroke="var(--screen)" stroke-width="2" stroke-dasharray="3 3"/><circle cx="320" cy="75" r="22" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray=""/><circle cx="380" cy="75" r="22" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="3 3"/><circle cx="440" cy="75" r="22" fill="none" stroke="var(--ink)" stroke-width="2" stroke-dasharray="3 3"/><path d="M140 75 L560 75" stroke="var(--grey)" stroke-width="1.5" marker-end="url(#ah)"/><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--grey)"/></marker></defs><rect x="250" y="135" width="140" height="44" fill="var(--screen)" stroke="var(--ink)" stroke-width="3"/><text x="320" y="162" text-anchor="middle" class="svgt b">CARRY BUFFER</text><path d="M300 97 L285 133" stroke="var(--ink)" stroke-width="2" marker-end="url(#ak)"/><path d="M355 133 L340 97" stroke="var(--ink)" stroke-width="2" marker-end="url(#ak)"/><defs><marker id="ak" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--ink)"/></marker></defs><text x="200" y="128" text-anchor="end" class="svgt">pick ↓</text><text x="440" y="128" class="svgt">↑ lay</text><text x="20" y="28" class="svgt">wet black paint</text><text x="620" y="28" text-anchor="end" class="svgt">clean paper → trail fades</text></svg><figcaption>Carry, one part for three media. Each dab picks up some of what is under it into a buffer, then lays the buffer back down. Dragged from black onto white, it leaves a grey smear that fades. A finger has no paint of its own. An oil brush mixes in its own load.</figcaption></figure>
+<p>Carry is a buffer the size of one dab that travels with the tool, as in Chu 2010 and Krita's smearing. For each pixel under a dab:</p>
+<pre>under = stroke-base tone (as PaintLoad reads it)
+buf  += (under - buf) * pick                       // tool picks up
+out   = under + (mix(buf, own, load) - under) * lay</pre>
+<p>The buffer shifts by the dab spacing, so streaks drag along. <code>load</code> runs down along the stroke, exactly like <code>PaintLoad.amount</code>.</p>
+<ul><li><strong>Finger on charcoal:</strong> no paint of its own (load 0), with pick 0.7·p and lay 0.5·p. This is Sousa's blender.
+</li><li><strong>Oils:</strong> pick 0.4–0.8, scaled by the wetness of the paint beneath. Use IMPaSTo's direction rule: deposit wins where the page is already close to the brush's own tone. This stops paint bouncing back and forth.
+</li><li><strong>Gouache:</strong> pick 0.1–0.3.
+</li></ul>
+<p>Cost, per dab:</p>
+<ul><li>Each pixel takes a read, an update and a write: about 1.5–2× a plain dab.
+</li><li>A 120 px dab is about 11k pixels: roughly 30–60 µs on a Mac and 0.1–0.3 ms on the device. A screen update comes about every 330 ms.
+</li><li>Nothing extra at lift.
+</li></ul>
+<p>Starting point in the code:</p>
+<ul><li><code>PaintLoad</code> already does the one-average version (Krita's dulling), with a 40 px pickup length.
+</li><li><code>ToneDabs.soften</code> already drags from behind the tip.
+</li><li>Merge the two and give the buffer one value per pixel.
+</li></ul>
+</section>
+<section>
+<h2 id="5-charcoal">5. Charcoal</h2>
+<figure><svg viewBox="0 0 640 200" role="img" aria-label="Paper tooth cross-section: light pressure marks only peaks, pressure reaches valleys, smudging fills valleys"><polygon points="20,170 20.0,95.7 27.5,83.5 35.0,85.0 42.5,73.3 50.0,64.8 57.5,91.8 65.0,118.1 72.5,119.9 80.0,123.8 87.5,153.4 95.0,141.4 102.5,105.3 110.0,88.7 117.5,93.3 125.0,74.9 132.5,52.4 140.0,75.7 147.5,111.1 155.0,114.6 162.5,127.5 170.0,151.3 177.5,146.9 185.0,108.6 192.5,86.0 200.0,87.6 207.5,81.1 215.0,52.4 222.5,69.3 230.0,106.6 237.5,117.3 245.0,117.5 252.5,151.5 260.0,147.3 267.5,115.9 275.0,97.8 282.5,102.3 290.0,75.4 297.5,52.4 305.0,59.2 312.5,93.2 320.0,105.9 327.5,111.2 335.0,139.0 342.5,157.1 350.0,134.1 357.5,108.7 365.0,101.9 372.5,95.5 380.0,62.4 387.5,57.7 395.0,93.6 402.5,98.7 410.0,102.4 417.5,135.7 425.0,149.1 432.5,140.1 440.0,114.1 447.5,117.8 455.0,95.8 462.5,64.2 470.0,58.7 477.5,80.3 485.0,95.4 492.5,92.9 500.0,119.0 507.5,159.8 515.0,146.7 522.5,122.7 530.0,116.6 537.5,105.5 545.0,71.9 552.5,58.4 560.0,83.4 567.5,87.8 575.0,92.1 582.5,112.1 590.0,143.9 597.5,136.5 605.0,120.2 612.5,119.9 620.0,123.8 620,170" fill="#ecece6" stroke="var(--ink)" stroke-width="2"/><line x1="40.5" y1="74.4" x2="42.5" y2="71.3" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="42.5" y1="71.3" x2="50.0" y2="62.8" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="50.0" y1="62.8" x2="53.2" y2="74.4" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="124.4" y1="74.4" x2="125.0" y2="72.9" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="125.0" y1="72.9" x2="132.5" y2="50.4" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="132.5" y1="50.4" x2="140.0" y2="73.7" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="140.0" y1="73.7" x2="140.1" y2="74.4" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="208.7" y1="74.4" x2="215.0" y2="50.4" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="20.0" x2="215.0" y1="76.4" y2="76.4" stroke="var(--ink)" stroke-dasharray="4 3" stroke-width="1.5"/><text x="118" y="194" text-anchor="middle" class="svgt">LIGHT</text><line x1="222.5" y1="67.3" x2="230.0" y2="104.6" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="230.0" y1="104.6" x2="236.6" y2="114.0" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="267.5" y1="114.0" x2="267.5" y2="113.9" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="267.5" y1="113.9" x2="275.0" y2="95.8" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="275.0" y1="95.8" x2="282.5" y2="100.3" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="282.5" y1="100.3" x2="290.0" y2="73.4" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="290.0" y1="73.4" x2="297.5" y2="50.4" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="297.5" y1="50.4" x2="305.0" y2="57.2" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="305.0" y1="57.2" x2="312.5" y2="91.2" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="312.5" y1="91.2" x2="320.0" y2="103.9" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="320.0" y1="103.9" x2="327.5" y2="109.2" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="327.5" y1="109.2" x2="328.8" y2="114.0" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="355.4" y1="114.0" x2="357.5" y2="106.7" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="357.5" y1="106.7" x2="365.0" y2="99.9" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="365.0" y1="99.9" x2="372.5" y2="93.5" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="372.5" y1="93.5" x2="380.0" y2="60.4" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="380.0" y1="60.4" x2="387.5" y2="55.7" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="387.5" y1="55.7" x2="395.0" y2="91.6" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="395.0" y1="91.6" x2="402.5" y2="96.7" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="402.5" y1="96.7" x2="410.0" y2="100.4" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="410.0" y1="100.4" x2="413.1" y2="114.0" stroke="var(--ink)" stroke-width="6" stroke-linecap="round"/><line x1="222.5" x2="417.5" y1="116.0" y2="116.0" stroke="var(--ink)" stroke-dasharray="4 3" stroke-width="1.5"/><text x="320" y="194" text-anchor="middle" class="svgt">PRESSED</text><polygon points="425.0,110.0 432.5,110.0 432.5,140.1 425.0,149.1" fill="var(--grey)"/><line x1="425.0" y1="108.5" x2="432.5" y2="108.5" stroke="var(--grey)" stroke-width="3"/><polygon points="432.5,110.0 440.0,110.0 440.0,114.1 432.5,140.1" fill="var(--grey)"/><line x1="432.5" y1="108.5" x2="440.0" y2="108.5" stroke="var(--grey)" stroke-width="3"/><polygon points="440.0,110.0 447.5,110.0 447.5,117.8 440.0,114.1" fill="var(--grey)"/><line x1="440.0" y1="108.5" x2="447.5" y2="108.5" stroke="var(--grey)" stroke-width="3"/><polygon points="447.5,110.0 455.0,95.8 455.0,95.8 447.5,117.8" fill="var(--grey)"/><line x1="447.5" y1="108.5" x2="455.0" y2="94.3" stroke="var(--grey)" stroke-width="3"/><polygon points="455.0,95.8 462.5,64.2 462.5,64.2 455.0,95.8" fill="var(--grey)"/><line x1="455.0" y1="94.3" x2="462.5" y2="62.7" stroke="var(--grey)" stroke-width="3"/><polygon points="462.5,64.2 470.0,58.7 470.0,58.7 462.5,64.2" fill="var(--grey)"/><line x1="462.5" y1="62.7" x2="470.0" y2="57.2" stroke="var(--grey)" stroke-width="3"/><polygon points="470.0,58.7 477.5,80.3 477.5,80.3 470.0,58.7" fill="var(--grey)"/><line x1="470.0" y1="57.2" x2="477.5" y2="78.8" stroke="var(--grey)" stroke-width="3"/><polygon points="477.5,80.3 485.0,95.4 485.0,95.4 477.5,80.3" fill="var(--grey)"/><line x1="477.5" y1="78.8" x2="485.0" y2="93.9" stroke="var(--grey)" stroke-width="3"/><polygon points="485.0,95.4 492.5,92.9 492.5,92.9 485.0,95.4" fill="var(--grey)"/><line x1="485.0" y1="93.9" x2="492.5" y2="91.4" stroke="var(--grey)" stroke-width="3"/><polygon points="492.5,92.9 500.0,110.0 500.0,119.0 492.5,92.9" fill="var(--grey)"/><line x1="492.5" y1="91.4" x2="500.0" y2="108.5" stroke="var(--grey)" stroke-width="3"/><polygon points="500.0,110.0 507.5,110.0 507.5,159.8 500.0,119.0" fill="var(--grey)"/><line x1="500.0" y1="108.5" x2="507.5" y2="108.5" stroke="var(--grey)" stroke-width="3"/><polygon points="507.5,110.0 515.0,110.0 515.0,146.7 507.5,159.8" fill="var(--grey)"/><line x1="507.5" y1="108.5" x2="515.0" y2="108.5" stroke="var(--grey)" stroke-width="3"/><polygon points="515.0,110.0 522.5,110.0 522.5,122.7 515.0,146.7" fill="var(--grey)"/><line x1="515.0" y1="108.5" x2="522.5" y2="108.5" stroke="var(--grey)" stroke-width="3"/><polygon points="522.5,110.0 530.0,110.0 530.0,116.6 522.5,122.7" fill="var(--grey)"/><line x1="522.5" y1="108.5" x2="530.0" y2="108.5" stroke="var(--grey)" stroke-width="3"/><polygon points="530.0,110.0 537.5,105.5 537.5,105.5 530.0,116.6" fill="var(--grey)"/><line x1="530.0" y1="108.5" x2="537.5" y2="104.0" stroke="var(--grey)" stroke-width="3"/><polygon points="537.5,105.5 545.0,71.9 545.0,71.9 537.5,105.5" fill="var(--grey)"/><line x1="537.5" y1="104.0" x2="545.0" y2="70.4" stroke="var(--grey)" stroke-width="3"/><polygon points="545.0,71.9 552.5,58.4 552.5,58.4 545.0,71.9" fill="var(--grey)"/><line x1="545.0" y1="70.4" x2="552.5" y2="56.9" stroke="var(--grey)" stroke-width="3"/><polygon points="552.5,58.4 560.0,83.4 560.0,83.4 552.5,58.4" fill="var(--grey)"/><line x1="552.5" y1="56.9" x2="560.0" y2="81.9" stroke="var(--grey)" stroke-width="3"/><polygon points="560.0,83.4 567.5,87.8 567.5,87.8 560.0,83.4" fill="var(--grey)"/><line x1="560.0" y1="81.9" x2="567.5" y2="86.3" stroke="var(--grey)" stroke-width="3"/><polygon points="567.5,87.8 575.0,92.1 575.0,92.1 567.5,87.8" fill="var(--grey)"/><line x1="567.5" y1="86.3" x2="575.0" y2="90.6" stroke="var(--grey)" stroke-width="3"/><polygon points="575.0,92.1 582.5,110.0 582.5,112.1 575.0,92.1" fill="var(--grey)"/><line x1="575.0" y1="90.6" x2="582.5" y2="108.5" stroke="var(--grey)" stroke-width="3"/><polygon points="582.5,110.0 590.0,110.0 590.0,143.9 582.5,112.1" fill="var(--grey)"/><line x1="582.5" y1="108.5" x2="590.0" y2="108.5" stroke="var(--grey)" stroke-width="3"/><polygon points="590.0,110.0 597.5,110.0 597.5,136.5 590.0,143.9" fill="var(--grey)"/><line x1="590.0" y1="108.5" x2="597.5" y2="108.5" stroke="var(--grey)" stroke-width="3"/><polygon points="597.5,110.0 605.0,110.0 605.0,120.2 597.5,136.5" fill="var(--grey)"/><line x1="597.5" y1="108.5" x2="605.0" y2="108.5" stroke="var(--grey)" stroke-width="3"/><polygon points="605.0,110.0 612.5,110.0 612.5,119.9 605.0,120.2" fill="var(--grey)"/><line x1="605.0" y1="108.5" x2="612.5" y2="108.5" stroke="var(--grey)" stroke-width="3"/><polygon points="612.5,110.0 620.0,110.0 620.0,123.8 612.5,119.9" fill="var(--grey)"/><line x1="612.5" y1="108.5" x2="620.0" y2="108.5" stroke="var(--grey)" stroke-width="3"/><text x="522" y="194" text-anchor="middle" class="svgt">SMUDGED</text><line x1="219" x2="219" y1="20" y2="170" stroke="var(--rule)" stroke-width="2"/><line x1="421" x2="421" y1="20" y2="170" stroke="var(--rule)" stroke-width="2"/><text x="24" y="16" class="svgt">- - - contact level    black = charcoal on peaks    grey = smudged into valleys</text></svg><figcaption>Charcoal against the paper height map. A light stroke catches only the peaks. Pressure (and darkness already laid) lowers the contact level into the valleys. A finger smudge fills the valleys with grey.</figcaption></figure>
+<p><strong>Traits that matter, most important first:</strong></p>
+<ol><li>White grain specks that close up with pressure and with build-up.
+</li><li>A finger smudge into soft tone.
+</li><li>Lifting highlights with the eraser, leaving a ghost.
+</li><li>A fuzzy edge and dust (the prototyped Spread dial).
+</li><li>A broad stroke with the stick on its side, using tilt.
+</li></ol>
+<p><strong>Technique:</strong></p>
+<ul><li><strong>Contact against paper height.</strong> With <code>h</code> from <code>PaperGrain</code> (0–1):
+<ul><li><code>depth = p^0.7·hold' + 0.6·existingDarkness</code>
+</li><li><code>coverage *= smoothstep(1-depth-soft, 1-depth+soft, h)</code>
+</li><li>The <code>existingDarkness</code> term (one extra read) makes the valleys fill as layers build up.
+</li><li>Today's <code>tooth()</code> threshold is this rule without that term.
+</li><li>Spread's tooth contrast sets <code>soft</code>.
+</li></ul>
+</li><li><strong>New dial: HOLD (0–1), vine to compressed.</strong>
+<ul><li>Low (vine): the darkest value stops near grey 70, the grain shows strongly, it smudges far and erases clean.
+</li><li>High (compressed): reaches grey 0–15, fills the valleys sooner, smudges less and leaves a ghost when erased.
+</li></ul>
+</li><li><strong>Finger: Smudge.</strong>
+<ul><li>Carry with no paint of its own and no tooth test, so it fills the valleys and smooths the grain.
+</li><li>Strength × (1 − 0.5·hold).
+</li><li>The trail fades as the buffer empties.
+</li></ul>
+</li><li><strong>Ghost erase.</strong> Eraser strength × (1 − 0.35·hold·(1 − h)). Peaks clear and valleys keep a trace, so a half-pressure eraser becomes a highlight tool.
+</li><li><strong>Side of the stick.</strong> Add to the prototyped tilt widening: coverage × (1 − 0.4·lean) and depth × (1 − 0.5·lean). The side stroke is broad, light and grainy.
+</li></ul>
+<p><strong>Modules:</strong></p>
+<ul><li>Tip: Stick (the nib plus tilt).
+</li><li>Medium: Dry pigment, with SPREAD (prototyped) and <strong>HOLD</strong> (new).
+</li><li>Paper: <code>PaperGrain</code> plus the build-up term.
+</li><li>Life: none. Nothing changes after lift.
+</li><li>Input: <strong>Finger: Smudge</strong> (new choice, the default for Charcoal). The pen's eraser end and the eraser tool still lift.
+</li></ul>
+<p><strong>Defaults and ranges:</strong></p>
+<div class="tbl"><table class="wide"><thead><tr><th>Style</th><th>Spread</th><th>Hold</th><th>Pressure</th><th>Tooth</th><th>Dry</th></tr></thead><tbody><tr><td>Willow/vine</td><td>.3 (.15–.45)</td><td>.2 (0–.35)</td><td>.5–.9</td><td>.7–1</td><td>.3–.6</td></tr><tr><td>Compressed</td><td>.2 (.1–.3)</td><td>.75 (.55–.9)</td><td>.6–.9</td><td>.5–.8</td><td>.1–.3</td></tr><tr><td>Finger smudge</td><td>—</td><td>—</td><td>strength .6 (.3–.9)</td><td>—</td><td>—</td></tr></tbody></table></div>
+<ul><li>Sizes stay at 6/30/120 px.
+</li><li>Papers: crumpled, cold press, laid.
+</li></ul>
+<p><strong>Leave out:</strong> particle dust (the speck stamp is enough), fixative (layers already freeze work), burnishing and paper damage.</p>
+<p><strong>Cost:</strong></p>
+<ul><li>The build-up term adds less than 5% per dab.
+</li><li>The ghost erase is one multiply per pixel.
+</li><li>The smudge costs the same as Carry.
+</li><li>The prototype's messy 120 px stick (351 µs per sample in JS) stays the cost driver.
+</li></ul>
+</section>
+<section>
+<h2 id="6-gouache">6. Gouache</h2>
+<p><strong>Traits that matter, most important first:</strong></p>
+<ol><li>Opaque: light covers dark.
+</li><li>Flat, crisp-edged shapes.
+</li><li>Slight lifting of the paint beneath.
+</li><li>Chalky dry brush when it runs thin.
+</li><li>A small shift as it dries.
+</li></ol>
+<p><strong>Technique:</strong></p>
+<ul><li><strong>Opacity:</strong> the prototyped COVER dial. At 1 it switches off blooms and feathering, and the edge hardens to 1.2% of the radius.
+</li><li><strong>Lifting:</strong> Carry with pick 0.15–0.3. A light stroke over dark starts slightly grey and is clean within about 40 px (<code>PaintLoad</code>'s pickup length).
+</li><li><strong>Running out:</strong> use <code>PaintLoad</code>'s depletion (load 0.5–0.9). Its coverage then passes the existing tooth threshold, so the stroke breaks up and looks chalky.
+</li><li><strong>Dry shift (optional):</strong> when <code>WatercolorSession</code> marks the stroke dry, <code>tone += shift·(128−tone)·0.07</code>. That is at most about one e-ink grey step, done as one pass at the existing drying time.
+</li></ul>
+<p><strong>Modules:</strong></p>
+<ul><li>Tip: round, flat or Hake.
+</li><li>Medium: Body paint, with COVER, <strong>PULL</strong> (Carry's pick) and <strong>LOAD</strong>.
+</li><li>Life: Dry shift.
+</li><li>Input: the finger erases (default).
+</li></ul>
+<p><strong>Defaults:</strong></p>
+<div class="tbl"><table><thead><tr><th>Setting</th><th>Default (range)</th></tr></thead><tbody><tr><td>Cover</td><td>1 (.9–1)</td></tr><tr><td>Pull</td><td>.2 (.1–.3)</td></tr><tr><td>Load</td><td>.7 (.5–.9)</td></tr><tr><td>Soft</td><td>0–.1</td></tr><tr><td>Gran</td><td>0–.1</td></tr><tr><td>Streaks</td><td>0–.15</td></tr><tr><td>Drying</td><td>0–.3</td></tr><tr><td>Dry shift</td><td>.5 (0–1)</td></tr></tbody></table></div>
+<ul><li>Mode: flat.
+</li><li>Papers: plain, felt, cold press.
+</li></ul>
+<p><strong>Leave out:</strong> matte versus gloss, a separate re-wetting water tool, cracking.</p>
+<p><strong>Cost:</strong></p>
+<ul><li>Pickup makes a dab about 1.5× as expensive.
+</li><li>The dry shift takes under 1 ms on a Mac.
+</li><li>The lift itself is unchanged.
+</li></ul>
+</section>
+<section>
+<h2 id="7-oils">7. Oils</h2>
+<figure><svg viewBox="0 0 640 180" role="img" aria-label="Impasto height profile and the resulting lit grey band"><polygon points="20,90 20.0,90.0 25.0,90.0 30.0,90.0 35.0,90.0 40.0,90.0 45.0,90.0 50.0,90.0 55.0,90.0 60.0,90.0 65.0,90.0 70.0,90.0 75.0,90.0 80.0,90.0 85.0,90.0 90.0,90.0 95.0,78.0 100.0,58.1 105.0,40.8 110.0,40.0 115.0,41.3 120.0,45.1 125.0,50.6 130.0,56.0 135.0,59.6 140.0,60.6 145.0,57.5 150.0,54.1 155.0,52.3 160.0,53.0 165.0,55.9 170.0,59.3 175.0,61.6 180.0,61.3 185.0,58.8 190.0,55.3 195.0,52.7 200.0,52.4 205.0,54.6 210.0,58.1 215.0,61.0 220.0,61.7 225.0,60.0 230.0,56.6 235.0,53.4 240.0,52.2 245.0,53.5 250.0,56.7 255.0,60.1 260.0,61.8 265.0,60.9 270.0,57.9 275.0,54.5 280.0,52.4 285.0,52.7 290.0,55.4 295.0,58.9 300.0,61.4 305.0,61.5 310.0,59.2 315.0,55.7 320.0,52.9 325.0,52.3 330.0,54.2 335.0,57.6 340.0,60.7 345.0,61.8 350.0,60.3 355.0,57.1 360.0,53.8 365.0,52.2 370.0,53.2 375.0,56.2 380.0,59.7 385.0,61.7 390.0,61.2 395.0,58.4 400.0,54.9 405.0,52.5 410.0,52.5 415.0,55.0 420.0,58.5 425.0,61.2 430.0,61.7 435.0,59.6 440.0,56.2 445.0,53.2 450.0,52.2 455.0,53.8 460.0,57.1 465.0,60.4 470.0,61.8 475.0,60.7 480.0,57.6 485.0,54.2 490.0,52.3 495.0,52.9 500.0,55.8 505.0,57.1 510.0,57.2 515.0,54.8 520.0,50.1 525.0,44.4 530.0,39.6 535.0,37.1 540.0,54.7 545.0,77.1 550.0,90.0 555.0,90.0 560.0,90.0 565.0,90.0 570.0,90.0 575.0,90.0 580.0,90.0 585.0,90.0 590.0,90.0 595.0,90.0 600.0,90.0 605.0,90.0 610.0,90.0 615.0,90.0 620.0,90.0 620,90" fill="var(--hatch)" stroke="var(--ink)" stroke-width="2"/><text x="20" y="16" class="svgt">height h (side view)</text><text x="604" y="18" text-anchor="end" class="svgt">light ↘ from upper left</text><rect x="20.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="25.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="30.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="35.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="40.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="45.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="50.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="55.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="60.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="65.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="70.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="75.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="80.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="85.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="90.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="95.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="100.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="105.0" y="110" width="5.60" height="44" fill="rgb(246,246,246)"/><rect x="110.0" y="110" width="5.60" height="44" fill="rgb(116,116,116)"/><rect x="115.0" y="110" width="5.60" height="44" fill="rgb(84,84,84)"/><rect x="120.0" y="110" width="5.60" height="44" fill="rgb(54,54,54)"/><rect x="125.0" y="110" width="5.60" height="44" fill="rgb(43,43,43)"/><rect x="130.0" y="110" width="5.60" height="44" fill="rgb(57,57,57)"/><rect x="135.0" y="110" width="5.60" height="44" fill="rgb(88,88,88)"/><rect x="140.0" y="110" width="5.60" height="44" fill="rgb(134,134,134)"/><rect x="145.0" y="110" width="5.60" height="44" fill="rgb(165,165,165)"/><rect x="150.0" y="110" width="5.60" height="44" fill="rgb(156,156,156)"/><rect x="155.0" y="110" width="5.60" height="44" fill="rgb(127,127,127)"/><rect x="160.0" y="110" width="5.60" height="44" fill="rgb(94,94,94)"/><rect x="165.0" y="110" width="5.60" height="44" fill="rgb(75,75,75)"/><rect x="170.0" y="110" width="5.60" height="44" fill="rgb(79,79,79)"/><rect x="175.0" y="110" width="5.60" height="44" fill="rgb(105,105,105)"/><rect x="180.0" y="110" width="5.60" height="44" fill="rgb(139,139,139)"/><rect x="185.0" y="110" width="5.60" height="44" fill="rgb(162,162,162)"/><rect x="190.0" y="110" width="5.60" height="44" fill="rgb(162,162,162)"/><rect x="195.0" y="110" width="5.60" height="44" fill="rgb(140,140,140)"/><rect x="200.0" y="110" width="5.60" height="44" fill="rgb(106,106,106)"/><rect x="205.0" y="110" width="5.60" height="44" fill="rgb(80,80,80)"/><rect x="210.0" y="110" width="5.60" height="44" fill="rgb(75,75,75)"/><rect x="215.0" y="110" width="5.60" height="44" fill="rgb(94,94,94)"/><rect x="220.0" y="110" width="5.60" height="44" fill="rgb(127,127,127)"/><rect x="225.0" y="110" width="5.60" height="44" fill="rgb(156,156,156)"/><rect x="230.0" y="110" width="5.60" height="44" fill="rgb(165,165,165)"/><rect x="235.0" y="110" width="5.60" height="44" fill="rgb(150,150,150)"/><rect x="240.0" y="110" width="5.60" height="44" fill="rgb(119,119,119)"/><rect x="245.0" y="110" width="5.60" height="44" fill="rgb(88,88,88)"/><rect x="250.0" y="110" width="5.60" height="44" fill="rgb(74,74,74)"/><rect x="255.0" y="110" width="5.60" height="44" fill="rgb(84,84,84)"/><rect x="260.0" y="110" width="5.60" height="44" fill="rgb(114,114,114)"/><rect x="265.0" y="110" width="5.60" height="44" fill="rgb(146,146,146)"/><rect x="270.0" y="110" width="5.60" height="44" fill="rgb(164,164,164)"/><rect x="275.0" y="110" width="5.60" height="44" fill="rgb(159,159,159)"/><rect x="280.0" y="110" width="5.60" height="44" fill="rgb(132,132,132)"/><rect x="285.0" y="110" width="5.60" height="44" fill="rgb(98,98,98)"/><rect x="290.0" y="110" width="5.60" height="44" fill="rgb(76,76,76)"/><rect x="295.0" y="110" width="5.60" height="44" fill="rgb(77,77,77)"/><rect x="300.0" y="110" width="5.60" height="44" fill="rgb(101,101,101)"/><rect x="305.0" y="110" width="5.60" height="44" fill="rgb(135,135,135)"/><rect x="310.0" y="110" width="5.60" height="44" fill="rgb(160,160,160)"/><rect x="315.0" y="110" width="5.60" height="44" fill="rgb(164,164,164)"/><rect x="320.0" y="110" width="5.60" height="44" fill="rgb(144,144,144)"/><rect x="325.0" y="110" width="5.60" height="44" fill="rgb(111,111,111)"/><rect x="330.0" y="110" width="5.60" height="44" fill="rgb(82,82,82)"/><rect x="335.0" y="110" width="5.60" height="44" fill="rgb(74,74,74)"/><rect x="340.0" y="110" width="5.60" height="44" fill="rgb(90,90,90)"/><rect x="345.0" y="110" width="5.60" height="44" fill="rgb(122,122,122)"/><rect x="350.0" y="110" width="5.60" height="44" fill="rgb(153,153,153)"/><rect x="355.0" y="110" width="5.60" height="44" fill="rgb(165,165,165)"/><rect x="360.0" y="110" width="5.60" height="44" fill="rgb(153,153,153)"/><rect x="365.0" y="110" width="5.60" height="44" fill="rgb(123,123,123)"/><rect x="370.0" y="110" width="5.60" height="44" fill="rgb(91,91,91)"/><rect x="375.0" y="110" width="5.60" height="44" fill="rgb(74,74,74)"/><rect x="380.0" y="110" width="5.60" height="44" fill="rgb(82,82,82)"/><rect x="385.0" y="110" width="5.60" height="44" fill="rgb(109,109,109)"/><rect x="390.0" y="110" width="5.60" height="44" fill="rgb(142,142,142)"/><rect x="395.0" y="110" width="5.60" height="44" fill="rgb(163,163,163)"/><rect x="400.0" y="110" width="5.60" height="44" fill="rgb(161,161,161)"/><rect x="405.0" y="110" width="5.60" height="44" fill="rgb(136,136,136)"/><rect x="410.0" y="110" width="5.60" height="44" fill="rgb(102,102,102)"/><rect x="415.0" y="110" width="5.60" height="44" fill="rgb(78,78,78)"/><rect x="420.0" y="110" width="5.60" height="44" fill="rgb(76,76,76)"/><rect x="425.0" y="110" width="5.60" height="44" fill="rgb(97,97,97)"/><rect x="430.0" y="110" width="5.60" height="44" fill="rgb(130,130,130)"/><rect x="435.0" y="110" width="5.60" height="44" fill="rgb(158,158,158)"/><rect x="440.0" y="110" width="5.60" height="44" fill="rgb(165,165,165)"/><rect x="445.0" y="110" width="5.60" height="44" fill="rgb(147,147,147)"/><rect x="450.0" y="110" width="5.60" height="44" fill="rgb(115,115,115)"/><rect x="455.0" y="110" width="5.60" height="44" fill="rgb(85,85,85)"/><rect x="460.0" y="110" width="5.60" height="44" fill="rgb(74,74,74)"/><rect x="465.0" y="110" width="5.60" height="44" fill="rgb(87,87,87)"/><rect x="470.0" y="110" width="5.60" height="44" fill="rgb(117,117,117)"/><rect x="475.0" y="110" width="5.60" height="44" fill="rgb(149,149,149)"/><rect x="480.0" y="110" width="5.60" height="44" fill="rgb(165,165,165)"/><rect x="485.0" y="110" width="5.60" height="44" fill="rgb(156,156,156)"/><rect x="490.0" y="110" width="5.60" height="44" fill="rgb(128,128,128)"/><rect x="495.0" y="110" width="5.60" height="44" fill="rgb(95,95,95)"/><rect x="500.0" y="110" width="5.60" height="44" fill="rgb(91,91,91)"/><rect x="505.0" y="110" width="5.60" height="44" fill="rgb(110,110,110)"/><rect x="510.0" y="110" width="5.60" height="44" fill="rgb(135,135,135)"/><rect x="515.0" y="110" width="5.60" height="44" fill="rgb(169,169,169)"/><rect x="520.0" y="110" width="5.60" height="44" fill="rgb(192,192,192)"/><rect x="525.0" y="110" width="5.60" height="44" fill="rgb(193,193,193)"/><rect x="530.0" y="110" width="5.60" height="44" fill="rgb(171,171,171)"/><rect x="535.0" y="110" width="5.60" height="44" fill="rgb(14,14,14)"/><rect x="540.0" y="110" width="5.60" height="44" fill="rgb(0,0,0)"/><rect x="545.0" y="110" width="5.60" height="44" fill="rgb(0,0,0)"/><rect x="550.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="555.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="560.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="565.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="570.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="575.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="580.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="585.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="590.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="595.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="600.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="605.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="610.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="615.0" y="110" width="5.60" height="44" fill="rgb(255,255,255)"/><rect x="20" y="110" width="600" height="44" fill="none" stroke="var(--ink)" stroke-width="2"/><text x="20" y="172" class="svgt">shown tone = paint tone + k·(h[x+1] − h[x−1])  (top view, one grey paint)</text></svg><figcaption>Impasto as a height plane under a fixed light. Slopes facing the light read lighter and slopes facing away read darker. That shows the lips at the stroke ends and the bristle grooves, though the paint is one flat grey.</figcaption></figure>
+<p><strong>Traits that matter, most important first:</strong></p>
+<ol><li>Wet-into-wet drag.
+</li><li>Impasto relief lit from one side.
+</li><li>Opaque, buttery cover.
+</li><li>Running out into a scumble over the canvas weave.
+</li><li>Palette-knife slabs and scraping.
+</li></ol>
+<p><strong>Technique:</strong></p>
+<ul><li><strong>Pull (wet drag):</strong> Carry with pick 0.4–0.8, scaled by the wetness of the paint beneath. Drying at 0.8–1 keeps oils wet for the session. <code>BlowDryer</code> dries them, which stops the smear (like ArtRage's Insta-Dry).
+</li><li><strong>Height plane (new)</strong>
+<ul><li>One byte per pixel per paint layer.
+</li><li>Stored in the document's 64 px tiles and allocated only where impasto lands. A full Manta layer would be 4.9 MB.
+</li><li>Each dab updates <code>h += (stampH − h)·deposit</code>, which overwrites the height, as Hertzmann does.
+</li><li><code>stampH = impasto·(0.6 + 0.4·bristle lane + lip)</code>:
+<ul><li>the bristle lanes come from <code>BristleTexture</code>;
+</li><li>the lip rises at the stroke's sides and where the paint runs out.
+</li></ul>
+</li><li>Carry also carries <code>h</code>, so smears drag the ridges.
+</li><li>The height tiles join undo.
+</li></ul>
+</li><li><strong>Fixed-light shading at lift</strong>
+<ul><li>Light comes from the upper left. Over the stroke's box plus 1 px: <code>relief = k·(h[x+1,y+1] − h[x−1,y−1]) − e·max(0, h − blur3(h))</code>, with k ≈ 100·impasto and e ≈ 90·impasto.
+</li><li><strong>Check the sign.</strong> A slope that rises toward the lower right faces the upper-left light, so it must read lighter. The prototype's <code>ridge = D[j−rw−1] − D[j+rw+1]</code> (exp.js) has the opposite sign, which lights the paint from the lower right. Viewers assume light from above, so ridges lit from below can read as grooves. Flip it.
+</li><li>The first term is Lambert lighting for a fixed light, reduced to a single difference. The second keeps the prototype's darker piled edge.
+</li><li>Keep the relief as an offset stored apart from the base tone, so that shading again after a smear never compounds.
+</li><li>A ridge must be larger than about one e-ink step (17 levels) and at least 2 px wide, or the 16 greys hide it.
+</li></ul>
+</li><li><strong>Knife (new Tip)</strong>
+<ul><li>A flat head with no bristle lanes, a hard edge and a flat plateau height.
+</li><li>A lip at the trailing edge.
+</li><li>Pull 0.9.
+</li><li>With load 0 it scrapes: pick 0.8 and lay 0.2, which lowers <code>h</code> and lightens the paint.
+</li></ul>
+</li><li><strong>Scumble and glaze are presets, not dials.</strong>
+<ul><li>Scumble: low load over the canvas tooth.
+</li><li>Glaze: Cover 0.2–0.4 with Pull 0.
+</li></ul>
+</li></ul>
+<p><strong>Modules:</strong></p>
+<ul><li>Tip: Round, Flat, Hake and <strong>Knife</strong>.
+</li><li>Medium: Body paint, with COVER, PULL, LOAD and IMPASTO.
+</li><li>Paper: canvas.
+</li><li>Life: <strong>Open</strong> (wet until dried), plus the height plane and shading at lift.
+</li><li>Input: tilt turns the flat head.
+</li></ul>
+<p><strong>Defaults and ranges:</strong></p>
+<div class="tbl"><table class="wide"><thead><tr><th>Style</th><th>Cover</th><th>Pull</th><th>Load</th><th>Impasto</th><th>Streaks</th><th>Drying</th></tr></thead><tbody><tr><td>Oils</td><td>1 (.85–1)</td><td>.6 (.4–.8)</td><td>.6 (.3–.9)</td><td>.6 (.4–.9)</td><td>.5–.95</td><td>.8–1</td></tr><tr><td>Knife</td><td>1</td><td>.9</td><td>.8</td><td>.9</td><td>0</td><td>.9</td></tr><tr><td>Glaze</td><td>.3 (.2–.4)</td><td>0</td><td>1</td><td>0</td><td>.2</td><td>.9</td></tr><tr><td>Scumble</td><td>1</td><td>.2</td><td>.25</td><td>.3</td><td>.8</td><td>.9</td></tr></tbody></table></div>
+<p><strong>Leave out:</strong></p>
+<ul><li>Pigment optics and fluid flow.
+</li><li>Simulated bristles (<code>BristleTexture</code> lanes are enough).
+</li><li>Gloss, which flickers on e-ink.
+</li><li>An adjustable light.
+</li><li>Cracking.
+</li><li>A dirty brush carried between strokes: start each stroke clean, like ArtRage's Auto Clean.
+</li></ul>
+<p><strong>Cost</strong> (the reference point is the Manta watercolor settle, about 61 ms worst case on a Mac):</p>
+<ul><li><strong>Pull:</strong> about 1.5–2× per dab while drawing.
+</li><li><strong>Height writes:</strong> under 10% of a dab.
+</li><li><strong>Shading:</strong> two reads plus a 3×3 blur per pixel, about 1–2 ms for a 600×600 box on a Mac.
+</li><li><strong>Whole lift:</strong> the prototype's Oils lift at size L went from 11 to 16 ms in JS. Budget about +5 ms on a Mac, roughly 8% of the 61 ms settle. Allow 3–5× that on the device, which is still under one e-ink frame.
+</li><li><strong>Memory:</strong> only tiles where impasto lands.
+</li></ul>
+</section>
+<section>
+<h2 id="8-order-of-work">8. Order of work</h2>
+<ol><li><strong>Carry</strong>, then <strong>Finger: Smudge</strong> on charcoal. The biggest win for the least code.
+</li><li><strong>Charcoal:</strong> the HOLD dial, the build-up term and the ghost erase.
+</li><li><strong>Gouache:</strong> COVER plus PULL.
+</li><li><strong>Oils:</strong> the height plane and shading at lift. This replaces the prototype's relief, which is baked into the tones and so cannot survive a smear.
+</li><li><strong>Knife tip</strong>, the Glaze and Scumble presets, and the gouache dry shift.
+</li></ol>
+<p><strong>Caveats:</strong></p>
+<ul><li>ArtRage's and Fresco's methods are unpublished. Their entries above come from their manuals.
+</li><li>The costs are scaled from the prototype benchmarks and the 61 ms settle, so they need checking on the device.
+</li></ul>
+</section>
+<section>
+<h2 id="9-pencil-and-pastels">9. Pencil and Pastels</h2>
+<p>Pencil and Pastels reuse charcoal's contact rule and Carry (§4–5), and add one part: <strong>Fill</strong>, a memory of how full the tooth is.</p>
+<h3 id="pp-the-real-media">The real media</h3>
+<p><strong>Pencil / graphite</strong></p>
+<ul>
+<li><strong>Grades:</strong> clay lightens and hardens the lead. 9H is the hardest and 8B the softest (<a href="https://graphicsinterface.org/proceedings/gi1999/gi1999-21" target="_blank" rel="noopener">Sousa &amp; Buchanan</a>, <a href="https://www.eckersleys.com.au/blogs/learn/what-are-pencil-grades" target="_blank" rel="noopener">Eckersley's</a>). H gives light, fine lines, holds its point and barely smudges. B is dark and soft, and smudges.</li>
+<li><strong>Tooth:</strong> H fills the paper's valleys, so the tone looks smooth. B fills them less, so the grain shows (<a href="https://thevirtualinstructor.com/Artists-pencils-graphite-pencils-explained.html" target="_blank" rel="noopener">Virtual Instructor</a>). Rough paper grates graphite off a soft lead (<a href="https://carandache.com/us/en/how-to-draw-with-graphite-pencils" target="_blank" rel="noopener">Caran d'Ache</a>). Hard graphite laid first plugs the valleys, and soft graphite can't reach them later (<a href="https://sibleyfineart.com/_blog/tag/mellotex/" target="_blank" rel="noopener">Sibley</a>). Heavy pressure with H also leaves grooves that stay white.</li>
+<li><strong>Burnishing:</strong> pressing and reworking flattens the tooth and polishes the graphite. The tone turns smooth and shiny-dark, and the paper takes little more (<a href="https://vitruvianstudio.com/blog/3-ways-to-reduce-graphite-shine-in-your-drawings/" target="_blank" rel="noopener">Vitruvian Studio</a>).</li>
+<li><strong>Side vs point:</strong> the point gives lines and hatching. The side, or a chisel face, gives broad soft-edged tone that merges (<a href="https://sibleyfineart.com/draw-with-mike-videos/ds001-chisel-point.htm" target="_blank" rel="noopener">Sibley</a>).</li>
+<li><strong>Smudging:</strong> a stump or finger pushes graphite into the valleys, so the tone becomes smoother and deeper (Sousa 1999).</li>
+</ul>
+<p><strong>Pastels</strong></p>
+<ul>
+<li><strong>Soft:</strong> mostly pigment with little binder. It is dusty, the most opaque, the quickest to cover and the easiest to blend and layer (<a href="https://www.jacksonsart.com/colour/pastel" target="_blank" rel="noopener">Jackson's</a>).</li>
+<li><strong>Hard:</strong> more binder. It gives crisp lines and less dust, so it goes down first. Hard over soft rubs the soft off (<a href="https://finearttutorials.com/guide/soft-pastel-for-beginners/" target="_blank" rel="noopener">Fine Art Tutorials</a>).</li>
+<li><strong>Tooth saturation:</strong> "the tooth of the paper can quickly fill up". After that, new pastel slides and turns muddy. Heavy first layers fill it fastest (same source). Light over dark works only while there is tooth left: artists spray fixative over full dark areas so light lines can bite again (<a href="https://www.unisoncolour.com/blog/fixative-or-no-fixative-by-elena-degenhardt/" target="_blank" rel="noopener">Unison</a>).</li>
+<li><strong>Finger blending:</strong> fuses strokes into soft tone and pushes pigment into the tooth.</li>
+<li><strong>Oil pastel:</strong> pigment in oil and wax. It never dries. Light over dark "won't completely cover… but will lighten" (<a href="https://finearttutorials.com/guide/oil-pastel-techniques/" target="_blank" rel="noopener">Fine Art Tutorials</a>). Layers saturate fast and turn dirty, so colours go side by side and the seam is blended (<a href="https://dessindigo.com/en/blog/advice/soft-oil-pastels-differences" target="_blank" rel="noopener">Dessindigo</a>). More pressure smears and blends. <strong>Sgraffito</strong> scratches the top layer to show the one beneath.</li>
+</ul>
+<h3 id="pp-how-apps-and-papers-do-it">How apps and papers do it</h3>
+<div class="tbl"><table><thead><tr><th>Source</th><th>Pencil / pastel idea</th></tr></thead><tbody><tr><td><strong>Sousa &amp; Buchanan</strong> (<a href="https://graphicsinterface.org/proceedings/gi1999/gi1999-21" target="_blank" rel="noopener">GI 1999</a>, <a href="https://diglib.eg.org/handle/10.2312/8605" target="_blank" rel="noopener">CGF 2000</a>)</td><td>Paper is a height field. Each pixel stores the lead it holds, and its tone is graphite ÷ <strong>TotalLead</strong> (about 1000 units, the most a spot can hold). That cap is tooth saturation. Clay and wax are optically neutral, so a hard lead fills without darkening. Strokes can "destroy" grains (burnishing). Blender pick 0.7 and lay 0.5.</td></tr><tr><td><strong>Procreate</strong> (technique only)</td><td>Texturized grain is fixed to the canvas, so strokes re-hit the same specks; tilt sets size and opacity (<a href="https://help.procreate.com/procreate/handbook/brushes/brush-studio-settings" target="_blank" rel="noopener">handbook</a>).</td></tr><tr><td><strong>Krita</strong></td><td>Texture <em>Height</em> mode, our contact level, can cover fully in one stroke; <em>Subtract</em> is grainier (<a href="https://docs.krita.org/en/reference_manual/brushes/brush_settings/texture.html" target="_blank" rel="noopener">docs</a>).</td></tr><tr><td><strong>Rebelle</strong></td><td>Pencil and Pastel tools share Paint, Paint &amp; Blend (light pressure blends, hard pressure paints) and Blend modes. <em>Tip Tilt</em> widens the mark for side shading (<a href="https://www.escapemotions.com/products/rebelle/documents/Rebelle_Manual_v.7.0.pdf" target="_blank" rel="noopener">manual</a>).</td></tr><tr><td><strong>Fresco</strong></td><td>Dry Media pixel brushes: pencil, graphite, soft and hard pastel, with barrel roll on the pastels (<a href="https://helpx.adobe.com/fresco/using/pixel-brushes.html" target="_blank" rel="noopener">help</a>).</td></tr><tr><td><strong>Paper by WeTransfer</strong></td><td>Stylus draws, finger smudges (<a href="https://mademistakes.com/mastering-paper/pencil-first-look/" target="_blank" rel="noopener">Made Mistakes</a>): our Finger: Smudge.</td></tr><tr><td><strong>Rudolf et al.</strong> (wax crayon, §3)</td><td>The model for oil pastel: deposit by contact and force, and wax already laid smears and is laid again.</td></tr></tbody>
+</table></div>
+<h3 id="pp-shared-part-fill-tooth-saturation">Shared part: Fill (tooth saturation)</h3>
+<figure><svg viewBox="0 0 640 200" role="img" aria-label="Tooth saturation: one pass marks only peaks, more passes fill the valleys, a full tooth is flat and takes little more"><polygon points="20,170 20.0,123.3 24.0,126.6 28.0,138.1 32.0,125.8 36.0,96.1 40.0,82.1 44.0,75.4 48.0,68.6 52.0,81.9 56.0,98.9 60.0,92.2 64.0,85.2 68.0,94.6 72.0,101.4 76.0,113.0 80.0,140.3 84.0,150.7 88.0,134.5 92.0,122.9 96.0,115.3 100.0,100.6 104.0,100.9 108.0,111.4 112.0,99.4 116.0,78.1 120.0,72.2 124.0,67.7 128.0,68.4 132.0,94.0 136.0,118.1 140.0,117.4 144.0,116.9 148.0,122.0 152.0,117.2 156.0,121.9 160.0,141.8 164.0,141.5 168.0,120.6 172.0,106.1 176.0,89.6 180.0,70.6 184.0,76.5 188.0,92.9 192.0,89.5 196.0,83.5 200.0,87.4 204.0,84.5 208.0,89.8 212.0,119.5 215.0,138.1 215,170" fill="#ecece6" stroke="var(--ink)" stroke-width="2"/><line x1="44.0" y1="73.4" x2="48.0" y2="66.6" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="120.0" y1="70.2" x2="124.0" y2="65.7" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="124.0" y1="65.7" x2="128.0" y2="66.4" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><text x="117" y="194" text-anchor="middle" class="svgt">ONE PASS</text><polygon points="222,170 222.0,136.7 226.0,135.0 230.0,119.9 234.0,104.8 238.0,113.4 242.0,119.1 246.0,104.0 250.0,91.6 254.0,80.9 258.0,61.7 262.0,62.2 266.0,87.7 270.0,102.3 274.0,106.1 278.0,115.9 282.0,114.8 286.0,107.0 290.0,121.9 294.0,142.4 298.0,140.9 302.0,133.5 306.0,124.2 310.0,97.4 314.0,78.0 318.0,85.9 322.0,91.4 326.0,85.7 330.0,87.7 334.0,84.3 338.0,71.0 342.0,80.4 346.0,109.0 350.0,124.2 354.0,133.1 358.0,142.3 362.0,130.3 366.0,112.4 370.0,117.7 374.0,125.0 378.0,116.9 382.0,111.8 386.0,101.4 390.0,73.2 394.0,59.7 398.0,73.3 402.0,84.0 406.0,92.1 410.0,108.2 414.0,109.0 417.0,99.4 417,170" fill="#ecece6" stroke="var(--ink)" stroke-width="2"/><polygon points="222.0,113.3 226.0,113.3 230.0,113.3 234.0,104.8 238.0,113.3 242.0,113.3 246.0,104.0 250.0,91.6 254.0,80.9 258.0,61.7 262.0,62.2 266.0,87.7 270.0,102.3 274.0,106.1 278.0,113.3 282.0,113.3 286.0,107.0 290.0,113.3 294.0,113.3 298.0,113.3 302.0,113.3 306.0,113.3 310.0,97.4 314.0,78.0 318.0,85.9 322.0,91.4 326.0,85.7 330.0,87.7 334.0,84.3 338.0,71.0 342.0,80.4 346.0,109.0 350.0,113.3 354.0,113.3 358.0,113.3 362.0,113.3 366.0,112.4 370.0,113.3 374.0,113.3 378.0,113.3 382.0,111.8 386.0,101.4 390.0,73.2 394.0,59.7 398.0,73.3 402.0,84.0 406.0,92.1 410.0,108.2 414.0,109.0 417.0,99.4 417.0,99.4 414.0,109.0 410.0,108.2 406.0,92.1 402.0,84.0 398.0,73.3 394.0,59.7 390.0,73.2 386.0,101.4 382.0,111.8 378.0,116.9 374.0,125.0 370.0,117.7 366.0,112.4 362.0,130.3 358.0,142.3 354.0,133.1 350.0,124.2 346.0,109.0 342.0,80.4 338.0,71.0 334.0,84.3 330.0,87.7 326.0,85.7 322.0,91.4 318.0,85.9 314.0,78.0 310.0,97.4 306.0,124.2 302.0,133.5 298.0,140.9 294.0,142.4 290.0,121.9 286.0,107.0 282.0,114.8 278.0,115.9 274.0,106.1 270.0,102.3 266.0,87.7 262.0,62.2 258.0,61.7 254.0,80.9 250.0,91.6 246.0,104.0 242.0,119.1 238.0,113.4 234.0,104.8 230.0,119.9 226.0,135.0 222.0,136.7" fill="var(--grey)"/><line x1="222" x2="417" y1="113.3" y2="113.3" stroke="var(--ink)" stroke-dasharray="4 3" stroke-width="1.5"/><line x1="250.0" y1="89.6" x2="254.0" y2="78.9" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="254.0" y1="78.9" x2="258.0" y2="59.7" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="258.0" y1="59.7" x2="262.0" y2="60.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="262.0" y1="60.2" x2="266.0" y2="85.7" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="314.0" y1="76.0" x2="318.0" y2="83.9" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="318.0" y1="83.9" x2="322.0" y2="89.4" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="322.0" y1="89.4" x2="326.0" y2="83.7" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="326.0" y1="83.7" x2="330.0" y2="85.7" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="330.0" y1="85.7" x2="334.0" y2="82.3" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="334.0" y1="82.3" x2="338.0" y2="69.0" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="338.0" y1="69.0" x2="342.0" y2="78.4" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="390.0" y1="71.2" x2="394.0" y2="57.7" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="394.0" y1="57.7" x2="398.0" y2="71.3" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="398.0" y1="71.3" x2="402.0" y2="82.0" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="402.0" y1="82.0" x2="406.0" y2="90.1" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><text x="319" y="194" text-anchor="middle" class="svgt">FOUR PASSES</text><polygon points="424,170 424.0,119.3 428.0,133.6 432.0,138.3 436.0,146.2 440.0,135.5 444.0,105.3 448.0,92.4 452.0,95.1 456.0,89.9 460.0,90.1 464.0,95.0 468.0,80.1 472.0,64.3 476.0,75.7 480.0,93.3 484.0,106.3 488.0,128.6 492.0,140.1 496.0,125.3 500.0,117.1 504.0,124.8 508.0,124.3 512.0,123.5 516.0,128.7 520.0,111.9 524.0,80.8 528.0,70.7 532.0,72.6 536.0,72.7 540.0,87.6 544.0,104.1 548.0,96.7 552.0,90.0 556.0,103.4 560.0,114.8 564.0,125.7 568.0,147.0 572.0,149.7 576.0,126.1 580.0,111.0 584.0,105.9 588.0,94.8 592.0,95.4 596.0,104.4 600.0,91.0 604.0,69.8 608.0,69.1 612.0,73.9 616.0,81.3 620.0,108.1 620,170" fill="#ecece6" stroke="var(--ink)" stroke-width="2"/><polygon points="424.0,65.2 428.0,65.2 432.0,65.2 436.0,65.2 440.0,65.2 444.0,65.2 448.0,65.2 452.0,65.2 456.0,65.2 460.0,65.2 464.0,65.2 468.0,65.2 472.0,64.3 476.0,65.2 480.0,65.2 484.0,65.2 488.0,65.2 492.0,65.2 496.0,65.2 500.0,65.2 504.0,65.2 508.0,65.2 512.0,65.2 516.0,65.2 520.0,65.2 524.0,65.2 528.0,65.2 532.0,65.2 536.0,65.2 540.0,65.2 544.0,65.2 548.0,65.2 552.0,65.2 556.0,65.2 560.0,65.2 564.0,65.2 568.0,65.2 572.0,65.2 576.0,65.2 580.0,65.2 584.0,65.2 588.0,65.2 592.0,65.2 596.0,65.2 600.0,65.2 604.0,65.2 608.0,65.2 612.0,65.2 616.0,65.2 620.0,65.2 620.0,108.1 616.0,81.3 612.0,73.9 608.0,69.1 604.0,69.8 600.0,91.0 596.0,104.4 592.0,95.4 588.0,94.8 584.0,105.9 580.0,111.0 576.0,126.1 572.0,149.7 568.0,147.0 564.0,125.7 560.0,114.8 556.0,103.4 552.0,90.0 548.0,96.7 544.0,104.1 540.0,87.6 536.0,72.7 532.0,72.6 528.0,70.7 524.0,80.8 520.0,111.9 516.0,128.7 512.0,123.5 508.0,124.3 504.0,124.8 500.0,117.1 496.0,125.3 492.0,140.1 488.0,128.6 484.0,106.3 480.0,93.3 476.0,75.7 472.0,64.3 468.0,80.1 464.0,95.0 460.0,90.1 456.0,89.9 452.0,95.1 448.0,92.4 444.0,105.3 440.0,135.5 436.0,146.2 432.0,138.3 428.0,133.6 424.0,119.3" fill="var(--grey)"/><line x1="424" x2="620" y1="65.2" y2="65.2" stroke="var(--ink)" stroke-dasharray="4 3" stroke-width="1.5"/><line x1="424.0" y1="63.2" x2="428.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="428.0" y1="63.2" x2="432.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="432.0" y1="63.2" x2="436.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="436.0" y1="63.2" x2="440.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="440.0" y1="63.2" x2="444.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="444.0" y1="63.2" x2="448.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="448.0" y1="63.2" x2="452.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="452.0" y1="63.2" x2="456.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="456.0" y1="63.2" x2="460.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="460.0" y1="63.2" x2="464.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="464.0" y1="63.2" x2="468.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="468.0" y1="63.2" x2="472.0" y2="62.3" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="472.0" y1="62.3" x2="476.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="476.0" y1="63.2" x2="480.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="480.0" y1="63.2" x2="484.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="484.0" y1="63.2" x2="488.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="488.0" y1="63.2" x2="492.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="492.0" y1="63.2" x2="496.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="496.0" y1="63.2" x2="500.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="500.0" y1="63.2" x2="504.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="504.0" y1="63.2" x2="508.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="508.0" y1="63.2" x2="512.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="512.0" y1="63.2" x2="516.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="516.0" y1="63.2" x2="520.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="520.0" y1="63.2" x2="524.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="524.0" y1="63.2" x2="528.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="528.0" y1="63.2" x2="532.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="532.0" y1="63.2" x2="536.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="536.0" y1="63.2" x2="540.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="540.0" y1="63.2" x2="544.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="544.0" y1="63.2" x2="548.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="548.0" y1="63.2" x2="552.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="552.0" y1="63.2" x2="556.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="556.0" y1="63.2" x2="560.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="560.0" y1="63.2" x2="564.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="564.0" y1="63.2" x2="568.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="568.0" y1="63.2" x2="572.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="572.0" y1="63.2" x2="576.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="576.0" y1="63.2" x2="580.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="580.0" y1="63.2" x2="584.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="584.0" y1="63.2" x2="588.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="588.0" y1="63.2" x2="592.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="592.0" y1="63.2" x2="596.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="596.0" y1="63.2" x2="600.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="600.0" y1="63.2" x2="604.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="604.0" y1="63.2" x2="608.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="608.0" y1="63.2" x2="612.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="612.0" y1="63.2" x2="616.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><line x1="616.0" y1="63.2" x2="620.0" y2="63.2" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/><text x="522" y="194" text-anchor="middle" class="svgt">FULL</text><line x1="219" x2="219" y1="20" y2="170" stroke="var(--rule)" stroke-width="2"/><line x1="421" x2="421" y1="20" y2="170" stroke="var(--rule)" stroke-width="2"/><text x="24" y="16" class="svgt">black = graphite or pastel · grey = Fill in the valleys · - - - fill level</text></svg><figcaption>Fill, the tooth memory. Each pass fills the valleys a little. The valleys rise, so the next pass reaches further down and the grain closes. Once the tooth is full the surface is flat: graphite burnishes to an even dark, and pastel stops covering.</figcaption></figure>
+<ul>
+<li><strong>Plane:</strong> 1 byte per pixel per layer in 64 px tiles, allocated only where Pencil or Pastels draw. Same tile store and undo as the oils height plane; a full Manta layer would be 4.9 MB.</li>
+<li><strong>Per dab, after the contact test:</strong>
+<pre>room  = 1 - fill
+dep   = cov * room^0.7                // a full tooth takes little more
+fill += dep * rate                    // rate: H and soft pastel high, B low
+h&#39;    = h + fill*(1-h)                // valleys rise as they fill</pre></li>
+<li><strong>Contact:</strong> charcoal's rule with <code>h'</code> in place of <code>h</code>. As fill rises, strokes reach the valleys and the grain closes. That is burnishing on pencil and a "full" sheet on pastel.</li>
+<li><strong>Blocking for free:</strong> H first sets fill high but leaves the tone light, so B laid later can't darken the valleys. Pressed H lines become white lines.</li>
+<li><strong>Cover gate (pastels):</strong> light-over-dark strength is <code>cover * room^0.5</code>. A full patch barely lightens.</li>
+<li><strong>Finger:</strong> Carry, as Sousa's blender, plus <code>fill += 0.2*p</code> (it pushes pigment in).</li>
+<li><strong>Eraser:</strong> it lifts tone, and <code>fill *= (1 - 0.5*strength)</code>: the tooth comes back part way. This is the only "fixative".</li>
+<li><strong>Gap today:</strong> <code>WashCoverage</code> keeps the stronger level, so a scribble doesn't build within one stroke, only across strokes. Open choice.</li>
+</ul>
+<h3 id="pp-pencil">Pencil</h3>
+<p><strong>Traits that matter, most important first:</strong></p>
+<ol type="1">
+<li>Grade: how dark it gets against how grainy it looks.</li>
+<li>Grain specks that close with pressure and passes, ending in a burnish.</li>
+<li>Side shading with tilt.</li>
+<li>Finger smudge (B more than H).</li>
+<li>Hard-under-soft blocking.</li>
+</ol>
+<p><strong>Dial:</strong> <strong>GRADE</strong>, stored in charcoal's HOLD slot. Label it 6H…8B, with HB at 0.4.</p>
+<ul>
+<li>Darkest grey <code>= lerp(185, 40, g)</code>. Graphite never reaches pure black, so 8B ends near grey 40.</li>
+<li>Fill rate <code>= lerp(.35, .10, g)</code>.</li>
+<li>Contact depth <code>= p^0.7·(.9 - .35g) + .6·fill</code>.</li>
+<li>Grain edge <code>soft = lerp(.12, .04, g)</code>.</li>
+<li>Smudge strength <code>× (.3 + .7g)</code>.</li>
+<li><strong>Burnish:</strong> where fill &gt; .8, push the tone toward the grade's darkest. Shine can't show on e-ink, so leave the gloss out.</li>
+<li><strong>Side:</strong> the charcoal side rule (coverage × (1 − 0.4·lean), depth × (1 − 0.5·lean)) plus up to 3× the width.</li>
+</ul>
+<div class="tbl"><table class="wide"><thead><tr><th>Preset</th><th>Grade</th><th>Darkest grey</th><th>Pressure</th><th>Tooth</th><th>Dry</th></tr></thead><tbody><tr><td>2H</td><td>.2 (.1–.3)</td><td>~155</td><td>.2–.4</td><td>.4–.7</td><td>0–.15</td></tr><tr><td>HB</td><td>.4 (.3–.5)</td><td>~125</td><td>.2–.5</td><td>.5–.8</td><td>.1–.2</td></tr><tr><td>4B</td><td>.7 (.6–.8)</td><td>~85</td><td>.3–.6</td><td>.6–.9</td><td>.1–.3</td></tr><tr><td>8B</td><td>.95 (.85–1)</td><td>~45</td><td>.3–.6</td><td>.7–1</td><td>.2–.3</td></tr></tbody>
+</table></div>
+<p>Keep today's Pencil ranges, add GRADE, and make Finger: Smudge the default finger (strength .4, .2–.6).</p>
+<h3 id="pp-pastels">Pastels</h3>
+<p><strong>Traits that matter, most important first:</strong></p>
+<ol type="1">
+<li>Grainy broken marks over the tooth, with broad side strokes.</li>
+<li>Light over dark while the tooth lasts.</li>
+<li>The tooth fills, then the sheet is "full".</li>
+<li>Finger blending into soft tone.</li>
+<li>Soft against hard: dusty and opaque against crisp.</li>
+</ol>
+<p><strong>Dials:</strong></p>
+<ul>
+<li><strong>HOLD</strong>: charcoal's meaning, how firmly the binder holds. Low is soft pastel, high is hard pastel.</li>
+<li><strong>COVER</strong>: gouache's dial, gated by room.</li>
+<li>SPREAD (dust), and today's Gran as the tooth strength.</li>
+</ul>
+<div class="tbl"><table class="wide"><thead><tr><th>Style</th><th>Hold</th><th>Cover</th><th>Fill rate</th><th>Spread</th><th>Pull</th><th>Gran</th></tr></thead><tbody><tr><td>Soft pastel</td><td>.2 (0–.35)</td><td>.85 (.7–.95)</td><td>.3 (.2–.45)</td><td>.3 (.2–.45)</td><td>0</td><td>.6–1</td></tr><tr><td>Hard pastel</td><td>.7 (.55–.85)</td><td>.6 (.45–.75)</td><td>.15 (.1–.2)</td><td>.1 (0–.2)</td><td>0</td><td>.5–.8</td></tr><tr><td>Oil pastel (maybe)</td><td>.5</td><td>.5 (.35–.65)</td><td>.5 (.4–.6)</td><td>0</td><td>.3·p (.2–.45)</td><td>.4–.7</td></tr><tr><td>Finger blend</td><td>—</td><td>—</td><td>+.2·p</td><td>—</td><td>strength .7 (.4–.9)</td><td>—</td></tr></tbody>
+</table></div>
+<p><strong>Oil pastel:</strong></p>
+<ul>
+<li>Carry with a pressure-scaled pick (Rudolf). Its Fill saturates fast, so once the patch is full a stroke mostly smears.</li>
+<li><strong>Sgraffito needs no new code:</strong> an eraser of size S on the top layer shows the layer beneath.</li>
+<li>Leave out impasto; a small ridge won't read on 16 greys.</li>
+<li><code>BrushStyle</code> warns never to reorder, and Wild sits last in the paint list. Adding Oil pastel before Wild shifts Wild's share-code index. Append it after Wild, or migrate the codes.</li>
+</ul>
+<h3 id="pp-wysiwyg-notes">WYSIWYG notes</h3>
+<ul>
+<li>Everything happens in the dab under the nib: contact, Fill, cover and Carry. There is no settle, no dust falling and no fixative.</li>
+<li><strong>Pastels is a paint style today, so it goes through <code>WashStroke</code>'s lift settle.</strong> A dry stick must not change at lift. Route Pastels through the dry-stick (charcoal) renderer, and keep its place in the paint list for share codes.</li>
+<li>That renderer must allow light over dark for Pastels: <code>WildInkStroke</code> is "never lighter than the ink beneath".</li>
+<li>Oil-pastel smear stays inside Carry's live trail behind the nib, the Fast-wet window.</li>
+</ul>
+<h3 id="pp-cost">Cost</h3>
+<ul>
+<li><strong>Fill:</strong> one read and one write per pixel, about 10–15% per dab. The <code>room^0.7</code> and <code>^0.5</code> powers are a 256-entry table.</li>
+<li><strong>Pastel cover:</strong> two multiplies.</li>
+<li><strong>Finger and oil-pastel smear:</strong> Carry's cost, about 1.5–2× a plain dab.</li>
+<li><strong>Lift:</strong> nothing added. Pastels leaving the wash settle makes their lift cheaper.</li>
+<li><strong>Memory:</strong> Fill tiles only where these styles touch.</li>
+<li><strong>Order:</strong> add Fill after Carry and charcoal's contact rule (§8, steps 1–2). Then Pencil's GRADE, then Pastels on the dry path with COVER, then Oil pastel.</li>
+</ul>
+</section>
+  <footer>Research notes for Inkwash, Oct 2026. Procreate is described by technique only; none of its brush assets are used.</footer>
+</main>
+</div>
+</body>
+</html>

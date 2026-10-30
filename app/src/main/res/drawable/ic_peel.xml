@@ -1,9 +1,6 @@
+<!-- Drawn for My Bad Drawings in Iconoir's style: masking film with its corner peeling up. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-    <!-- A hatched patch of masking fluid with its corner peeled back. -->
-    <group>
-        <clip-path android:pathData="M3,3 L21,3 L21,13 L13,21 L3,21 Z" />
-        <path android:fillColor="#00000000" android:strokeColor="#000000" android:strokeWidth="1.2" android:pathData="M-3,9 L9,-3 M-3,15 L15,-3 M-3,21 L21,-3 M-3,27 L27,-3 M3,27 L27,3" />
-    </group>
-    <path android:fillColor="#00000000" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineJoin="round" android:pathData="M3,3 L21,3 L21,13 L13,21 L3,21 Z" />
-    <path android:fillColor="#FFFFFF" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineJoin="round" android:pathData="M21,13 L13,21 Q12,14 21,13 Z" />
+    <path android:pathData="M13 4H4.6C4.27 4 4 4.27 4 4.6V19.4C4 19.73 4.27 20 4.6 20H19.4C19.73 20 20 19.73 20 19.4V11" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M13 4C14.5 2.3 18.2 1.7 21 2C21.3 4.8 20.7 8.5 20 11L13 4Z" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M7 17L10 14M7 13.5L9 11.5" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
 </vector>

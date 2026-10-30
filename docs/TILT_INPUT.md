@@ -245,3 +245,46 @@ Each regular head and favorite retains its own setting. Filbert keeps its
 automatic 55% aspect ratio. Checks cover migration, independent memories,
 slider persistence, raster dimensions through 256px width, rotated/clipped
 continuous strokes and exact undo/redo.
+
+## Pressure range on firmware 3.31.45 (2026-10-29)
+
+Chauvet 3.31.45 ("writing sensitivity optimized, Balanced and Sensitive modes
+removed") widened the pen's pressure. MotionEvent pressure is raw ABS_PRESSURE
+/ 4095. Measured on the owner's Manta, three sets of strokes each:
+
+| Hand | Median | p90 | Max |
+| --- | --- | --- | --- |
+| light | .07–.13 | | .08–.16 |
+| normal | .25–.36 | .29–.50 | .32–.52 |
+| hard | .63–.68 | .73–.82 | .75–.83 |
+
+MonoPaint's `.05–.45` line read everything from about .45 to .8, the whole firm
+half of the hand, as the same full press: the eraser and every brush stopped
+growing well before the hand did ("the eraser used to be pressure sensitive..
+is it not any more?").
+
+`ToolSettings.travel` now has a knee: up to .30 it is the old line exactly
+(travel .625 at .30, so a usual press, `WildSample.TYPICAL_PRESS` .6 at .29,
+draws as before); past it a second line reaches 1 at .78. `ToolSettings.pressure`
+is its inverse. Every reader of raw pen pressure goes through `travel`
+(MonoPaint's `ToolStroke` and `NativePen` had their own copies of the old line);
+everything after it (Brush Lab's Pressure dials, `HatchStamper`'s .45/.72
+layers, the finger's `PRESSURE_TRAVEL`) works in travel and is unchanged.
+Saved Replay strokes keep raw pressure, so a stroke recorded firmer than .30
+before this replays thinner. `InkWashSizesChecks` holds the knee: identical
+below .30, continuous there, 1 at .78, and the inverse round-trips.
+
+The pen eraser (`InkWashSizes.diameter`, travel²) also stopped broadening with
+lean the same day ("pressure for the eraser doesn't seem to affect the size
+..."). The owner's natural hold, measured in the same strokes, is tilt X median
+30° (19–52°), Y median 15° (−2–36°): about 33° inclination, `BrushDirection.lean`
+.46, which multiplied the eraser's pressure by 1.9 and had it at full size from
+about .36, a usual press. By pressure alone, at the owner's 31 px and that hold:
+
+| Pressure | .10 | .20 | .30 | .45 | .60 | .75 |
+| --- | --- | --- | --- | --- | --- | --- |
+| before (old line, lean) | 2.9 | 9.8 | 23.7 | 31 | 31 | 31 |
+| after (knee, no lean) | 2.5 | 6.1 | 13.3 | 18.0 | 23.4 | 29.7 |
+
+The brushes keep their tilt: theirs is each brush's own Tilt dials, which widen
+a mark by a factor and never cap pressure the way the eraser's `min(1, …)` did.

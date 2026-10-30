@@ -1,0 +1,7 @@
+<!-- Drawn for My Bad Drawings in Iconoir's style: a rubber stamp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M9 6A3 3 0 1 0 15 6A3 3 0 1 0 9 6Z" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M10.25 8.45V12M13.75 8.45V12" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M4.6 12H19.4C19.73 12 20 12.27 20 12.6V15.9C20 16.23 19.73 16.5 19.4 16.5H4.6C4.27 16.5 4 16.23 4 15.9V12.6C4 12.27 4.27 12 4.6 12Z" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    <path android:pathData="M5 20H19" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

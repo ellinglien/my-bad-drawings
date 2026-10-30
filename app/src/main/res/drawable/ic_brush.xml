@@ -1,9 +1,8 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="32" android:viewportHeight="32">
-    <!-- Handle up-right, bristles down-left. -->
-    <group android:rotation="45" android:pivotX="16" android:pivotY="16">
-        <path android:fillColor="#00000000" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineJoin="round" android:pathData="M14.8,2 Q16,0.5 17.2,2 L18,12 L14,12 Z" />
-        <path android:fillColor="#00000000" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineJoin="round" android:pathData="M14,12 L18,12 L19,17 L13,17 Z M13.6,14 L18.4,14" />
-        <path android:fillColor="#00000000" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineJoin="round" android:pathData="M13,17 L19,17 C19.5,22 17,26 16,31 C15,26 12.5,22 13,17 Z" />
-        <path android:fillColor="#00000000" android:strokeColor="#000000" android:strokeWidth="1.1" android:strokeLineCap="round" android:pathData="M15,19 Q15,23 16,26" />
+<!-- Drawn for My Bad Drawings in Iconoir's style: a round paintbrush. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <group android:rotation="45" android:translateX="-1.4" android:translateY="1.4" android:pivotX="12" android:pivotY="12">
+        <path android:pathData="M11.2 -3.5H12.8L13.4 8.5H10.6Z" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+        <path android:pathData="M10.2 8.5H13.8V12H10.2Z" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
+        <path android:pathData="M10.2 12C9.4 15.5 10.2 18.6 12 21.5C13.8 18.6 14.6 15.5 13.8 12Z" android:strokeColor="#000000" android:strokeWidth="1.5" android:strokeLineCap="round" android:strokeLineJoin="round" />
     </group>
 </vector>

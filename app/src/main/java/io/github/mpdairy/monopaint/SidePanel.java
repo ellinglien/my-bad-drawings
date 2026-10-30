@@ -32,7 +32,6 @@ class SidePanel {
 
     void show() {
         if (app.toolPicker != null) app.toolPicker.dismiss();
-        app.closePaletteEditor();
         SettingsForm.style(panel, app.prefs.largeSettingsText());
         app.toolPicker = popup; position();
     }

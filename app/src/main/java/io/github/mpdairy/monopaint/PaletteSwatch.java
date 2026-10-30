@@ -25,7 +25,7 @@ final class PaletteSwatch extends View {
 
     PaletteSwatch(Context context, int tone, boolean editorCell) {
         super(context); this.editorCell = editorCell; setFocusable(true);
-        dashed = new DashPathEffect(new float[]{dp(4), dp(3)}, 0);
+        dashed = Ui.emptyDashes(context);
         replaceTone(tone); invalidate();
     }
     private int dp(float value) { return Ui.dp(getContext(), value); }
@@ -34,6 +34,8 @@ final class PaletteSwatch extends View {
         if (tone == value) return;
         feedback.update(this, new android.graphics.Rect(0, 0, getWidth(), getHeight()), () -> replaceTone(value), windowFocused);
     }
+    /** Changes the shade through an ordinary redraw. */
+    void setTone(int value) { if (tone != value) { replaceTone(value); invalidate(); } }
     private void replaceTone(int tone) {
         this.tone = tone;
         Bitmap previous = tile; empty = tone < 0; tile = empty ? null : DotGray.tile(tone);
@@ -45,9 +47,10 @@ final class PaletteSwatch extends View {
         int size = dp(editorCell ? 40 : 22), left = (getWidth()-size)/2, top = (getHeight()-size)/2;
         ink.setStyle(Paint.Style.FILL); if (!empty) canvas.drawRect(left, top, left+size, top+size, ink);
         boolean emphasized = chosen || dropHere;
-        border.setColor(Color.BLACK); border.setStyle(Paint.Style.STROKE); border.setStrokeWidth(dp(emphasized ? 3 : 1));
+        border.setColor(Color.BLACK); border.setStyle(Paint.Style.STROKE); border.setStrokeWidth(dp(1));
         border.setPathEffect(empty && !emphasized ? dashed : null);
         canvas.drawRect(left, top, left+size, top+size, border);
-        if (emphasized) { border.setPathEffect(null); canvas.drawRect(left-dp(4), top-dp(4), left+size+dp(4), top+size+dp(4), border); }
+        // A little clear of the swatch's own edge, so the shade inside stays readable.
+        if (emphasized) Ui.selectedFrame(getContext(), canvas, left-dp(4), top-dp(4), left+size+dp(4), top+size+dp(4));
     }
 }

@@ -56,7 +56,7 @@ final class ToolSettingsPanel extends SidePanel {
         boolean controls = form != null && form.content.getChildCount() > 0;
         // Unchosen Shapes keeps its rule above the actions.
         if (variants != null && (controls || tool == ToolSettings.Tool.SHAPES)) {
-            View divider = new View(app); divider.setBackgroundColor(0xffcccccc);
+            View divider = new View(app); divider.setBackgroundColor(Theme.GREY_400);
             LinearLayout.LayoutParams line = new LinearLayout.LayoutParams(-1, app.dp(1));
             line.setMargins(app.dp(2), app.dp(12), app.dp(2), 0); panel.addView(divider, line);
         }
@@ -71,7 +71,7 @@ final class ToolSettingsPanel extends SidePanel {
         if (presetId.isEmpty()) { save.setText("Add to Toolbar"); save.setContentDescription("Add to Toolbar"); }
         else {
             save.setContentDescription("Delete custom tool");
-            save.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_trash, 0, 0, 0);
+            save.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_ph_trash, 0, 0, 0);
         }
         save.setOnClickListener(v -> {
             try {

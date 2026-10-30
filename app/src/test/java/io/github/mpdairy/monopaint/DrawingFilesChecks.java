@@ -22,6 +22,23 @@ public final class DrawingFilesChecks {
             DrawingFiles.Entry[] root = files.list("");
             check(root.length == 3 && root[0].folder && root[0].name.equals("Sketches")
                     && root[1].folder && root[2].name.equals("Old drawing"), "Folders first; old root drawings retained; recovery hidden");
+            // Drawings: the last changed first (a date-named "2026-10-17" after "2026-10-18" when touched later).
+            write(files.drawing("2026-10-17 snug-apple"), book); write(files.drawing("2026-10-18 nimble-pear"), book);
+            write(files.drawing("Studies/A"), book); write(files.drawing("Studies/B"), book);
+            files.drawing("2026-10-18 nimble-pear").setLastModified(1_000_000_000_000L);
+            files.drawing("2026-10-17 snug-apple").setLastModified(1_000_000_100_000L);
+            files.drawing("Old drawing").setLastModified(1_000_000_050_000L);
+            new File(files.drawing("Old drawing").getPath() + ".bak").createNewFile();
+            new File(files.drawing("Old drawing").getPath() + ".bak").setLastModified(1_000_000_200_000L);
+            files.drawing("Studies/A").setLastModified(1_000_000_000_000L); files.drawing("Studies/B").setLastModified(1_000_000_000_000L);
+            DrawingFiles.Entry[] recent = files.list("");
+            check(recent.length == 5 && recent[0].folder && recent[1].folder && recent[2].name.equals("Old drawing")
+                    && recent[3].name.equals("2026-10-17 snug-apple") && recent[4].name.equals("2026-10-18 nimble-pear"),
+                    "Folders by name, then drawings last changed first, a backup counting: " + names(recent));
+            DrawingFiles.Entry[] tie = files.list("Studies");
+            check(tie[0].name.equals("Cat") && tie[1].name.equals("A") && tie[2].name.equals("B"), "Newest first, then changed together by name: " + names(tie));
+            new File(files.drawing("Old drawing").getPath() + ".bak").delete();
+            for (String path : new String[]{"2026-10-17 snug-apple", "2026-10-18 nimble-pear", "Studies/A", "Studies/B"}) files.delete(path);
             DrawingFiles.Entry[] nested = files.list("Sketches/Animals");
             check(nested.length == 1 && nested[0].name.equals("Cat") && !nested[0].folder, "Nested drawing listing");
             check(!files.drawing("Sketches/Animals/Cat").equals(files.drawing("Studies/Cat")), "Same title in different folders");
@@ -139,6 +156,11 @@ public final class DrawingFilesChecks {
     private interface Operation { void run() throws IOException; }
     private static void reject(Operation operation) throws IOException {
         try { operation.run(); throw new AssertionError("Invalid operation accepted"); } catch (IOException expected) {}
+    }
+    private static String names(DrawingFiles.Entry[] entries) {
+        StringBuilder names = new StringBuilder();
+        for (DrawingFiles.Entry entry : entries) names.append(entry.name).append(" | ");
+        return names.toString();
     }
     private static void check(boolean value, String message) { if (!value) throw new AssertionError(message); }
 }

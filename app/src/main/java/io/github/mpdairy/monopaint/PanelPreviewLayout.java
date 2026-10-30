@@ -8,7 +8,6 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.view.View;
 import android.view.ViewGroup;
-import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Previews a smaller tablet's panel at physical pixels, never a scaled copy of this tablet's UI. */
 final class PanelPreviewLayout extends ViewGroup {
@@ -19,24 +18,16 @@ final class PanelPreviewLayout extends ViewGroup {
     private View panel;
     private final Rect panelBounds = new Rect();
     Runnable afterLayout;
-    private View rotationHint, rotationAnchor;
-    private int hintTurn, hintSize, hintInset;
+    private View rotationHint;
+    private int hintTurn, hintSize;
 
-    void setRotationHint(View hint,View opposite,int size,int inset) {
-        rotationHint=hint;rotationAnchor=opposite;hintSize=size;hintInset=inset;addView(hint);
-    }
+    void setRotationHint(View hint,int size) {rotationHint=hint;hintSize=size;addView(hint);}
     void turnRotationHint(int turn) {hintTurn=turn;layoutRotationHint();}
+    /** The prompt's button in the middle of the screen (the owner, 2026-10-27), whichever way it is turned; only its glyph follows the suggested turn. */
     private void layoutRotationHint() {
-        if(rotationHint==null || rotationAnchor.getDisplay()==null || getChildCount()==0)return;
+        if(rotationHint==null || getChildCount()==0)return;
         View child=getChildAt(0);
-        float[] anchor={rotationAnchor.getWidth()/2f,rotationAnchor.getHeight()/2f};
-        PanelCoordinates.fromView(rotationAnchor).mapPoints(anchor);
-        Matrix panelToLocal=new Matrix();PanelCoordinates.fromView(this).invert(panelToLocal);panelToLocal.mapPoints(anchor);
-        // Position follows the current hamburger; only the glyph follows the suggested turn.
-        boolean anchorLeft=anchor[0]<(child.getLeft()+child.getRight())/2f;
-        boolean anchorTop=anchor[1]<(child.getTop()+child.getBottom())/2f;
-        int hx=anchorLeft?child.getRight()-hintInset-hintSize:child.getLeft()+hintInset;
-        int hy=anchorTop?child.getBottom()-hintInset-hintSize:child.getTop()+hintInset;
+        int hx=(child.getLeft()+child.getRight()-hintSize)/2, hy=(child.getTop()+child.getBottom()-hintSize)/2;
         rotationHint.layout(hx,hy,hx+hintSize,hy+hintSize);rotationHint.setRotation(hintTurn);
     }
 

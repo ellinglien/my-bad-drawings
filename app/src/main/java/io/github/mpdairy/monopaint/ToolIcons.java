@@ -11,10 +11,10 @@ final class ToolIcons {
             case FLAT_WASH: return R.drawable.ic_flat_wash;
             case WET_WATERCOLOR: return R.drawable.ic_wet_watercolor;
             case AIRBRUSH: return R.drawable.ic_airbrush;
-            case SHAPES: return R.drawable.ic_shapes;
-            case PENCIL: return R.drawable.ic_pencil;
-            case FILL: return R.drawable.ic_fill;
-            case ERASER: return R.drawable.ic_eraser;
+            case SHAPES: return R.drawable.ic_ph_shapes;
+            case PENCIL: return R.drawable.ic_ph_pencil_simple;
+            case FILL: return R.drawable.ic_ph_paint_bucket;
+            case ERASER: return R.drawable.ic_ph_eraser;
             case SOFTEN: return R.drawable.ic_soften;
             case BRUSH: return R.drawable.ic_brush;
             case BRUSH_PEN: return R.drawable.ic_brush_pen;
@@ -36,11 +36,11 @@ final class ToolIcons {
 
     static int shape(ToolSettings.Shape shape) {
         switch (shape) {
-            case LINE: return R.drawable.ic_shape_line;
-            case RECTANGLE: return R.drawable.ic_shape_rectangle;
-            case SQUARE: return R.drawable.ic_shape_square;
+            case LINE: return R.drawable.ic_ph_line_segment;
+            case RECTANGLE: return R.drawable.ic_ph_rectangle;
+            case SQUARE: return R.drawable.ic_ph_square;
             case OVAL: return R.drawable.ic_shape_oval;
-            case CIRCLE: return R.drawable.ic_shape_circle;
+            case CIRCLE: return R.drawable.ic_ph_circle;
             default: throw new IllegalArgumentException("Unknown shape: " + shape);
         }
     }
@@ -51,7 +51,7 @@ final class ToolIcons {
     }
 
     static int fill(ToolSettings.Gradient type) {
-        return type == ToolSettings.Gradient.FLAT ? R.drawable.ic_fill
+        return type == ToolSettings.Gradient.FLAT ? R.drawable.ic_ph_paint_bucket
                 : type == ToolSettings.Gradient.LINEAR ? R.drawable.ic_fill_linear : R.drawable.ic_fill_circular;
     }
 }

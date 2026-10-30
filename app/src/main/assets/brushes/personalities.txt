@@ -1,0 +1,29 @@
+# Special tools' own words: Basic tools whose job their parts don't explain (blotting, masking, marbling, smudging).
+# Every other brush gets an opener the app writes from what stands out about it, then how it behaves.
+# One line a brush: its name exactly as on the Tools page, a colon, then one or two short sentences that replace
+# the written opener. Add a line to override any brush, or delete one to let the app write it.
+# Plain, warm words, whole sentences ending in a full stop, no semicolons, at most 80 characters a sentence.
+# Lines starting with # are notes.
+White gel pen: Bright white ink for highlights on top of dark areas.
+Spirograph: The toy from your childhood. Draw a line and watch it spin out loops.
+Vanishing ink: Ink that won't stay put. Whatever you draw slowly fades back to paper.
+Wet brush: A brush loaded with inky water, for soft, wet strokes.
+Lemon juice: Secret-message ink from the kitchen drawer.
+Highlighter: A highlighter that slides under your lines instead of covering them.
+Colouring pen: For colouring in. It keeps itself inside your ink lines.
+Blend stump: A rolled paper stump for softening charcoal. It adds nothing of its own.
+Stump: Like rubbing charcoal with a fingertip. It only moves what's already there.
+Wash behind: A wash that tucks itself behind your lines, so the ink stays on top.
+Wash comb: A comb for wet washes. Drag it through to make streaks.
+Dirty brush: A brush you never rinse. It smears paint, not pen or pencil lines, and carries it into the next stroke.
+Water brush: Clear water that wakes up dried paint so you can push it around.
+Masking fluid: Paint it on to save the white paper, then rub it off later.
+Wax resist: Like drawing with a candle. Washes slide off it and leave it white.
+Damp tissue: Blot paint back up, like dabbing it with a damp tissue.
+Sumi: Japanese marbling, and the first drop. Ink floats in rings until another brush prints it.
+Clear water: Clear drops between drops of sumi. Each one pushes the floating ink into new rings.
+Comb: A comb for floating sumi, after the drops. Drag it to pull the rings into patterns.
+Mold ink: Ink that grows. Faint mold veins creep out and connect nearby marks.
+Gouache water: A wet brush that loosens gouache and lifts it back up.
+Loaded oils: Load the brush, paint until it runs out, then load it again.
+Crayon scratch: Scratch through crayon to the white paper underneath, like scratch art.

@@ -35,6 +35,7 @@ final class MaskChecks {
         doc.addLayer(); fill(doc, 0);
         check(doc.compositeTone(10, 10) == 200, "The fluid shields every layer");
         check(doc.maskHatch(9, 15) >= 0 && doc.maskHatch(12, 15) >= 0 && doc.maskHatch(13, 15) < 0, "The fluid shows as hatching lines four pixels across");
+        check(doc.maskHatch(10, 14) >= 0 && doc.maskHatch(14, 10) < 0, "and its lines are dashed, unlike a Lines screentone");
         check(doc.maskHatch(2, 2) < 0, "Unmasked paper shows no hatching");
     }
     private static void partial() {

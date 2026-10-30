@@ -17,8 +17,6 @@ import java.lang.reflect.Field;
 import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import io.github.mpdairy.fasteink.FastEink;
-import io.github.mpdairy.fasteink.Session;
 
 /** Controlled app-local stylus replay. Measures firmware bitmap widths, never physical latency. */
 public final class WidthInstrumentation extends Instrumentation {
@@ -30,8 +28,12 @@ public final class WidthInstrumentation extends Instrumentation {
     private boolean settingsOnly, brushOnly, pickerOnly, nomadOnly, pagesOnly;
     boolean rotationPromptOnly;
     private boolean brushPerfOnly;
-    private boolean storageOnly;
+    private boolean storageOnly, liveStrokes, pickerBench, refreshProbe;
+    /** {@link PickerBench}'s mode: "true" (all), "press", "slots" or "pages". */
+    private String pickerMode;
     private boolean orientationOnly, layersOnly, toolbarOnly, gradientOnly, airbrushOnly, eraseOnly, zoomOnly;
+    /** {@link ScreenShots}: which screens ("lab", "tools", "draw", "menus", "app"; empty: all), or null. */
+    private String screens;
     private NativePen pen;
     private volatile CountDownLatch complete;
     private volatile double measured;
@@ -43,15 +45,19 @@ public final class WidthInstrumentation extends Instrumentation {
     private float leanX = 65, leanY;
     private int color = Color.BLACK;
     // White pixels in each 300-pixel Atelier screenshot sample. White is the
-    // defined endpoint, invisible on the white background. See GRAY_DENSITY.md.
+    // defined endpoint, invisible on the white background. See docs/upstream/GRAY_DENSITY.md.
     private static final int[] REFERENCE_WHITE = {
             0,17,29,33,46,61,73,82,104,125,152,165,179,196,236,300
     };
     private volatile int centerColor;
     private volatile double[] segments;
+    private Bundle benchArgs;
     @Override public void onCreate(Bundle args) {
         super.onCreate(args);
+        if (args != null && "true".equals(args.getString("modularPerf"))) { benchArgs = args; start(); return; }
+        if (args != null && "true".equals(args.getString("screens"))) { screens = args.getString("only", ""); start(); return; }
         displayProbeOnly = args != null && "true".equals(args.getString("displayProbeOnly"));
+        refreshProbe = args != null && "true".equals(args.getString("refreshProbe"));
         edgeBarsOnly = args != null && "true".equals(args.getString("edgeBarsOnly"));
         fullscreenOnly = args != null && "true".equals(args.getString("fullscreenOnly"));
         colorBarOnly = args != null && "true".equals(args.getString("colorBarOnly"));
@@ -78,12 +84,29 @@ public final class WidthInstrumentation extends Instrumentation {
         orientationOnly = args != null && "true".equals(args.getString("orientationOnly"));
         paletteOnly = args != null && "true".equals(args.getString("paletteOnly"));
         palettePerfOnly = args != null && "true".equals(args.getString("palettePerfOnly"));
+        liveStrokes = args != null && "true".equals(args.getString("liveStrokes"));
+        if (liveStrokes) benchArgs = args;
+        pickerMode = args == null ? null : args.getString("pickerBench");
+        pickerBench = java.util.Arrays.asList("true", "press", "slots", "pages").contains(pickerMode);
         start();
     }
     /**
      * Without file access the app opens on its "Keep your paintings safe" prompt, which would
      * take window focus from every check. An isolated checks build keeps its own shared folder.
      */
+    /**
+     * A tablet that slept between runs never gives the checked activity window focus, and every suite then times out
+     * waiting for it: each activity the checks start turns the screen on and keeps it on while it is open.
+     */
+    @Override public void callActivityOnCreate(Activity activity, Bundle icicle) {
+        activity.setTurnScreenOn(true); activity.setShowWhenLocked(true);
+        activity.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        super.callActivityOnCreate(activity, icicle);
+    }
+    /** A suite whose UI Inkwash no longer shows (53b444a: the Inkwash bar replaces MonoPaint's controls). */
+    private static void retired(StringBuilder report,String suite,String why) {
+        report.append("RETIRED: ").append(suite).append(": ").append(why).append(".\n");
+    }
     private void allowSharedStorage() {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) return;
         android.os.ParcelFileDescriptor output = getUiAutomation().executeShellCommand(
@@ -95,25 +118,51 @@ public final class WidthInstrumentation extends Instrumentation {
     @Override public void onStart() {
         Bundle result = new Bundle();
         StringBuilder report = new StringBuilder();
+        if (screens != null) {
+            allowSharedStorage();
+            try { ScreenShots.run(this, report, screens.isEmpty() ? null : screens); result.putString("stream", report.toString()); finish(Activity.RESULT_OK, result); }
+            catch (Throwable error) { result.putString("stream", report + "FAILED: " + android.util.Log.getStackTraceString(error)); finish(Activity.RESULT_CANCELED, result); }
+            return;
+        }
+        if (pickerBench) {
+            // The side column's pickers on the checks build's own drawing screen: presents, redraws and panel frames.
+            allowSharedStorage();
+            try { PickerBench.run(this, report, pickerMode); result.putString("stream", report.toString()); finish(Activity.RESULT_OK, result); }
+            catch (Throwable error) { result.putString("stream", report + "FAILED: " + android.util.Log.getStackTraceString(error)); finish(Activity.RESULT_CANCELED, result); }
+            return;
+        }
+        if (liveStrokes) {
+            // The live-stroke bench: real pen events into the bench build's own drawing screen.
+            allowSharedStorage();
+            try { LiveStrokeBench.run(this, benchArgs, report); result.putString("stream", report.toString()); finish(Activity.RESULT_OK, result); }
+            catch (Throwable error) { result.putString("stream", report + "FAILED: " + android.util.Log.getStackTraceString(error)); finish(Activity.RESULT_CANCELED, result); }
+            return;
+        }
+        if (benchArgs != null) {
+            // bench-scratch: off-screen timing only; no activity, no storage.
+            try { ModularPerfChecks.run(this, benchArgs, report); result.putString("stream", report.toString()); finish(Activity.RESULT_OK, result); }
+            catch (Throwable error) { result.putString("stream", report + "FAILED: " + android.util.Log.getStackTraceString(error)); finish(Activity.RESULT_CANCELED, result); }
+            return;
+        }
         allowSharedStorage();
         if (edgeBarsOnly || fullscreenOnly || colorBarOnly || settingsOnly || pagesOnly || nomadOnly || pickerOnly || shapesPerfOnly || shapesOnly || palettePerfOnly || paletteOnly || paintOnly || brushOnly || brushPerfOnly || storageOnly || orientationOnly || layersOnly || toolbarOnly || gradientOnly || airbrushOnly || eraseOnly || zoomOnly) {
             try {
-                if (edgeBarsOnly) EdgeBarChecks.run(this,report);
-                else if (fullscreenOnly) FullscreenChecks.run(this,report);
-                else if (colorBarOnly) ColorBarChecks.run(this,report,pageFeedbackOnly);
-                else if (settingsOnly) ShapeUiChecks.run(this,report,false,false,false,false,true);
+                if (edgeBarsOnly) retired(report,"edge bars","edge swipes toggled MonoPaint's toolbar and color bar; Inkwash never shows either (showInkWashBar) and no longer routes touches to EdgeBars");
+                else if (fullscreenOnly) retired(report,"full screen","its modes hide MonoPaint's toolbar and color bar, which Inkwash never shows");
+                else if (colorBarOnly) retired(report,"color bar","MonoPaint's color, wetness and header page bars; Inkwash never shows them (its greys and wetness are in the side column)");
+                else if (settingsOnly) retired(report,"settings","MonoPaint's settings dialog and palette editor were deleted (the refocus, 2026-10-24)");
                 else if (pagesOnly) ShapeUiChecks.run(this,report,false,false,false,true);
                 else if (nomadOnly) ShapeUiChecks.run(this,report,false,false,true);
-                else if (pickerOnly) ShapeUiChecks.run(this,report,false,true);
-                else if (shapesPerfOnly) ShapeUiChecks.run(this,report,true);
-                else if (shapesOnly) ShapeUiChecks.run(this,report);
-                else if (palettePerfOnly) PaletteUiChecks.run(this,report,true);
-                else if (paletteOnly) PaletteUiChecks.run(this,report);
+                else if (pickerOnly) retired(report,"tool picker","MonoPaint's toolbar tool picker; Inkwash's tools are the side column's slots");
+                else if (shapesPerfOnly) retired(report,"shape pen performance","the pen draws with Inkwash's slots, never MonoPaint's Shapes tool");
+                else if (shapesOnly) { ShapePreviewChecks.run(report); retired(report,"Shapes pen and settings UI","the pen draws with Inkwash's slots, never MonoPaint's Shapes tool"); }
+                else if (palettePerfOnly) retired(report,"palette performance","MonoPaint's shade picker and sidebar palette are never shown in Inkwash");
+                else if (paletteOnly) retired(report,"palette","MonoPaint's shade picker and sidebar palette are never shown in Inkwash");
                 else if (zoomOnly) ZoomUiChecks.run(this,report);
-                else if (eraseOnly) EraseUiChecks.run(this,report);
-                else if (airbrushOnly) AirbrushUiChecks.run(this,report);
-                else if (gradientOnly) GradientUiChecks.run(this,report);
-                else if (toolbarOnly) ToolbarChecks.run(this,report);
+                else if (eraseOnly) retired(report,"erase color","MonoPaint's eraser beside the shade bar; Inkwash's eraser is a side-column tool (the hidden 0x0 shade bar made this crash)");
+                else if (airbrushOnly) retired(report,"airbrush","MonoPaint's Airbrush tool; the pen draws with Inkwash's slots");
+                else if (gradientOnly) retired(report,"gradient","MonoPaint's Gradient tool; the pen draws with Inkwash's slots");
+                else if (toolbarOnly) retired(report,"toolbar","MonoPaint's header hamburger, toolbar order/visibility and eyedropper; Inkwash shows only its side column");
                 else if (layersOnly) LayerUiChecks.run(this,report);
                 else if (orientationOnly) OrientationChecks.run(this,report);
                 else if (storageOnly) StorageChecks.run(this, report);
@@ -127,8 +176,13 @@ public final class WidthInstrumentation extends Instrumentation {
             }
             return;
         }
+        if (refreshProbe) {
+            try { RefreshProbe.run(this, report); result.putString("stream", report.toString()); finish(Activity.RESULT_OK, result); }
+            catch (Throwable error) { result.putString("stream", report + "FAILED: " + android.util.Log.getStackTraceString(error)); finish(Activity.RESULT_CANCELED, result); }
+            return;
+        }
         if (displayProbeOnly) {
-            result.putString("stream", FastEink.describe() + "\n");
+            result.putString("stream", DirectEink.probe() + "\n");
             finish(Activity.RESULT_OK,result);
             return;
         }
@@ -277,7 +331,7 @@ public final class WidthInstrumentation extends Instrumentation {
         for (int gray : new int[]{80,136,225,255}) {
             selectSwatch(activity,gray);
             Field field=NativePen.class.getDeclaredField("directEink"); field.setAccessible(true);
-            Session display=(Session)field.get(original);
+            DirectEink display=(DirectEink)field.get(original);
             if (display==null) throw new IllegalStateException("Direct presenter not configured: "+original.status);
             int y=gray==255 ? 1100 : 900;
             Field draws=host.getClass().getDeclaredField("drawCount"); draws.setAccessible(true);
@@ -321,7 +375,7 @@ public final class WidthInstrumentation extends Instrumentation {
         selectSwatch(activity,0);
         report.append("Direct display: gray/white driver pixels before UP; firmware writing stays off; zero Android redraw during stroke AND pen-up; identical overpainting submits no updates; retained gray/white survive later UI redraw; out-of-canvas updates rejected. Physical artifacts still need checking.\n");
     }
-    private void assertMappedCanvas(View host, Session display, Rect area, int step) throws Exception {
+    private void assertMappedCanvas(View host, DirectEink display, Rect area, int step) throws Exception {
         Field field=host.getClass().getDeclaredField("backing"); field.setAccessible(true);
         Bitmap backing=(Bitmap)field.get(host);
         for (int y=area.top;y<area.bottom;y+=step)
@@ -366,7 +420,7 @@ public final class WidthInstrumentation extends Instrumentation {
             if (gray==0) continue;
             double expectedWhite=REFERENCE_WHITE[grade]/300.0;
             selectSwatch(activity,gray);
-            Session display=(Session)field.get(original);
+            DirectEink display=(DirectEink)field.get(original);
             if (display==null) throw new IllegalStateException("Dot presenter missing: "+original.status);
             int beforeDraws=draws.getInt(host);
             replayOnPad(host,1500,.3f,-1,() -> {
@@ -439,7 +493,7 @@ public final class WidthInstrumentation extends Instrumentation {
             }
             waitForIdleSync();
             Field field=NativePen.class.getDeclaredField("directEink"); field.setAccessible(true);
-            assertMappedCanvas(host,(Session)field.get(original),new Rect(1200,890,1640,1410),1);
+            assertMappedCanvas(host,(DirectEink)field.get(original),new Rect(1200,890,1640,1410),1);
         }
         report.append("Every mapped pixel around crossing gray/white pressure curves matches retained bitmap, including unpainted borders. This does not measure physical panel artifacts.\n");
     }

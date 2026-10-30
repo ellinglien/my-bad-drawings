@@ -1,0 +1,735 @@
+{
+ "source": "Brush.archive of Seed.brush from CSP2PC, https://github.com/Leon-Schoenbrunn/CSP2PC (commit bc03f0d), MIT; decoded by export-check.cjs --template",
+ "license": "MIT License\n\nCopyright (c) 2025 Leon Schönbrunn\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n",
+ "archive": {
+  "$version": {
+   "$int": 100000
+  },
+  "$archiver": "NSKeyedArchiver",
+  "$top": {
+   "root": {
+    "$uid": 1
+   }
+  },
+  "$objects": [
+   "$null",
+   {
+    "jitterStrokeSecondary": 0,
+    "dynamicsJitterLightness": 0,
+    "plotSpacing": 0.0025825779885053635,
+    "blendGammaCorrect": true,
+    "metallicScale": 0.1599999964237213,
+    "dynamicsPressureSecondaryColor": 0,
+    "dynamicsRollSecondaryColorParameters": {
+     "$uid": 54
+    },
+    "dynamicsPressureSaturationCurve": {
+     "$uid": 36
+    },
+    "textureMovement": 0.1324576735496521,
+    "taperSizeLinked": false,
+    "lightnessJitterTilt": false,
+    "dynamicsJitterDarkness": 0,
+    "dynamicsWetnessJitter": 0,
+    "hoverOutline": {
+     "$int": 0
+    },
+    "extendedBlend": {
+     "$int": 0
+    },
+    "shapeFilterMode": {
+     "$int": 0
+    },
+    "shapeInverted": false,
+    "savedEraseSizes": {
+     "$uid": 3
+    },
+    "savedPaintOpacities": {
+     "$uid": 3
+    },
+    "textureDepthTilt": false,
+    "grainBlendMode": {
+     "$int": 1
+    },
+    "dynamicsTiltShapeRoundness": 1,
+    "plotJitterRoll": false,
+    "dynamicsTiltAngle": 0.10000000149011612,
+    "previewSize": 0.08992071449756622,
+    "dynamicsPressureMix": 0,
+    "saturationJitterTiltAngle": 0.10000000149011612,
+    "taperEndLength": 0,
+    "dynamicsTiltBleed": 0,
+    "taperSize": 0,
+    "textureOrientation": {
+     "$int": 1
+    },
+    "dynamicsMix": 0,
+    "dynamicsRollSaturation": 0,
+    "shapeRollMode": {
+     "$int": 0
+    },
+    "dynamicsRollOpacity": 0,
+    "textureContrast": 0,
+    "dynamicsRollBleedParameters": {
+     "$uid": 50
+    },
+    "taperPressure": 1,
+    "dynamicsPressureOpacityCurve": {
+     "$uid": 10
+    },
+    "plotSmoothing": 0,
+    "roughnessScale": 0.1599999964237213,
+    "heightScale": 0.1599999964237213,
+    "shapeFilter": true,
+    "dynamicsRollOpacityParameters": {
+     "$uid": 49
+    },
+    "roughnessGrainInverted": false,
+    "dualBlendMode": {
+     "$int": 0
+    },
+    "shapeCountRoll": false,
+    "maxOpacity": 1,
+    "dynamicsTiltBrightness": 0,
+    "dynamicsPressureHueCurve": {
+     "$uid": 32
+    },
+    "shapeCount": 0,
+    "importedFromABR": false,
+    "dynamicsRollSaturationParameters": {
+     "$uid": 52
+    },
+    "color": {
+     "$uid": 5
+    },
+    "dynamicsPressureSizeCurve": {
+     "$uid": 16
+    },
+    "dynamicsRollHueParameters": {
+     "$uid": 51
+    },
+    "shapeCountRollParameters": {
+     "$uid": 8
+    },
+    "dynamicsSpeedSize": 0,
+    "dynamicsRollSize": 0,
+    "shapeFlipYJitter": false,
+    "shapeAzimuth": false,
+    "textureFilterMode": {
+     "$int": 0
+    },
+    "shapeRotation": 0,
+    "plotSpacingVersion": {
+     "$int": 1
+    },
+    "pencilTaperSizeLinked": false,
+    "opacityTiltAngle": 0.10000000149011612,
+    "creationDate": {
+     "$uid": 57
+    },
+    "dynamicsPressureSmoothing": 0,
+    "paintOpacity": 1,
+    "dynamicsJitterSize": 0,
+    "name": {
+     "$uid": 56
+    },
+    "plotFFTSmoothingBias": 0,
+    "grainDepth": 1,
+    "dynamicsRollSecondaryColor": 0,
+    "dynamicsPressureBrightnessCurve": {
+     "$uid": 40
+    },
+    "bleedTiltAngle": 0.10000000149011612,
+    "oriented": false,
+    "blendMode": {
+     "$int": 0
+    },
+    "metallicAmount": 0,
+    "minSize": 0.000008351838005182799,
+    "smudgeSize": 0.3586539328098297,
+    "dynamicsPressureSecondaryColorCurve": {
+     "$uid": 44
+    },
+    "secondaryColorTiltAngle": 0.10000000149011612,
+    "shapeRandomise": false,
+    "bundledRoughnessPath": {
+     "$uid": 0
+    },
+    "hueTiltAngle": 0.10000000149011612,
+    "pencilTaperSize": 0,
+    "hoverPressure": 0.7591711282730103,
+    "renderingModulatedTransfer": false,
+    "taperVersion": {
+     "$int": 0
+    },
+    "dynamicsPressureShapeRoundnessCurve": {
+     "$uid": 20
+    },
+    "dynamicsJitterHue": 0,
+    "pencilTaperOpacity": 0,
+    "dynamicsFalloff": 0,
+    "grainDepthJitter": 0,
+    "textureOffsetJitter": true,
+    "taperOpacity": 0,
+    "shapeRoundness": 1,
+    "dynamicsPressureBleedSpeed": 0.3997053802013397,
+    "savedSmudgeOpacities": {
+     "$uid": 3
+    },
+    "shapeRoll": false,
+    "dynamicsJitterStrokeLightness": 0,
+    "shapeFlipXJitter": false,
+    "shapeScatterRollParameters": {
+     "$uid": 6
+    },
+    "plotJitterRollParameters": {
+     "$uid": 9
+    },
+    "textureInverted": false,
+    "dynamicsJitterOpacity": 0,
+    "dynamicsPressureResponse": 0,
+    "bundledHeightPath": {
+     "$uid": 0
+    },
+    "textureApplication": {
+     "$int": 0
+    },
+    "eraseSize": 0.028612272813916206,
+    "secondaryColorJitterTilt": false,
+    "dynamicsTiltSecondaryColor": 0,
+    "hoverFill": {
+     "$int": 1
+    },
+    "minOpacity": 0,
+    "plotJitter": 0,
+    "dynamicsJitterSaturation": 0,
+    "dynamicsLoad": 0,
+    "maxPressureSizeClamped": false,
+    "pencilTaperEndLength": 0,
+    "dynamicsJitterStrokeHue": 0,
+    "attackTiltAngle": 0.10000000149011612,
+    "taperStartLength": 0,
+    "gradationTiltAngle": 0.10000000149011612,
+    "textureZoom": 0,
+    "plotJitterTilt": false,
+    "saturationJitterTilt": false,
+    "paintPressure": 1,
+    "plotFFTSmoothingAmount": 0,
+    "dynamicsMixSoftening": 0,
+    "shapeScatter": 0,
+    "textureScale": 1,
+    "metallicGrainInverted": false,
+    "attackRoll": false,
+    "dynamicsRollBrightness": 0,
+    "dynamicsJitterStrokeDarkness": 0,
+    "bundledShapePath": {
+     "$uid": 0
+    },
+    "textureBrightness": 0,
+    "shapeCountJitter": 0,
+    "grainOrientation": {
+     "$int": 1
+    },
+    "dynamicsRollSizeParameters": {
+     "$uid": 48
+    },
+    "heightAmount": 0.5,
+    "darknessJitterTilt": false,
+    "dynamicsTiltHue": 0,
+    "wetEdgesAmount": 0,
+    "dynamicsPressureSaturation": 0,
+    "attackRollParameters": {
+     "$uid": 55
+    },
+    "pencilTaperShape": 0,
+    "texturizedGrainFollowsCamera": true,
+    "jitterSecondary": 0,
+    "dynamicsTiltGradation": 0,
+    "brightnessTiltAngle": 0.10000000149011612,
+    "dynamicsWetAccumulation": 0.7501393556594849,
+    "dynamicsBlur": 0,
+    "dynamicsPressureBleed": 0,
+    "shapeCountTilt": false,
+    "maxSize": 2.9369335174560547,
+    "version": {
+     "$int": 2
+    },
+    "dynamicsRollBleed": 0,
+    "eraseOpacity": 1,
+    "savedEraseOpacities": {
+     "$uid": 3
+    },
+    "savedPaintSizes": {
+     "$uid": 3
+    },
+    "textureDepthTiltAngle": 0.10000000149011612,
+    "secondaryColorJitterTiltAngle": 0.10000000149011612,
+    "lightnessJitterTiltAngle": 0.10000000149011612,
+    "dynamicsPressureSizeSpeed": 0.3997053802013397,
+    "renderingMaxTransfer": true,
+    "dynamicsPressureShapeRoundness": 1,
+    "attackTilt": false,
+    "darknessJitterTiltAngle": 0.10000000149011612,
+    "smudgeOpacity": 1,
+    "dynamicsTiltCompression": 1,
+    "saturationTiltAngle": 0.10000000149011612,
+    "shapeRoundnessTiltAngle": 0.10000000149011612,
+    "dynamicsJitterStrokeSaturation": 0,
+    "dynamicsPressureOpacitySpeed": 0.3997053802013397,
+    "savedSmudgeSizes": {
+     "$uid": 3
+    },
+    "dynamicsPressureShapeRoundnessMinimum": 1,
+    "taperShape": 0,
+    "pencilTipAnimation": true,
+    "shapeScatterRoll": false,
+    "roughnessAmount": 0.5,
+    "dynamicsTiltSaturation": 0,
+    "burntEdgesAmount": 0,
+    "dynamicsRollHue": 0,
+    "dynamicsPressureBleedCurve": {
+     "$uid": 24
+    },
+    "dynamicsPressureHue": 0,
+    "pencilTaperStartLength": 0,
+    "dynamicsPressureOpacity": 1,
+    "dynamicsRollBrightnessParameters": {
+     "$uid": 53
+    },
+    "shapeCountTiltAngle": 0.10000000149011612,
+    "dynamicsPressureSize": 0,
+    "dynamicsSpeedOpacity": 0,
+    "dynamicsSmudgeAccumulation": 0.7002133727073669,
+    "shapeOrientation": {
+     "$int": 1
+    },
+    "stamp": false,
+    "sizeTiltAngle": 0.10000000149011612,
+    "plotMovingAverageStabilization": 0,
+    "renderingRecursiveMixing": false,
+    "authorName": {
+     "$uid": 0
+    },
+    "$class": {
+     "$uid": 59
+    },
+    "dynamicsGlazedFlow": 1,
+    "burntEdgesBlendMode": {
+     "$int": 1
+    },
+    "hueJitterTiltAngle": 0.10000000149011612,
+    "dynamicsTiltShapeRoundnessMinimum": 1,
+    "textureFilter": false,
+    "dynamicsTiltSize": 0,
+    "dynamicsTiltOpacity": 0,
+    "dynamicsPressureOpacityTransfer": 0,
+    "shapeAngle": 0,
+    "bundledMetallicPath": {
+     "$uid": 0
+    },
+    "dynamicsPressureTransferModulationCurve": {
+     "$uid": 28
+    },
+    "plotJitterTiltAngle": 0.10000000149011612,
+    "dynamicsBlurJitter": 0,
+    "paintSize": 1,
+    "textureRotation": 0,
+    "hueJitterTilt": false,
+    "grainDepthMinimum": 0,
+    "bundledGrainPath": {
+     "$uid": 2
+    },
+    "dynamicsPressureBrightness": 0
+   },
+   "Brush-Preset-Blank.png",
+   {
+    "NS.objects": [],
+    "$class": {
+     "$uid": 4
+    }
+   },
+   {
+    "$classname": "NSArray",
+    "$classes": [
+     "NSArray",
+     "NSObject"
+    ]
+   },
+   {
+    "$data": "AAAAAAAAAAAAAAAAAACAPw=="
+   },
+   {
+    "activationFalloff": 1.5707963705062866,
+    "activationOrigin": 3.1415927410125732,
+    "$class": {
+     "$uid": 7
+    },
+    "mode": {
+     "$int": 1
+    },
+    "activationRange": 3.1415927410125732
+   },
+   {
+    "$classname": "ValkyrieBrushRollParameters",
+    "$classes": [
+     "ValkyrieBrushRollParameters",
+     "NSObject"
+    ]
+   },
+   {
+    "activationFalloff": 1.5707963705062866,
+    "activationOrigin": 3.1415927410125732,
+    "$class": {
+     "$uid": 7
+    },
+    "mode": {
+     "$int": 1
+    },
+    "activationRange": 3.1415927410125732
+   },
+   {
+    "activationFalloff": 1.5707963705062866,
+    "activationOrigin": 3.1415927410125732,
+    "$class": {
+     "$uid": 7
+    },
+    "mode": {
+     "$int": 1
+    },
+    "activationRange": 3.1415927410125732
+   },
+   {
+    "points": {
+     "$uid": 11
+    },
+    "$class": {
+     "$uid": 15
+    }
+   },
+   {
+    "NS.objects": [
+     {
+      "$uid": 12
+     },
+     {
+      "$uid": 13
+     }
+    ],
+    "$class": {
+     "$uid": 14
+    }
+   },
+   "{0.000000, 0.000000}",
+   "{1.000000, 1.000000}",
+   {
+    "$classname": "NSMutableArray",
+    "$classes": [
+     "NSMutableArray",
+     "NSArray",
+     "NSObject"
+    ]
+   },
+   {
+    "$classname": "ValkyrieMagnitudinalCurve",
+    "$classes": [
+     "ValkyrieMagnitudinalCurve",
+     "NSObject"
+    ]
+   },
+   {
+    "points": {
+     "$uid": 17
+    },
+    "$class": {
+     "$uid": 15
+    }
+   },
+   {
+    "NS.objects": [
+     {
+      "$uid": 18
+     },
+     {
+      "$uid": 19
+     }
+    ],
+    "$class": {
+     "$uid": 14
+    }
+   },
+   "{0.000000, 0.000000}",
+   "{1.000000, 1.000000}",
+   {
+    "points": {
+     "$uid": 21
+    },
+    "$class": {
+     "$uid": 15
+    }
+   },
+   {
+    "NS.objects": [
+     {
+      "$uid": 22
+     },
+     {
+      "$uid": 23
+     }
+    ],
+    "$class": {
+     "$uid": 14
+    }
+   },
+   "{0.000000, 0.000000}",
+   "{1.000000, 1.000000}",
+   {
+    "points": {
+     "$uid": 25
+    },
+    "$class": {
+     "$uid": 15
+    }
+   },
+   {
+    "NS.objects": [
+     {
+      "$uid": 26
+     },
+     {
+      "$uid": 27
+     }
+    ],
+    "$class": {
+     "$uid": 14
+    }
+   },
+   "{0.000000, 0.000000}",
+   "{1.000000, 1.000000}",
+   {
+    "points": {
+     "$uid": 29
+    },
+    "$class": {
+     "$uid": 15
+    }
+   },
+   {
+    "NS.objects": [
+     {
+      "$uid": 30
+     },
+     {
+      "$uid": 31
+     }
+    ],
+    "$class": {
+     "$uid": 14
+    }
+   },
+   "{0.000000, 0.000000}",
+   "{1.000000, 1.000000}",
+   {
+    "points": {
+     "$uid": 33
+    },
+    "$class": {
+     "$uid": 15
+    }
+   },
+   {
+    "NS.objects": [
+     {
+      "$uid": 34
+     },
+     {
+      "$uid": 35
+     }
+    ],
+    "$class": {
+     "$uid": 14
+    }
+   },
+   "{0.000000, 0.000000}",
+   "{1.000000, 1.000000}",
+   {
+    "points": {
+     "$uid": 37
+    },
+    "$class": {
+     "$uid": 15
+    }
+   },
+   {
+    "NS.objects": [
+     {
+      "$uid": 38
+     },
+     {
+      "$uid": 39
+     }
+    ],
+    "$class": {
+     "$uid": 14
+    }
+   },
+   "{0.000000, 0.000000}",
+   "{1.000000, 1.000000}",
+   {
+    "points": {
+     "$uid": 41
+    },
+    "$class": {
+     "$uid": 15
+    }
+   },
+   {
+    "NS.objects": [
+     {
+      "$uid": 42
+     },
+     {
+      "$uid": 43
+     }
+    ],
+    "$class": {
+     "$uid": 14
+    }
+   },
+   "{0.000000, 0.000000}",
+   "{1.000000, 1.000000}",
+   {
+    "points": {
+     "$uid": 45
+    },
+    "$class": {
+     "$uid": 15
+    }
+   },
+   {
+    "NS.objects": [
+     {
+      "$uid": 46
+     },
+     {
+      "$uid": 47
+     }
+    ],
+    "$class": {
+     "$uid": 14
+    }
+   },
+   "{0.000000, 0.000000}",
+   "{1.000000, 1.000000}",
+   {
+    "activationFalloff": 1.5707963705062866,
+    "activationOrigin": 3.1415927410125732,
+    "$class": {
+     "$uid": 7
+    },
+    "mode": {
+     "$int": 1
+    },
+    "activationRange": 3.1415927410125732
+   },
+   {
+    "activationFalloff": 1.5707963705062866,
+    "activationOrigin": 3.1415927410125732,
+    "$class": {
+     "$uid": 7
+    },
+    "mode": {
+     "$int": 1
+    },
+    "activationRange": 3.1415927410125732
+   },
+   {
+    "activationFalloff": 1.5707963705062866,
+    "activationOrigin": 3.1415927410125732,
+    "$class": {
+     "$uid": 7
+    },
+    "mode": {
+     "$int": 1
+    },
+    "activationRange": 3.1415927410125732
+   },
+   {
+    "activationFalloff": 1.5707963705062866,
+    "activationOrigin": 3.1415927410125732,
+    "$class": {
+     "$uid": 7
+    },
+    "mode": {
+     "$int": 1
+    },
+    "activationRange": 3.1415927410125732
+   },
+   {
+    "activationFalloff": 1.5707963705062866,
+    "activationOrigin": 3.1415927410125732,
+    "$class": {
+     "$uid": 7
+    },
+    "mode": {
+     "$int": 1
+    },
+    "activationRange": 3.1415927410125732
+   },
+   {
+    "activationFalloff": 1.5707963705062866,
+    "activationOrigin": 3.1415927410125732,
+    "$class": {
+     "$uid": 7
+    },
+    "mode": {
+     "$int": 1
+    },
+    "activationRange": 3.1415927410125732
+   },
+   {
+    "activationFalloff": 1.5707963705062866,
+    "activationOrigin": 3.1415927410125732,
+    "$class": {
+     "$uid": 7
+    },
+    "mode": {
+     "$int": 1
+    },
+    "activationRange": 3.1415927410125732
+   },
+   {
+    "activationFalloff": 1.5707963705062866,
+    "activationOrigin": 3.1415927410125732,
+    "$class": {
+     "$uid": 7
+    },
+    "mode": {
+     "$int": 1
+    },
+    "activationRange": 3.1415927410125732
+   },
+   "Seed",
+   {
+    "NS.time": 689046802.000555,
+    "$class": {
+     "$uid": 58
+    }
+   },
+   {
+    "$classname": "NSDate",
+    "$classes": [
+     "NSDate",
+     "NSObject"
+    ]
+   },
+   {
+    "$classname": "SilicaBrush",
+    "$classes": [
+     "SilicaBrush",
+     "ValkyrieBrush",
+     "NSObject"
+    ]
+   }
+  ]
+ }
+}

@@ -8,8 +8,83 @@ import java.util.Arrays;
 /** Dependency-free host checks: run with scripts/test_document.sh. */
 public final class DocumentChecks {
     public static void main(String[] args) throws Exception {
-        calibration(); transactions(); maskAndClipping(); smoothEdges(); watercolor(); clearCanvas(); persistence();
+        calibration(); transactions(); maskAndClipping(); smoothEdges(); watercolor(); clearCanvas(); persistence(); strokeBaseBlocks(); toneBlocks(); eraseBlocks();
         System.out.println("PASS: calibration, coordinate anchoring, opaque logical tones, gesture undo/redo, clipping, codec and damaged-file rejection");
+    }
+    /** strokeBaseTones gives a block of what strokeBaseTone gives pixel by pixel, mid-gesture, across tiles and off the page. */
+    private static void strokeBaseBlocks() {
+        ToneDocument doc = new ToneDocument(150, 130);
+        doc.begin(); for (int y = 0; y < 130; y++) for (int x = 0; x < 150; x++) doc.setTone(x, y, (x * 7 + y * 3) % 256); doc.finish();
+        doc.begin();
+        for (int y = 20; y < 90; y++) for (int x = 50; x < 140; x++) doc.setTone(x, y, 3);
+        int[][] blocks = {{0, 0, 150, 130}, {60, 60, 10, 10}, {-5, -3, 80, 70}, {120, 100, 50, 50}};
+        for (int[] b : blocks) {
+            int[] out = new int[b[2] * b[3]];
+            doc.strokeBaseTones(b[0], b[1], b[2], b[3], out);
+            for (int y = 0; y < b[3]; y++) for (int x = 0; x < b[2]; x++) {
+                int px = b[0] + x, py = b[1] + y;
+                if (px < 0 || py < 0 || px >= 150 || py >= 130) continue;
+                check(out[y * b[2] + x] == doc.strokeBaseTone(px, py), "strokeBaseTones matches strokeBaseTone at " + px + "," + py);
+            }
+        }
+        doc.finish();
+    }
+    /** setTones lays a block exactly as setTone would pixel by pixel: the same pixels, dirty area and undo. */
+    private static void toneBlocks() {
+        java.util.Random random = new java.util.Random(3);
+        ToneDocument blocks = new ToneDocument(150, 130), pixels = new ToneDocument(150, 130);
+        for (ToneDocument doc : new ToneDocument[]{blocks, pixels}) {
+            doc.begin(); for (int y = 0; y < 130; y++) for (int x = 0; x < 150; x++) if ((x ^ y) % 5 == 0) doc.setTone(x, y, (x * 7 + y * 3) % 256); doc.finish();
+            doc.clearDirty();
+        }
+        int[][] areas = {{10, 10, 70, 70}, {-20, 90, 90, 60}, {100, -5, 80, 30}};
+        for (int[] a : areas) {
+            int[] grays = new int[a[2] * a[3]];
+            for (int i = 0; i < grays.length; i++) grays[i] = random.nextInt(4) == 0 ? -1 : random.nextInt(4) == 0 ? 255 : random.nextInt(256);
+            blocks.begin(); blocks.setTones(a[0], a[1], a[2], a[3], grays); blocks.finish();
+            pixels.begin();
+            for (int y = 0; y < a[3]; y++) for (int x = 0; x < a[2]; x++) if (grays[y * a[2] + x] >= 0) pixels.setTone(a[0] + x, a[1] + y, grays[y * a[2] + x]);
+            pixels.finish();
+            check(Arrays.equals(blocks.dirty(), pixels.dirty()), "setTones marks the same dirty area");
+            blocks.clearDirty(); pixels.clearDirty();
+            check(sameLayers(blocks, pixels), "setTones lays the same pixels as setTone");
+        }
+        long before = blocks.revision();
+        int[] same = new int[20 * 20];
+        for (int y = 0; y < 20; y++) for (int x = 0; x < 20; x++) same[y * 20 + x] = blocks.tone(30 + x, 30 + y);
+        blocks.begin(); long begun = blocks.revision(); blocks.setTones(30, 30, 20, 20, same);
+        check(blocks.revision() == begun && blocks.dirty() == null, "A block that changes nothing leaves the page's revision and dirty area alone");
+        check(!blocks.finish() && before != begun, "and is no edit");
+        for (int i = 0; i < areas.length; i++) { blocks.undo(); pixels.undo(); check(sameLayers(blocks, pixels), "Undo takes back the same pixels"); }
+    }
+    /** eraseTones erases a block's marked pixels exactly as eraseTone(x, y, 1) would one by one. */
+    private static void eraseBlocks() {
+        ToneDocument blocks = new ToneDocument(150, 130), pixels = new ToneDocument(150, 130);
+        for (ToneDocument doc : new ToneDocument[]{blocks, pixels}) {
+            // Paint, white paint over paper, and bare paper.
+            doc.begin();
+            for (int y = 0; y < 130; y++) for (int x = 0; x < 150; x++) if ((x + y) % 4 != 0) doc.paintTone(x, y, (x * 5 + y) % 3 == 0 ? 255 : (x * 7 + y * 3) % 256, 1 + (x * y) % 255);
+            doc.finish(); doc.clearDirty();
+        }
+        int[][] areas = {{10, 10, 70, 70}, {-20, 90, 90, 60}, {100, -5, 80, 30}};
+        for (int[] a : areas) {
+            byte[] mask = new byte[a[2] * a[3]];
+            for (int i = 0; i < mask.length; i++) mask[i] = (byte)(i % 3 == 0 ? 0 : i % 5 + 1);
+            blocks.begin(); blocks.eraseTones(a[0], a[1], a[2], a[3], mask);
+            pixels.begin();
+            for (int y = 0; y < a[3]; y++) for (int x = 0; x < a[2]; x++) if (mask[y * a[2] + x] != 0) pixels.eraseTone(a[0] + x, a[1] + y, 1);
+            check(blocks.finish() == pixels.finish(), "eraseTones changes the page when eraseTone would");
+            check(Arrays.equals(blocks.dirty(), pixels.dirty()), "eraseTones marks the same dirty area");
+            blocks.clearDirty(); pixels.clearDirty();
+            check(sameLayers(blocks, pixels), "eraseTones leaves the same pixels as eraseTone");
+        }
+        for (int i = 0; i < areas.length; i++) { blocks.undo(); pixels.undo(); check(sameLayers(blocks, pixels), "Undo restores the same pixels"); }
+    }
+    private static boolean sameLayers(ToneDocument a, ToneDocument b) {
+        ToneDocument.Snapshot x = a.layerSnapshot(), y = b.layerSnapshot();
+        for (int i = 0; i < x.layers.size(); i++)
+            if (!Arrays.equals(x.layers.get(i).tones, y.layers.get(i).tones) || !Arrays.equals(x.layers.get(i).alpha, y.layers.get(i).alpha)) return false;
+        return true;
     }
     private static void calibration() {
         int[] accepted = {0,4,6,7,10,13,16,17,22,27,32,35,38,42,50,64};

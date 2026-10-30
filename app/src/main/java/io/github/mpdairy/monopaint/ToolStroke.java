@@ -20,7 +20,7 @@ final class ToolStroke implements DrawingStroke {
     @Override public void sample(float x,float y,float pressure,float tx,float ty) {
         if(!Float.isFinite(x)||!Float.isFinite(y)||!Float.isFinite(pressure)) return;
         x=Math.max(-128,Math.min(document.width+128,x)); y=Math.max(-128,Math.min(document.height+128,y));
-        float p=Math.max(0,Math.min(1,(pressure-.05f)/.40f));
+        float p=ToolSettings.travel(pressure);
         float diameter=settings.diameter(pressure), minor=diameter,angle=0;
         if(settings.tool==ToolSettings.Tool.PENCIL) {
             float lean=settings.tilt?BrushDirection.lean(tx,ty):0;

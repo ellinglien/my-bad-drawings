@@ -14,7 +14,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
-import io.github.mpdairy.fasteink.PanelCoordinates;
 
 /** Exercises pen input and real controls on a temporary page, then restores the session. */
 final class AirbrushUiChecks {
@@ -73,7 +72,7 @@ final class AirbrushUiChecks {
                 set(activity,"drawingName",name);set(activity,"library",library);set(get(activity,"paint"),"eraseMode",originalErase);set(get(activity,"paint"),"gray",gray);TestAccess.setMaximum(activity,maximum);
                 call(activity,"replaceBook",new Class<?>[]{DrawingBook.class},original);
                 call(activity,"requestQuarter",new Class<?>[]{int.class},rotation);call(get(activity,"toolbar"),"rebuildTools");
-                call(activity,"saveToolState");call(activity,"recovery");
+                call(activity,"saveToolState");call(activity,"recoveryNow");
             });
             TestSessionSave.await(activity);
         }

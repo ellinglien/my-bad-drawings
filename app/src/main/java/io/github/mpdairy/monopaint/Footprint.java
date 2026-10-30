@@ -7,7 +7,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
 import android.graphics.Shader;
-import android.graphics.Typeface;
 import android.view.View;
 import java.util.function.Supplier;
 
@@ -42,7 +41,7 @@ final class Footprint extends View {
                 float minor = s.tip + (s.maximum-s.tip)*.28f;
                 canvas.drawOval(x-r, y-minor/2, x+r, y+minor/2, paint);
             } else BrushStamp.draw(canvas, paint, x, y, r, s);
-            paint.setShader(null); paint.setTypeface(Typeface.DEFAULT_BOLD);
+            paint.setShader(null); paint.setTypeface(Theme.face(700));
             paint.setTextSize((textSize-1)*getResources().getDisplayMetrics().scaledDensity); paint.setTextAlign(Paint.Align.CENTER);
             String prefix = i == 0 ? "Min " : pencil ? (s.tilt ? "Max tilted " : "Max upright ") : "Max ";
             canvas.drawText(prefix + diameter + " px", x, getHeight() - Ui.dp(getContext(), 8), paint);
