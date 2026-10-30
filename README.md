@@ -61,9 +61,9 @@ Details in [docs/BUILDING.md](docs/BUILDING.md):
    of your own the build is signed with Android's debug key; that's fine for your own tablet.
 4. Open My Bad Drawings and allow file access when it asks: notebooks live in `Document/My Bad Drawings`.
 
-It's made for and tested on the Supernote Manta. **It has never been tried on a Nomad:** the Nomad layouts were
-built blind, from its screen size alone, so expect rough edges there (reports welcome). Other Android tablets are
-untested.
+It's only been tested on the Supernote Manta, but I tried to build it with the Nomad in mind as well: its layouts
+were made for the Nomad's screen too, just never tried on one, so expect rough edges there (reports welcome). Other
+Android tablets are untested.
 
 ## Made with AI
 
